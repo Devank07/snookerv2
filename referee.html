@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Referee Remote</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#07120d;color:#e8f4e0;font-family:Arial,sans-serif;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;}
+
+/* Selector screen */
+#screen-select{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:18px;text-align:center;padding:24px;}
+#screen-select h2{color:#c9a227;font-size:1.3rem;}
+#screen-select p{color:rgba(232,244,224,0.45);font-size:0.85rem;}
+.tbl-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px;}
+.tbl-btn{padding:13px 22px;background:#0d2018;border:1px solid rgba(201,162,39,0.3);color:#c9a227;border-radius:9px;text-decoration:none;font-size:0.95rem;font-weight:bold;letter-spacing:1px;}
+
+/* No match screen */
+#screen-nomatch{display:none;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;text-align:center;padding:24px;}
+#screen-nomatch h2{color:#c9a227;font-size:1.3rem;}
+#screen-nomatch p{color:rgba(232,244,224,0.45);font-size:0.85rem;line-height:1.6;}
+
+/* Main screen */
+#screen-main{display:none;flex-direction:column;min-height:100vh;}
+
+.hdr{background:#0d2018;border-bottom:2px solid #c9a227;padding:9px 14px;}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;}
+.tbadge{font-size:0.68rem;font-weight:bold;letter-spacing:2px;color:#c9a227;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.25);padding:3px 9px;border-radius:20px;}
+.tname{font-size:0.72rem;color:#c9a227;letter-spacing:1px;flex:1;text-align:center;}
+.finfo{font-size:0.68rem;color:rgba(232,244,224,0.4);margin-top:4px;text-align:center;}
+
+.scores{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;padding:9px 10px;background:#0d2018;}
+.pc{background:#122a1c;border-radius:9px;padding:9px 7px;text-align:center;border:2px solid transparent;transition:border-color .2s,background .2s;}
+.pc.on{border-color:#c9a227;background:#1a3028;}
+.pname{font-size:0.72rem;color:rgba(232,244,224,0.45);text-transform:uppercase;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pframes{font-size:1.6rem;font-weight:900;color:#c9a227;line-height:1;}
+.pscore{font-size:0.95rem;color:#e8f4e0;}
+.vscol{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.vslbl{font-size:0.62rem;color:rgba(232,244,224,0.35);}
+
+.brkpanel{background:#060f0a;border-bottom:1px solid #1a3028;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;}
+.brkleft .brklbl{font-size:0.63rem;color:rgba(232,244,224,0.4);text-transform:uppercase;letter-spacing:1px;}
+.brkleft .brkwho{font-size:0.72rem;color:#c9a227;}
+.brkleft .brknum{font-size:2.1rem;font-weight:900;color:white;line-height:1;}
+.brkballs{display:flex;flex-wrap:wrap;gap:3px;max-width:145px;justify-content:flex-end;}
+.bb{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.52rem;font-weight:bold;color:white;border:1px solid rgba(255,255,255,0.12);}
+.bb-red{background:#c0392b;}.bb-yellow{background:#f1c40f;color:#333;}.bb-green{background:#27ae60;}
+.bb-brown{background:#7d5a3c;}.bb-blue{background:#2980b9;}.bb-pink{background:#e91e8c;}.bb-black{background:#111;border-color:#555;}
+
+.redsrow{padding:5px 14px;background:#0d2018;border-bottom:1px solid #1a3028;text-align:center;font-size:0.7rem;color:rgba(232,244,224,0.4);}
+
+.slbl{font-size:0.63rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;padding:9px 14px 3px;}
+
+.ballgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 10px 9px;}
+.ballbtn{border:none;cursor:pointer;border-radius:50%;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05rem;font-weight:900;color:white;box-shadow:0 4px 10px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.13);transition:transform .1s;position:relative;overflow:hidden;}
+.ballbtn::after{content:'';position:absolute;top:14%;left:17%;width:35%;height:24%;background:rgba(255,255,255,0.2);border-radius:50%;transform:rotate(-30deg);}
+.ballbtn:active{transform:scale(0.91);}
+.bpts{font-size:0.58rem;opacity:0.85;font-style:italic;}
+.b-r{background:radial-gradient(circle at 35% 35%,#e74c3c,#922b21);}
+.b-y{background:radial-gradient(circle at 35% 35%,#f7dc6f,#d4ac0d);color:#333;}
+.b-y::after{background:rgba(255,255,255,0.3);}
+.b-g{background:radial-gradient(circle at 35% 35%,#52be80,#1e8449);}
+.b-br{background:radial-gradient(circle at 35% 35%,#a57849,#5d4037);}
+.b-bl{background:radial-gradient(circle at 35% 35%,#5dade2,#1a5276);}
+.b-pk{background:radial-gradient(circle at 35% 35%,#f06292,#c2185b);}
+.b-bk{background:radial-gradient(circle at 35% 35%,#555,#0d0d0d);}
+
+.ctrlgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:0 10px 7px;}
+.ctrlbtn{border:none;border-radius:10px;padding:12px 7px;cursor:pointer;font-size:0.8rem;font-weight:bold;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .1s;}
+.ctrlbtn:active{transform:scale(0.95);}
+.ci{font-size:1.05rem;}
+.c-sw{background:#1a3a5c;color:#5dade2;border:1px solid #2980b9;}
+.c-un{background:#3a1a1a;color:#e74c3c;border:1px solid #c0392b;}
+.c-fo{background:#3a1a00;color:#e67e22;border:1px solid #d35400;}
+.c-rb{background:#1e1e1e;color:rgba(232,244,224,0.4);border:1px solid #333;}
+
+#foul-panel{display:none;flex-wrap:wrap;gap:7px;padding:9px 11px;background:#1a0f00;border-top:1px solid #d35400;border-bottom:1px solid #d35400;}
+#foul-panel .fl{width:100%;font-size:0.7rem;color:#e67e22;text-transform:uppercase;letter-spacing:1px;}
+.fbtn{border:1px solid #d35400;background:#2d1500;color:#e67e22;border-radius:7px;padding:7px 13px;font-size:0.83rem;font-weight:bold;cursor:pointer;}
+.fbtn:active{background:#4a2000;}
+
+.fwrow{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:0 10px 7px;}
+.fwbtn{border:none;border-radius:10px;padding:12px 7px;cursor:pointer;font-size:0.78rem;font-weight:bold;text-align:center;background:linear-gradient(135deg,#1a3d1a,#0d2318);color:#c9a227;border:1px solid #c9a227;transition:transform .1s;}
+.fwbtn:active{transform:scale(0.95);}
+.fwi{font-size:0.95rem;display:block;margin-bottom:2px;}
+
+footer{padding:13px;text-align:center;font-size:0.6rem;color:#1e3a28;}
+</style>
+</head>
+<body>
+
+<!-- Table selector -->
+<div id="screen-select">
+  <div style="font-size:2.5rem">🎱</div>
+  <h2>Select Your Table</h2>
+  <p>Tap your table number to open the referee panel</p>
+  <div class="tbl-btns">
+    <a href="referee.html?table=1" class="tbl-btn">Table 1</a>
+    <a href="referee.html?table=2" class="tbl-btn">Table 2</a>
+    <a href="referee.html?table=3" class="tbl-btn">Table 3</a>
+    <a href="referee.html?table=4" class="tbl-btn">Table 4</a>
+    <a href="referee.html?table=5" class="tbl-btn">Table 5</a>
+    <a href="referee.html?table=6" class="tbl-btn">Table 6</a>
+  </div>
+</div>
+
+<!-- No active match -->
+<div id="screen-nomatch">
+  <div style="font-size:2.5rem">🎱</div>
+  <h2 id="nomatch-title">No Match on Table –</h2>
+  <p>Open <strong>setup.html</strong> on a computer<br>and start a match on this table first.</p>
+</div>
+
+<!-- Main referee panel -->
+<div id="screen-main">
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="tbadge" id="tbadge">Table –</div>
+      <div class="tname" id="tname"></div>
+    </div>
+    <div class="finfo" id="finfo"></div>
+  </div>
+
+  <div class="scores">
+    <div class="pc" id="pc1"><div class="pname" id="pn1">P1</div><div class="pframes" id="pf1">0</div><div class="pscore" id="ps1">0</div></div>
+    <div class="vscol"><div class="vslbl">frames</div><div style="font-size:1rem;color:rgba(232,244,224,0.3)">–</div><div class="vslbl">pts</div></div>
+    <div class="pc" id="pc2"><div class="pname" id="pn2">P2</div><div class="pframes" id="pf2">0</div><div class="pscore" id="ps2">0</div></div>
+  </div>
+
+  <div class="brkpanel">
+    <div class="brkleft">
+      <div class="brklbl">Current Break</div>
+      <div class="brkwho" id="brkwho">–</div>
+      <div class="brknum" id="brknum">0</div>
+    </div>
+    <div class="brkballs" id="brkballs"></div>
+  </div>
+
+  <div class="redsrow" id="redsrow">15 reds left</div>
+
+  <div class="slbl">POT A BALL</div>
+  <div class="ballgrid">
+    <button class="ballbtn b-r"  onclick="pot('red',1)">1<br><span class="bpts">Red</span></button>
+    <button class="ballbtn b-y"  onclick="pot('yellow',2)">2<br><span class="bpts">Yellow</span></button>
+    <button class="ballbtn b-g"  onclick="pot('green',3)">3<br><span class="bpts">Green</span></button>
+    <button class="ballbtn b-br" onclick="pot('brown',4)">4<br><span class="bpts">Brown</span></button>
+    <button class="ballbtn b-bl" onclick="pot('blue',5)">5<br><span class="bpts">Blue</span></button>
+    <button class="ballbtn b-pk" onclick="pot('pink',6)">6<br><span class="bpts">Pink</span></button>
+    <button class="ballbtn b-bk" onclick="pot('black',7)">7<br><span class="bpts">Black</span></button>
+  </div>
+
+  <div class="slbl">CONTROLS</div>
+  <div class="ctrlgrid">
+    <button class="ctrlbtn c-sw" onclick="switchTurn()"><span class="ci">🔄</span>End Visit</button>
+    <button class="ctrlbtn c-un" onclick="undoLast()"><span class="ci">↩️</span>Undo Last</button>
+    <button class="ctrlbtn c-fo" onclick="toggleFoul()"><span class="ci">⚠️</span>Foul</button>
+    <button class="ctrlbtn c-rb" onclick="resetBreak()"><span class="ci">🔁</span>Reset Break</button>
+  </div>
+
+  <div id="foul-panel">
+    <div class="fl">Award foul points to opponent:</div>
+    <button class="fbtn" onclick="foul(4)">+4 pts</button>
+    <button class="fbtn" onclick="foul(5)">+5 pts</button>
+    <button class="fbtn" onclick="foul(6)">+6 pts</button>
+    <button class="fbtn" onclick="foul(7)">+7 pts</button>
+    <button class="fbtn" onclick="toggleFoul()" style="color:#555;border-color:#333">✕ Cancel</button>
+  </div>
+
+  <div class="slbl">FRAME WON</div>
+  <div class="fwrow">
+    <button class="fwbtn" onclick="frameWon(1)"><span class="fwi">🏆</span><span id="fw1">P1 Wins Frame</span></button>
+    <button class="fwbtn" onclick="frameWon(2)"><span class="fwi">🏆</span><span id="fw2">P2 Wins Frame</span></button>
+  </div>
+
+  <footer>Referee Remote · Snooker Scoring System</footer>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+var p = new URLSearchParams(window.location.search);
+var tbl = p.get('table');
+var matchRef = null;
+var S = null;
+
+if (!tbl) {
+  document.getElementById('screen-select').style.display = 'flex';
+} else {
+  document.getElementById('screen-select').style.display = 'none';
+  document.title = 'Referee · Table ' + tbl;
+  matchRef = db.ref('matches/table-' + tbl);
+  matchRef.on('value', function(snap) {
+    S = snap.val();
+    if (!S || S.status !== 'active') {
+      document.getElementById('screen-nomatch').style.display = 'flex';
+      document.getElementById('screen-main').style.display = 'none';
+      document.getElementById('nomatch-title').textContent = 'No Match on Table ' + tbl;
+    } else {
+      document.getElementById('screen-nomatch').style.display = 'none';
+      document.getElementById('screen-main').style.display = 'flex';
+      render();
+    }
+  });
+}
+
+function render() {
+  var s = S;
+  document.getElementById('tbadge').textContent = 'Table ' + tbl;
+  document.getElementById('tname').textContent = s.tournament || '';
+  document.getElementById('finfo').textContent = 'Frame ' + s.currentFrame + '  ·  Best of ' + s.bestOf;
+  document.getElementById('pn1').textContent = s.player1.name;
+  document.getElementById('pn2').textContent = s.player2.name;
+  document.getElementById('pf1').textContent = s.player1.frames;
+  document.getElementById('pf2').textContent = s.player2.frames;
+  document.getElementById('ps1').textContent = s.player1.score;
+  document.getElementById('ps2').textContent = s.player2.score;
+  document.getElementById('pc1').className = 'pc' + (s.turn===1?' on':'');
+  document.getElementById('pc2').className = 'pc' + (s.turn===2?' on':'');
+  document.getElementById('brknum').textContent = s.currentBreak || 0;
+  document.getElementById('brkwho').textContent = s.breakPlayer===1 ? s.player1.name : s.player2.name;
+  document.getElementById('redsrow').textContent = Math.max(0, s.redsRemaining||15) + ' reds left';
+  var balls = s.breakBalls || [];
+  document.getElementById('brkballs').innerHTML = balls.map(function(b){
+    return '<span class="bb bb-'+b.color+'">'+b.value+'</span>';
+  }).join('');
+  document.getElementById('fw1').textContent = s.player1.name + ' wins frame';
+  document.getElementById('fw2').textContent = s.player2.name + ' wins frame';
+}
+
+function save(s) { matchRef.set(s); }
+function clone() { return JSON.parse(JSON.stringify(S)); }
+function vibe(p) { if(navigator.vibrate) navigator.vibrate(p); }
+
+function pot(color, val) {
+  if(!S) return;
+  var s = clone();
+  var p = 'player'+s.turn;
+  s[p].score = (s[p].score||0) + val;
+  s.currentBreak = (s.currentBreak||0) + val;
+  if(!s.breakPlayer) s.breakPlayer = s.turn;
+  s.breakBalls = s.breakBalls || [];
+  s.breakBalls.push({color:color, value:val});
+  if(color==='red') s.redsRemaining = Math.max(0,(s.redsRemaining||15)-1);
+  vibe(40); save(s);
+}
+
+function switchTurn() {
+  if(!S) return;
+  var s = clone();
+  s.turn = s.turn===1?2:1;
+  s.currentBreak=0; s.breakPlayer=s.turn; s.breakBalls=[];
+  vibe([30,30,30]); save(s);
+}
+
+function undoLast() {
+  if(!S) return;
+  var s = clone();
+  var balls = s.breakBalls||[];
+  if(!balls.length) return;
+  var last = balls.pop();
+  var p = 'player'+(s.breakPlayer||s.turn);
+  s[p].score = Math.max(0,(s[p].score||0)-last.value);
+  s.currentBreak = Math.max(0,(s.currentBreak||0)-last.value);
+  s.breakBalls = balls;
+  if(last.color==='red') s.redsRemaining = Math.min(15,(s.redsRemaining||0)+1);
+  vibe(60); save(s);
+}
+
+function foul(val) {
+  if(!S) return;
+  var s = clone();
+  var opp = 'player'+(s.turn===1?2:1);
+  s[opp].score = (s[opp].score||0)+val;
+  s.currentBreak=0; s.breakBalls=[];
+  s.breakPlayer = s.turn===1?2:1;
+  s.turn = s.turn===1?2:1;
+  document.getElementById('foul-panel').style.display='none';
+  vibe([80,40,80]); save(s);
+}
+
+function frameWon(playerNum) {
+  if(!S) return;
+  var s = clone();
+  var p = 'player'+playerNum;
+  s[p].frames = (s[p].frames||0)+1;
+  s.player1.score=0; s.player2.score=0;
+  s.currentBreak=0; s.breakBalls=[]; s.redsRemaining=15;
+  s.currentFrame = (s.currentFrame||1)+1;
+  s.turn = playerNum===1?2:1;
+  s.breakPlayer = s.turn;
+  var needed = Math.ceil(s.bestOf/2);
+  if(s[p].frames>=needed){s.matchWinner=playerNum;s.status='finished';}
+  vibe([100,50,100,50,100]); save(s);
+}
+
+function toggleFoul() {
+  var fp = document.getElementById('foul-panel');
+  fp.style.display = fp.style.display==='flex'?'none':'flex';
+}
+
+function resetBreak() {
+  if(!S) return;
+  var s = clone();
+  s.currentBreak=0; s.breakBalls=[];
+  save(s);
+}
+</script>
+</body>
+</html>
