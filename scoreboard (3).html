@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Snooker Scoreboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#060f0a;color:#e8f4e0;font-family:'Barlow Condensed',sans-serif;width:100vw;height:100vh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.005) 3px,rgba(255,255,255,0.005) 6px),repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(255,255,255,0.003) 3px,rgba(255,255,255,0.003) 6px);pointer-events:none;z-index:0;}
+
+/* ============ OVERVIEW ============ */
+#ov{display:none;flex-direction:column;height:100vh;position:relative;z-index:1;}
+.ov-hdr{background:rgba(0,0,0,0.65);border-bottom:2px solid #c9a227;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.ov-logo{font-family:'Bebas Neue',cursive;font-size:1.7rem;letter-spacing:5px;color:#c9a227;}
+.ov-tn{font-size:0.9rem;color:rgba(232,244,224,0.55);letter-spacing:2px;}
+.live-pip{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#e74c3c;letter-spacing:2px;}
+.live-pip::before{content:'';width:8px;height:8px;border-radius:50%;background:#e74c3c;animation:blk 1.2s infinite;}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:0.2}}
+.ov-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:2px;background:rgba(0,0,0,0.2);overflow:hidden;}
+.tile{background:#080f0a;display:flex;flex-direction:column;padding:14px 18px;position:relative;overflow:hidden;transition:background .4s;}
+.tile.on{background:#0c1e11;}
+.tile.on::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,rgba(201,162,39,0.5),transparent);}
+.tile-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.tile-num{font-family:'Bebas Neue',cursive;font-size:0.88rem;letter-spacing:3px;color:rgba(201,162,39,0.45);}
+.tile.on .tile-num{color:#c9a227;}
+.tile-st{font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(232,244,224,0.18);font-weight:bold;}
+.tile-st.live{color:#2ecc71;animation:lp 2s infinite;}
+@keyframes lp{0%,100%{opacity:1}50%{opacity:0.45}}
+.tile-empty{flex:1;display:flex;align-items:center;justify-content:center;color:rgba(232,244,224,0.07);font-size:0.8rem;letter-spacing:2px;text-transform:uppercase;}
+.tile-sc{display:none;flex:1;flex-direction:column;justify-content:center;gap:5px;}
+.tpr{display:flex;align-items:center;gap:7px;}
+.tpr.at .tpn{color:#c9a227;}
+.tpa{font-size:0.62rem;color:#c9a227;opacity:0;width:9px;flex-shrink:0;}
+.tpr.at .tpa{opacity:1;}
+.tpn{flex:1;font-family:'Bebas Neue',cursive;font-size:clamp(0.9rem,2vw,1.5rem);letter-spacing:2px;color:#e8f4e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* TILE: frames big, pts small */
+.tpf{font-family:'Bebas Neue',cursive;font-size:clamp(1.6rem,3.5vw,2.7rem);color:#c9a227;line-height:1;min-width:36px;text-align:center;}
+.tpp{font-size:clamp(0.7rem,1.2vw,0.95rem);color:rgba(232,244,224,0.4);min-width:38px;text-align:right;font-weight:300;}
+.tdiv{display:flex;align-items:center;margin:1px 0;}
+.tdivl{flex:1;height:1px;background:rgba(255,255,255,0.04);}
+.tdivv{font-size:0.56rem;color:rgba(255,255,255,0.08);padding:0 6px;letter-spacing:1px;}
+.tile-ft{margin-top:6px;display:flex;justify-content:space-between;align-items:center;}
+.tile-fl{font-size:0.6rem;color:rgba(232,244,224,0.28);letter-spacing:1px;}
+.tile-brk{font-size:0.65rem;font-weight:bold;color:rgba(255,255,255,0.65);}
+.tile-brk span{color:rgba(232,244,224,0.28);font-weight:normal;}
+
+/* ============ SINGLE TABLE ============ */
+#st{display:none;flex-direction:column;height:100vh;position:relative;z-index:1;}
+
+.st-wait{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:18px;text-align:center;padding:24px;}
+.st-wait h2{font-family:'Bebas Neue',cursive;font-size:2.5rem;letter-spacing:4px;color:#c9a227;}
+.st-wait p{font-size:0.8rem;color:rgba(232,244,224,0.28);letter-spacing:2px;}
+.pulse-ico{animation:pulseb 2s ease-in-out infinite;font-size:3rem;display:inline-block;}
+@keyframes pulseb{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 28px;background:rgba(0,0,0,0.5);border-bottom:1px solid rgba(201,162,39,0.18);flex-shrink:0;}
+.tb-tn{font-family:'Bebas Neue',cursive;font-size:clamp(0.9rem,2vw,1.45rem);letter-spacing:4px;color:#c9a227;}
+.tb-fl{font-size:clamp(0.6rem,1.2vw,0.82rem);color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;text-align:center;}
+.tb-badge{font-family:'Bebas Neue',cursive;font-size:0.78rem;letter-spacing:3px;color:rgba(201,162,39,0.5);background:rgba(201,162,39,0.06);border:1px solid rgba(201,162,39,0.18);padding:3px 12px;border-radius:20px;}
+
+/* Score grid: player | center | player */
+.score-area{flex:1;display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;overflow:hidden;}
+
+/* Player panels */
+.pp{display:flex;flex-direction:column;justify-content:center;padding:20px 28px;position:relative;transition:background .4s;}
+.pp.left{text-align:left;}
+.pp.right{text-align:right;align-items:flex-end;}
+.pp.at{background:rgba(201,162,39,0.035);}
+.pp.left.at::after{content:'';position:absolute;right:0;top:10%;bottom:10%;width:3px;background:linear-gradient(180deg,transparent,#c9a227,transparent);}
+.pp.right.at::after{content:'';position:absolute;left:0;top:10%;bottom:10%;width:3px;background:linear-gradient(180deg,transparent,#c9a227,transparent);}
+
+.turn-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.pp.right .turn-row{flex-direction:row-reverse;}
+.turn-arr{font-size:clamp(0.9rem,1.5vw,1.2rem);color:#c9a227;transition:opacity .3s;}
+
+/* Player name */
+.pname{font-family:'Bebas Neue',cursive;font-size:clamp(1.8rem,4vw,3.4rem);letter-spacing:3px;line-height:1;color:#e8f4e0;transition:color .3s;}
+.pp.at .pname{color:#f0c040;text-shadow:0 0 25px rgba(240,192,64,0.25);}
+
+/* FRAME SCORE — the BIG dominant number on each side */
+.p-frames-big{
+  font-family:'Bebas Neue',cursive;
+  font-size:clamp(5rem,11vw,9rem);
+  line-height:1;
+  color:#c9a227;
+  margin-top:2px;
+  display:inline-block;
+  text-shadow:0 0 40px rgba(201,162,39,0.3);
+}
+@keyframes framePop{0%{transform:scale(1)}35%{transform:scale(1.22);color:white;text-shadow:0 0 40px rgba(255,255,255,0.5)}100%{transform:scale(1)}}
+.frame-pop{animation:framePop .4s cubic-bezier(.36,.07,.19,.97);}
+
+/* Points — smaller, below frame score */
+.p-points-small{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:clamp(1.2rem,2.5vw,2rem);
+  font-weight:300;
+  color:rgba(232,244,224,0.55);
+  margin-top:2px;
+  display:inline-block;
+}
+@keyframes scorePop{0%{transform:scale(1)}35%{transform:scale(1.15);color:#e8f4e0}100%{transform:scale(1)}}
+.score-pop{animation:scorePop .3s cubic-bezier(.36,.07,.19,.97);}
+
+/* Frame dots */
+.fdots{display:flex;gap:5px;margin-top:10px;}
+.pp.right .fdots{justify-content:flex-end;}
+.fdot{width:11px;height:11px;border-radius:50%;border:2px solid rgba(201,162,39,0.25);background:transparent;transition:background .4s,border-color .4s;}
+.fdot.won{background:#c9a227;border-color:#c9a227;}
+
+/* Stats row */
+.stats{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);}
+.pp.right .stats{justify-content:flex-end;}
+.stp{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:4px 10px;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;}
+.stv{font-family:'Bebas Neue',cursive;font-size:clamp(0.85rem,1.5vw,1.1rem);color:#c9a227;line-height:1;}
+.stl{font-size:clamp(0.46rem,0.72vw,0.58rem);color:rgba(232,244,224,0.28);letter-spacing:1px;text-transform:uppercase;}
+
+/* Center column */
+.cc{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 14px;min-width:clamp(120px,15vw,190px);background:rgba(0,0,0,0.2);border-left:1px solid rgba(255,255,255,0.04);border-right:1px solid rgba(255,255,255,0.04);gap:0;}
+
+/* Points in center — replaces old frame score */
+.cc-pts-lbl{font-size:0.58rem;color:rgba(232,244,224,0.25);letter-spacing:3px;text-transform:uppercase;margin-bottom:3px;text-align:center;}
+.cc-pts-row{display:flex;align-items:center;gap:4px;}
+.cc-pts-num{font-family:'Bebas Neue',cursive;font-size:clamp(2rem,4.5vw,4rem);color:rgba(232,244,224,0.7);line-height:1;display:inline-block;}
+.cc-pts-dash{font-family:'Bebas Neue',cursive;font-size:clamp(1.2rem,2.5vw,2rem);color:rgba(255,255,255,0.1);line-height:1;}
+
+/* Break inside center */
+.cbrk{margin-top:14px;text-align:center;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);width:100%;transition:opacity .4s;}
+.cbrk-lbl{font-size:0.56rem;color:rgba(232,244,224,0.25);letter-spacing:2px;text-transform:uppercase;}
+.cbrk-who{font-size:clamp(0.58rem,0.9vw,0.75rem);color:#c9a227;margin:2px 0;min-height:1em;}
+.cbrk-val{font-family:'Bebas Neue',cursive;font-size:clamp(2rem,4.5vw,3.8rem);color:white;line-height:1;text-shadow:0 0 18px rgba(255,255,255,0.18);display:inline-block;}
+.cbrk-val.cent{color:#f0c040;text-shadow:0 0 28px rgba(240,192,64,0.55);}
+.cbrk-balls{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:5px;max-width:150px;margin-left:auto;margin-right:auto;}
+.cb{width:clamp(16px,1.9vw,24px);height:clamp(16px,1.9vw,24px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(0.4rem,0.62vw,0.55rem);font-weight:bold;color:white;box-shadow:0 2px 5px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.17);position:relative;overflow:hidden;flex-shrink:0;}
+.cb::after{content:'';position:absolute;top:14%;left:18%;width:35%;height:24%;background:rgba(255,255,255,0.2);border-radius:50%;transform:rotate(-30deg);}
+.cb span{position:relative;z-index:1;}
+.cb-red{background:radial-gradient(circle at 35% 35%,#e74c3c,#7b241c);}
+.cb-yellow{background:radial-gradient(circle at 35% 35%,#f7dc6f,#b7950b);color:#333;}
+.cb-green{background:radial-gradient(circle at 35% 35%,#52be80,#1e6e3a);}
+.cb-brown{background:radial-gradient(circle at 35% 35%,#a0714f,#5d4037);}
+.cb-blue{background:radial-gradient(circle at 35% 35%,#5dade2,#1a5276);}
+.cb-pink{background:radial-gradient(circle at 35% 35%,#f06292,#b71c5d);}
+.cb-black{background:radial-gradient(circle at 35% 35%,#4a4a4a,#0a0a0a);border:1px solid #444;}
+
+/* Reds */
+.reds-row{margin-top:10px;text-align:center;}
+.rdots{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:110px;margin:0 auto;}
+.rdot{width:7px;height:7px;border-radius:50%;transition:all .4s;}
+.ron{background:#c0392b;box-shadow:0 0 4px rgba(192,57,43,0.5);}
+.roff{background:rgba(255,255,255,0.06);}
+.reds-lbl{font-size:0.52rem;color:rgba(232,244,224,0.2);letter-spacing:1px;margin-top:3px;}
+
+/* Bottom bar */
+.btmbar{padding:7px 28px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(201,162,39,0.1);background:rgba(0,0,0,0.4);flex-shrink:0;}
+.btm-lbl{font-family:'Bebas Neue',cursive;font-size:0.75rem;letter-spacing:3px;color:rgba(201,162,39,0.18);}
+
+/* Winner */
+#winner-ov{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.9);flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;}
+.wlbl{font-family:'Bebas Neue',cursive;font-size:1.3rem;color:#c9a227;letter-spacing:4px;}
+.wname{font-family:'Bebas Neue',cursive;font-size:clamp(3.5rem,9vw,7rem);color:white;letter-spacing:5px;text-shadow:0 0 65px rgba(201,162,39,0.7);}
+.wsub{font-family:'Bebas Neue',cursive;font-size:1.7rem;color:#c9a227;letter-spacing:3px;}
+.trophy{font-size:3.8rem;animation:tb 1s ease-in-out infinite;}
+@keyframes tb{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+#confetti{display:none;position:fixed;inset:0;pointer-events:none;z-index:99;}
+</style>
+</head>
+<body>
+
+<script>
+// Firebase init
+var fbConfig = {
+  apiKey: "AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain: "snooker-scorer-56573.firebaseapp.com",
+  databaseURL: "https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "snooker-scorer-56573",
+  storageBucket: "snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId: "774218957368",
+  appId: "1:774218957368:web:3b2c9cc363c0627ab35ccd"
+};
+firebase.initializeApp(fbConfig);
+var db = firebase.database();
+
+var params = new URLSearchParams(window.location.search);
+var tbl = params.get('table');
+var prev = {p1s:0, p2s:0, p1f:0, p2f:0, brk:0};
+
+function pop(elId, cls) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+if (tbl) {
+  // SINGLE TABLE MODE
+  document.getElementById('st').style.display = 'flex';
+  document.title = 'Table ' + tbl + ' Scoreboard';
+  document.getElementById('st-tbadge').textContent  = 'Table ' + tbl;
+  document.getElementById('st-tbadge2').textContent = 'Table ' + tbl;
+
+  db.ref('matches/table-' + tbl).on('value', function(snap) {
+    var s = snap.val();
+    if (!s) {
+      document.getElementById('st-wait').style.display    = 'flex';
+      document.getElementById('st-content').style.display = 'none';
+    } else {
+      document.getElementById('st-wait').style.display    = 'none';
+      document.getElementById('st-content').style.display = 'flex';
+      renderSingle(s);
+    }
+  });
+
+} else {
+  // OVERVIEW MODE
+  document.getElementById('ov').style.display = 'flex';
+  document.title = 'Tournament Overview';
+  db.ref('tournament').on('value', function(s) {
+    document.getElementById('ov-tn').textContent = s.val() || 'Snooker Tournament';
+  });
+  [1,2,3,4,5,6].forEach(function(n) {
+    db.ref('matches/table-' + n).on('value', function(snap) {
+      renderTile(n, snap.val());
+    });
+  });
+}
+
+function renderSingle(s) {
+  // Topbar
+  document.getElementById('st-tn').textContent = s.tournament || 'Snooker';
+  document.getElementById('st-fl').textContent = 'Frame ' + s.currentFrame + ' of ' + s.bestOf;
+
+  // Player panels — active player highlight
+  document.getElementById('p1panel').className = 'pp left' + (s.turn === 1 ? ' at' : '');
+  document.getElementById('p2panel').className = 'pp right' + (s.turn === 2 ? ' at' : '');
+
+  // Names
+  document.getElementById('p1name').textContent = s.player1.name;
+  document.getElementById('p2name').textContent = s.player2.name;
+
+  // Turn arrows
+  document.getElementById('p1turn').style.opacity = s.turn === 1 ? '1' : '0.08';
+  document.getElementById('p2turn').style.opacity = s.turn === 2 ? '1' : '0.08';
+
+  // FRAME scores — BIG on each side — animate on change
+  if (s.player1.frames !== prev.p1f) { pop('p1frames', 'frame-pop'); prev.p1f = s.player1.frames; }
+  if (s.player2.frames !== prev.p2f) { pop('p2frames', 'frame-pop'); prev.p2f = s.player2.frames; }
+  document.getElementById('p1frames').textContent = s.player1.frames;
+  document.getElementById('p2frames').textContent = s.player2.frames;
+
+  // POINTS — smaller below frame score, also animated
+  if (s.player1.score !== prev.p1s) { pop('p1pts', 'score-pop'); prev.p1s = s.player1.score; }
+  if (s.player2.score !== prev.p2s) { pop('p2pts', 'score-pop'); prev.p2s = s.player2.score; }
+  document.getElementById('p1pts').textContent = s.player1.score;
+  document.getElementById('p2pts').textContent = s.player2.score;
+
+  // CENTER: points comparison (just labels, not the big number)
+  document.getElementById('cc-p1pts').textContent = s.player1.score;
+  document.getElementById('cc-p2pts').textContent = s.player2.score;
+
+  // Frame dots
+  var needed = Math.ceil(s.bestOf / 2);
+  var d1 = '', d2 = '';
+  for (var i = 0; i < needed; i++) {
+    d1 += '<div class="fdot' + (i < s.player1.frames ? ' won' : '') + '"></div>';
+    d2 += '<div class="fdot' + (i < s.player2.frames ? ' won' : '') + '"></div>';
+  }
+  document.getElementById('p1dots').innerHTML = d1;
+  document.getElementById('p2dots').innerHTML = d2;
+
+  // Stats
+  var b1 = s.bestBreak1 || 0;
+  var b2 = s.bestBreak2 || 0;
+  document.getElementById('p1stats').innerHTML =
+    stat(s.player1.frames, 'Frames') +
+    stat(s.player1.score, 'Points') +
+    (b1 ? stat(b1, 'Best Brk') : '');
+  document.getElementById('p2stats').innerHTML =
+    stat(s.player2.frames, 'Frames') +
+    stat(s.player2.score, 'Points') +
+    (b2 ? stat(b2, 'Best Brk') : '');
+
+  // Break
+  var brk = s.currentBreak || 0;
+  if (brk !== prev.brk && brk > 0) { pop('cbrk-val', 'score-pop'); prev.brk = brk; }
+  document.getElementById('cbrk-val').textContent = brk;
+  document.getElementById('cbrk-val').className = 'cbrk-val' + (brk >= 100 ? ' cent' : '');
+  document.getElementById('cbrk').style.opacity = brk > 0 ? '1' : '0.3';
+  document.getElementById('cbrk-who').textContent = brk > 0
+    ? (s.breakPlayer === 1 ? s.player1.name : s.player2.name) + "'s Break"
+    : '\u00a0';
+  document.getElementById('cbrk-balls').innerHTML = (s.breakBalls || []).slice(-8).map(function(b) {
+    return '<div class="cb cb-' + b.color + '"><span>' + b.value + '</span></div>';
+  }).join('');
+
+  // Reds
+  var reds = Math.max(0, s.redsRemaining || 15);
+  var rd = '';
+  for (var r = 0; r < 15; r++) rd += '<div class="rdot ' + (r < reds ? 'ron' : 'roff') + '"></div>';
+  document.getElementById('rdots').innerHTML = rd;
+  document.getElementById('reds-lbl').textContent = reds + ' reds';
+
+  // Winner
+  if (s.matchWinner) {
+    document.getElementById('winner-name').textContent = s['player' + s.matchWinner].name;
+    document.getElementById('winner-ov').style.display = 'flex';
+    startConfetti();
+  }
+}
+
+function stat(val, lbl) {
+  return '<div class="stp"><div class="stv">' + val + '</div><div class="stl">' + lbl + '</div></div>';
+}
+
+function renderTile(n, s) {
+  var isLive = s && s.status === 'active';
+  document.getElementById('tile-' + n).className = 'tile' + (isLive ? ' on' : '');
+  document.getElementById('tnum-' + n).style.color = isLive ? '#c9a227' : 'rgba(201,162,39,0.45)';
+  var st = document.getElementById('tst-' + n);
+  st.className = 'tile-st' + (isLive ? ' live' : '');
+  st.textContent = isLive ? '● LIVE' : 'AVAILABLE';
+  document.getElementById('temp-' + n).style.display = isLive ? 'none' : 'flex';
+  document.getElementById('tsc-' + n).style.display  = isLive ? 'flex' : 'none';
+  if (isLive) {
+    document.getElementById('tp1n-' + n).textContent = s.player1.name;
+    document.getElementById('tp2n-' + n).textContent = s.player2.name;
+    document.getElementById('tp1f-' + n).textContent = s.player1.frames;
+    document.getElementById('tp2f-' + n).textContent = s.player2.frames;
+    document.getElementById('tp1p-' + n).textContent = s.player1.score;
+    document.getElementById('tp2p-' + n).textContent = s.player2.score;
+    document.getElementById('tp1r-' + n).className = 'tpr' + (s.turn === 1 ? ' at' : '');
+    document.getElementById('tp2r-' + n).className = 'tpr' + (s.turn === 2 ? ' at' : '');
+    var brk = s.currentBreak || 0;
+    document.getElementById('tbrk-' + n).innerHTML = brk > 0 ? '<span>Break: </span>' + brk : '';
+    document.getElementById('tfl-' + n).textContent = 'Frame ' + s.currentFrame + ' · Best of ' + s.bestOf;
+  }
+}
+
+function startConfetti() {
+  var c = document.getElementById('confetti');
+  c.style.display = 'block';
+  var ctx = c.getContext('2d');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  var pts = [];
+  for (var i = 0; i < 100; i++) pts.push({
+    x: Math.random() * c.width, y: Math.random() * -c.height,
+    w: Math.random() * 10 + 4, h: Math.random() * 5 + 3,
+    color: ['#c9a227','#c0392b','#27ae60','#2980b9','#e91e8c','#f1c40f'][Math.floor(Math.random() * 6)],
+    sp: Math.random() * 3 + 1, a: Math.random() * 360, sp2: (Math.random() - .5) * 4
+  });
+  (function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    pts.forEach(function(p) {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a * Math.PI / 180);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+      p.y += p.sp; p.a += p.sp2; if (p.y > c.height) p.y = -20;
+    });
+    requestAnimationFrame(draw);
+  })();
+}
+</script>
+
+<!-- ===== OVERVIEW ===== -->
+<div id="ov">
+  <div class="ov-hdr">
+    <div class="ov-logo">🎱 Snooker</div>
+    <div class="ov-tn" id="ov-tn">Tournament</div>
+    <div class="live-pip">LIVE</div>
+  </div>
+  <div class="ov-grid">
+    <script>
+    [1,2,3,4,5,6].forEach(function(n) {
+      document.write(
+        '<div class="tile" id="tile-'+n+'">' +
+          '<div class="tile-hdr">' +
+            '<div class="tile-num" id="tnum-'+n+'">TABLE '+n+'</div>' +
+            '<div class="tile-st" id="tst-'+n+'">AVAILABLE</div>' +
+          '</div>' +
+          '<div class="tile-empty" id="temp-'+n+'" style="display:flex">— No Match —</div>' +
+          '<div class="tile-sc" id="tsc-'+n+'" style="display:none">' +
+            '<div class="tpr" id="tp1r-'+n+'"><div class="tpa">▶</div><div class="tpn" id="tp1n-'+n+'">P1</div><div class="tpf" id="tp1f-'+n+'">0</div><div class="tpp" id="tp1p-'+n+'">0</div></div>' +
+            '<div class="tdiv"><div class="tdivl"></div><div class="tdivv">pts</div><div class="tdivl"></div></div>' +
+            '<div class="tpr" id="tp2r-'+n+'"><div class="tpa">▶</div><div class="tpn" id="tp2n-'+n+'">P2</div><div class="tpf" id="tp2f-'+n+'">0</div><div class="tpp" id="tp2p-'+n+'">0</div></div>' +
+            '<div class="tile-ft"><div class="tile-fl" id="tfl-'+n+'">Frame 1</div><div class="tile-brk" id="tbrk-'+n+'"></div></div>' +
+          '</div>' +
+        '</div>'
+      );
+    });
+    </script>
+  </div>
+</div>
+
+<!-- ===== SINGLE TABLE ===== -->
+<div id="st">
+  <!-- Waiting -->
+  <div id="st-wait" class="st-wait">
+    <span class="pulse-ico">🎱</span>
+    <h2>Awaiting Match</h2>
+    <p>Table <span id="st-tbadge">–</span></p>
+  </div>
+
+  <!-- Live content -->
+  <div id="st-content" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="topbar">
+      <div class="tb-tn" id="st-tn">Snooker</div>
+      <div class="tb-fl" id="st-fl">Frame 1</div>
+      <div class="tb-badge" id="st-tbadge2">Table –</div>
+    </div>
+
+    <div class="score-area">
+
+      <!-- Player 1 -->
+      <div class="pp left" id="p1panel">
+        <div class="turn-row">
+          <div class="turn-arr" id="p1turn">▶</div>
+          <div class="pname" id="p1name">Player 1</div>
+        </div>
+        <!-- FRAME score — dominant big number -->
+        <div class="p-frames-big" id="p1frames">0</div>
+        <!-- Points — smaller -->
+        <div class="p-points-small" id="p1pts">0 pts</div>
+        <div class="fdots" id="p1dots"></div>
+        <div class="stats" id="p1stats"></div>
+      </div>
+
+      <!-- Center column -->
+      <div class="cc">
+        <div class="cc-pts-lbl">Points</div>
+        <div class="cc-pts-row">
+          <div class="cc-pts-num" id="cc-p1pts">0</div>
+          <div class="cc-pts-dash">–</div>
+          <div class="cc-pts-num" id="cc-p2pts">0</div>
+        </div>
+
+        <!-- Break -->
+        <div class="cbrk" id="cbrk" style="opacity:0.3">
+          <div class="cbrk-lbl">Current Break</div>
+          <div class="cbrk-who" id="cbrk-who">&nbsp;</div>
+          <div class="cbrk-val" id="cbrk-val">0</div>
+          <div class="cbrk-balls" id="cbrk-balls"></div>
+        </div>
+
+        <!-- Reds -->
+        <div class="reds-row">
+          <div class="rdots" id="rdots"></div>
+          <div class="reds-lbl" id="reds-lbl">15 reds</div>
+        </div>
+      </div>
+
+      <!-- Player 2 -->
+      <div class="pp right" id="p2panel">
+        <div class="turn-row">
+          <div class="pname" id="p2name">Player 2</div>
+          <div class="turn-arr" id="p2turn">◀</div>
+        </div>
+        <div class="p-frames-big" id="p2frames">0</div>
+        <div class="p-points-small" id="p2pts">0 pts</div>
+        <div class="fdots" id="p2dots"></div>
+        <div class="stats" id="p2stats"></div>
+      </div>
+
+    </div>
+
+    <div class="btmbar">
+      <div class="btm-lbl">Snooker Scorer</div>
+      <div class="live-pip">LIVE</div>
+      <div class="btm-lbl">Multi-Table Edition</div>
+    </div>
+  </div>
+
+  <!-- Winner overlay -->
+  <div id="winner-ov">
+    <div class="trophy">🏆</div>
+    <div class="wlbl">Match Winner</div>
+    <div class="wname" id="winner-name">–</div>
+    <div class="wsub">Wins the Match</div>
+  </div>
+  <canvas id="confetti"></canvas>
+</div>
+
+<script>
+// Update pts display to show "X pts"
+var origRender = renderSingle;
+</script>
+</body>
+</html>
