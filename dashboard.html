@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Master Dashboard — CueSports India</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#07120d;color:#e8f4e0;font-family:Arial,sans-serif;min-height:100vh;overflow-x:hidden;}
+
+/* ── TOPBAR ── */
+.topbar{background:rgba(0,0,0,0.65);border-bottom:2px solid #c9a227;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:50;}
+.logo{font-size:1.2rem;font-weight:900;color:#c9a227;letter-spacing:3px;}
+.logo small{font-size:0.65rem;color:rgba(232,244,224,0.35);letter-spacing:2px;font-weight:normal;margin-left:8px;}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.nav{display:flex;gap:6px;}
+.navlink{padding:6px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(232,244,224,0.55);text-decoration:none;font-size:0.75rem;letter-spacing:1px;}
+.navlink:hover{border-color:#c9a227;color:#c9a227;}
+#wall-clock{font-family:monospace;font-size:1rem;color:rgba(232,244,224,0.6);letter-spacing:2px;min-width:70px;text-align:right;}
+
+/* ── CONTROL BAR ── */
+.ctrl-bar{background:#0a1a10;border-bottom:1px solid rgba(255,255,255,0.06);padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.ctrl-label{font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:rgba(232,244,224,0.4);}
+
+/* Table count selector */
+.table-count-sel{display:flex;gap:6px;}
+.tc-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#122a1c;color:rgba(232,244,224,0.5);font-size:0.9rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.tc-btn:hover{border-color:#c9a227;color:#c9a227;}
+.tc-btn.on{border-color:#c9a227;background:rgba(201,162,39,0.12);color:#c9a227;}
+
+/* Layout selector */
+.layout-sel{display:flex;gap:6px;}
+.ly-btn{padding:7px 12px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:#122a1c;color:rgba(232,244,224,0.4);font-size:0.72rem;cursor:pointer;letter-spacing:1px;transition:all .15s;}
+.ly-btn:hover{border-color:#c9a227;color:#c9a227;}
+.ly-btn.on{border-color:#c9a227;background:rgba(201,162,39,0.1);color:#c9a227;}
+
+/* Alert strip */
+.alert-strip{background:rgba(231,76,60,0.1);border-bottom:1px solid rgba(231,76,60,0.25);padding:8px 20px;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
+.alert-strip.show{display:flex;}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:#e74c3c;animation:blk 1s infinite;flex-shrink:0;}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:0.2}}
+.alert-text{font-size:0.8rem;color:#e74c3c;flex:1;}
+.alert-dismiss{font-size:0.72rem;color:rgba(231,76,60,0.6);cursor:pointer;padding:3px 8px;border:1px solid rgba(231,76,60,0.3);border-radius:5px;}
+.alert-dismiss:hover{background:rgba(231,76,60,0.1);}
+
+/* Stats bar */
+.stats-bar{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.05);background:#0a1a10;overflow-x:auto;}
+.stat-item{padding:10px 20px;display:flex;flex-direction:column;gap:2px;border-right:1px solid rgba(255,255,255,0.05);flex-shrink:0;}
+.stat-num{font-size:1.4rem;font-weight:900;color:#c9a227;line-height:1;}
+.stat-lbl{font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:rgba(232,244,224,0.3);}
+.stat-num.green{color:#2ecc71;}
+.stat-num.red{color:#e74c3c;}
+.stat-num.blue{color:#5dade2;}
+
+/* ── TABLE GRID ── */
+.grid-wrap{padding:16px;display:grid;gap:12px;}
+
+/* Grid layouts by count */
+.grid-1{grid-template-columns:1fr;max-width:700px;margin:0 auto;}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:1fr 1fr 1fr;}
+.grid-4{grid-template-columns:1fr 1fr;}
+.grid-5{grid-template-columns:repeat(3,1fr);}
+.grid-6{grid-template-columns:1fr 1fr 1fr;}
+@media(max-width:900px){.grid-3,.grid-5,.grid-6{grid-template-columns:1fr 1fr;} .grid-4{grid-template-columns:1fr;}}
+@media(max-width:600px){.grid-2,.grid-3,.grid-4,.grid-5,.grid-6{grid-template-columns:1fr;}}
+
+/* Expanded layout (2 col) */
+.grid-wrap.expand-2 .grid-2,
+.grid-wrap.expand-2 .grid-3{grid-template-columns:1fr 1fr;}
+
+/* ── TABLE CARD ── */
+.tcard{background:#0d2018;border:1px solid rgba(255,255,255,0.07);border-radius:13px;overflow:hidden;transition:border-color .3s;}
+.tcard.live{border-color:rgba(46,204,113,0.4);}
+.tcard.finished{border-color:rgba(231,76,60,0.4);}
+.tcard.waiting{border-color:rgba(255,255,255,0.07);}
+.tcard.streaming{box-shadow:0 0 0 2px #e74c3c,0 0 20px rgba(231,76,60,0.2);}
+
+/* Card header */
+.tcard-head{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.05);}
+.tcard-head.live-head{background:linear-gradient(135deg,#0d2a15,#0a1f10);}
+.tcard-head.empty-head{background:#0a1a10;}
+.tcard-head.done-head{background:rgba(231,76,60,0.06);}
+
+.tnum-label{font-size:0.7rem;font-weight:bold;letter-spacing:2px;color:rgba(201,162,39,0.55);text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.tnum-label.live{color:#c9a227;}
+.tv-badge{font-size:0.55rem;background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);padding:1px 6px;border-radius:3px;letter-spacing:1px;}
+.stream-badge{font-size:0.55rem;background:rgba(231,76,60,0.2);color:#e74c3c;border:1px solid rgba(231,76,60,0.4);padding:1px 6px;border-radius:3px;letter-spacing:1px;animation:blk 1.5s infinite;}
+
+.status-pip{display:flex;align-items:center;gap:5px;font-size:0.65rem;letter-spacing:1px;text-transform:uppercase;}
+.pip{width:7px;height:7px;border-radius:50%;}
+.pip.live{background:#2ecc71;animation:blk 1.5s infinite;}
+.pip.empty{background:rgba(255,255,255,0.2);}
+.pip.done{background:#e74c3c;}
+
+/* Card body — EMPTY */
+.tcard-empty{padding:24px 16px;text-align:center;}
+.empty-icon{font-size:1.8rem;margin-bottom:8px;opacity:.4;}
+.empty-text{font-size:0.78rem;color:rgba(232,244,224,0.25);margin-bottom:14px;}
+
+/* Card body — LIVE */
+.tcard-live{padding:12px 14px;}
+
+/* Score row */
+.score-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.player-col{flex:1;display:flex;flex-direction:column;gap:2px;}
+.player-col.right{text-align:right;align-items:flex-end;}
+.player-col.at .pname{color:#f0c040;}
+.pname{font-size:clamp(0.78rem,1.5vw,1rem);font-weight:bold;color:#e8f4e0;line-height:1;transition:color .3s;}
+.pstate{font-size:0.62rem;color:rgba(232,244,224,0.35);}
+.pscore-pts{font-size:0.75rem;color:rgba(232,244,224,0.5);}
+
+.score-center{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:60px;}
+.frames-display{display:flex;align-items:center;gap:4px;}
+.frame-num{font-family:Arial,sans-serif;font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:900;color:#c9a227;line-height:1;}
+.frame-dash{font-size:1.2rem;color:rgba(255,255,255,0.2);}
+.pts-row{display:flex;align-items:center;gap:6px;font-size:0.8rem;}
+.pts-num{font-weight:bold;color:#e8f4e0;}
+.pts-sep{color:rgba(255,255,255,0.2);font-size:0.65rem;}
+
+/* Break bar */
+.break-bar{background:#060f0a;border-radius:6px;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.brk-left{display:flex;flex-direction:column;gap:1px;}
+.brk-lbl{font-size:0.58rem;color:rgba(232,244,224,0.3);letter-spacing:1px;text-transform:uppercase;}
+.brk-who{font-size:0.68rem;color:#c9a227;}
+.brk-val{font-size:1.5rem;font-weight:900;color:white;line-height:1;}
+.brk-balls{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:120px;}
+.bball{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.45rem;font-weight:bold;color:white;flex-shrink:0;}
+.bb-red{background:#c0392b;}.bb-yellow{background:#f1c40f;color:#333;}.bb-green{background:#27ae60;}
+.bb-brown{background:#7d5a3c;}.bb-blue{background:#2980b9;}.bb-pink{background:#e91e8c;}.bb-black{background:#111;border:1px solid #444;}
+
+/* Timers row */
+.timers-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.timer-block{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.timer-val{font-family:monospace;font-size:0.85rem;font-weight:bold;color:rgba(232,244,224,0.6);letter-spacing:1px;}
+.timer-val.warn{color:#f39c12;}
+.timer-val.danger{color:#e74c3c;animation:blk .5s infinite;}
+.timer-lbl{font-size:0.52rem;color:rgba(232,244,224,0.25);letter-spacing:1px;text-transform:uppercase;}
+.frame-info-lbl{font-size:0.68rem;color:rgba(232,244,224,0.4);text-align:center;}
+
+/* Action buttons */
+.tcard-actions{padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;flex-wrap:wrap;}
+.act-btn{padding:6px 10px;border-radius:6px;font-size:0.72rem;font-weight:bold;cursor:pointer;border:none;letter-spacing:1px;transition:opacity .15s,transform .1s;flex:1;text-align:center;}
+.act-btn:active{transform:scale(.96);}
+.act-go{background:linear-gradient(135deg,#1c3f1c,#0d2318);color:#c9a227;border:1px solid #c9a227;}
+.act-end{background:rgba(192,57,43,0.15);color:#e74c3c;border:1px solid rgba(192,57,43,0.4);}
+.act-ref{background:rgba(41,128,185,0.12);color:#5dade2;border:1px solid rgba(41,128,185,0.3);}
+.act-stream{background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);}
+
+/* Finished card */
+.tcard-done{padding:12px 14px;text-align:center;}
+.done-icon{font-size:1.5rem;margin-bottom:4px;}
+.done-winner{font-size:0.95rem;font-weight:bold;color:#c9a227;margin-bottom:2px;}
+.done-sub{font-size:0.72rem;color:rgba(232,244,224,0.4);}
+
+/* Start match modal */
+#start-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center;padding:20px;}
+#start-modal.open{display:flex;}
+.start-box{background:#0d2018;border:1px solid rgba(201,162,39,0.3);border-radius:14px;padding:24px;max-width:460px;width:100%;}
+.start-box h3{color:#c9a227;margin-bottom:18px;font-size:1rem;letter-spacing:2px;}
+.fi{width:100%;padding:10px 12px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:7px;color:#e8f4e0;font-size:0.9rem;}
+.fi:focus{outline:none;border-color:#c9a227;}
+.fi::placeholder{color:rgba(232,244,224,0.2);}
+select.fi option{background:#122a1c;}
+.fg{margin-bottom:13px;}
+.fl{display:block;font-size:0.65rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:rgba(232,244,224,0.4);margin-bottom:6px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn{padding:10px 18px;border-radius:7px;font-size:0.83rem;font-weight:bold;cursor:pointer;border:none;letter-spacing:1px;}
+.btn-g{background:linear-gradient(135deg,#1c3f1c,#0d2318);color:#c9a227;border:1.5px solid #c9a227;}
+.btn-cancel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(232,244,224,0.45);}
+
+/* Quick ref links */
+.ref-links{padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;flex-wrap:wrap;background:#060f0a;}
+.ref-link{font-size:0.65rem;color:rgba(232,244,224,0.35);text-decoration:none;padding:3px 8px;border:1px solid rgba(255,255,255,0.07);border-radius:4px;white-space:nowrap;}
+.ref-link:hover{border-color:#c9a227;color:#c9a227;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">🎱 CueSports India<small>Master Dashboard</small></div>
+  <div class="topbar-right">
+    <div class="nav">
+      <a href="tournament.html" class="navlink">Tournaments</a>
+      <a href="players.html" class="navlink">Players</a>
+      <a href="setup.html" class="navlink">Scoring</a>
+      <a href="scoreboard.html" class="navlink">Scoreboard</a>
+    </div>
+    <div id="wall-clock">00:00:00</div>
+  </div>
+</div>
+
+<!-- CONTROL BAR -->
+<div class="ctrl-bar">
+  <div class="ctrl-label">Tables:</div>
+  <div class="table-count-sel" id="tc-sel">
+    <div class="tc-btn on" onclick="setCount(1,this)">1</div>
+    <div class="tc-btn" onclick="setCount(2,this)">2</div>
+    <div class="tc-btn" onclick="setCount(3,this)">3</div>
+    <div class="tc-btn" onclick="setCount(4,this)">4</div>
+    <div class="tc-btn" onclick="setCount(5,this)">5</div>
+    <div class="tc-btn" onclick="setCount(6,this)">6</div>
+  </div>
+
+  <div style="width:1px;height:28px;background:rgba(255,255,255,0.07);margin:0 4px;"></div>
+
+  <div class="ctrl-label">View:</div>
+  <div class="layout-sel">
+    <div class="ly-btn on" onclick="setLayout('normal',this)">Normal</div>
+    <div class="ly-btn" onclick="setLayout('compact',this)">Compact</div>
+    <div class="ly-btn" onclick="setLayout('focused',this)">Focused</div>
+  </div>
+
+  <div style="width:1px;height:28px;background:rgba(255,255,255,0.07);margin:0 4px;"></div>
+
+  <div class="ctrl-label">Starting Table:</div>
+  <select id="start-table-sel" style="padding:6px 10px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.8rem;" onchange="buildGrid()">
+    <option value="1">Table 1</option>
+    <option value="2">Table 2</option>
+    <option value="3">Table 3</option>
+    <option value="4">Table 4</option>
+    <option value="5">Table 5</option>
+    <option value="6">Table 6</option>
+    <option value="7">Table 7</option>
+    <option value="8">Table 8</option>
+    <option value="9">Table 9</option>
+    <option value="10">Table 10</option>
+    <option value="11">Table 11</option>
+    <option value="12">Table 12</option>
+    <option value="13">Table 13</option>
+    <option value="14">Table 14</option>
+    <option value="15">Table 15</option>
+    <option value="16">Table 16</option>
+  </select>
+</div>
+
+<!-- ALERT STRIP -->
+<div class="alert-strip" id="alert-strip">
+  <div class="alert-dot"></div>
+  <div class="alert-text" id="alert-text"></div>
+  <div class="alert-dismiss" onclick="dismissAlert()">Dismiss</div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num green" id="s-live">0</div><div class="stat-lbl">Live</div></div>
+  <div class="stat-item"><div class="stat-num" id="s-empty">0</div><div class="stat-lbl">Available</div></div>
+  <div class="stat-item"><div class="stat-num blue" id="s-done">0</div><div class="stat-lbl">Finished</div></div>
+  <div class="stat-item"><div class="stat-num" id="s-total-matches">0</div><div class="stat-lbl">Total Active</div></div>
+  <div class="stat-item"><div class="stat-num" id="s-breaks">0</div><div class="stat-lbl">Highest Break</div></div>
+</div>
+
+<!-- GRID -->
+<div class="grid-wrap grid-1" id="main-grid"></div>
+
+<!-- START MATCH MODAL -->
+<div id="start-modal">
+  <div class="start-box">
+    <h3>Start Match — Table <span id="modal-tnum">–</span></h3>
+    <div class="frow">
+      <div class="fg"><label class="fl">Player 1 Name</label><input class="fi" type="text" id="m-p1" placeholder="Player 1"></div>
+      <div class="fg"><label class="fl">Player 2 Name</label><input class="fi" type="text" id="m-p2" placeholder="Player 2"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Format (Best Of)</label>
+        <select class="fi" id="m-bo">
+          <option value="1">Single Frame</option>
+          <option value="3">Best of 3</option>
+          <option value="5" selected>Best of 5</option>
+          <option value="7">Best of 7</option>
+          <option value="9">Best of 9</option>
+          <option value="11">Best of 11</option>
+          <option value="13">Best of 13</option>
+          <option value="17">Best of 17</option>
+          <option value="19">Best of 19</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Breaks First</label>
+        <select class="fi" id="m-bf">
+          <option value="1">Player 1</option>
+          <option value="2">Player 2</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Round / Event (optional)</label><input class="fi" type="text" id="m-round" placeholder="e.g. Quarter Final — Senior Men"></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-g" style="flex:1" onclick="confirmStart()">▶ Start Match</button>
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+// ── STATE ──
+var tableCount = 1;
+var startTable = 1;
+var layout = 'normal';
+var matchData = {}; // tableNum → match state
+var timers = {};    // tableNum → frame start time
+var shotTimers = {};// tableNum → shot clock data
+var modalTable = null;
+var alerts = [];
+var prevFinished = {}; // track newly finished matches
+var tvTable = 1; // configurable
+var streamingTables = {}; // which tables are being streamed
+
+// Wall clock
+setInterval(function(){
+  var now = new Date();
+  document.getElementById('wall-clock').textContent =
+    now.getHours().toString().padStart(2,'0')+':'+
+    now.getMinutes().toString().padStart(2,'0')+':'+
+    now.getSeconds().toString().padStart(2,'0');
+}, 1000);
+
+// ── WATCH ALL 16 TABLES ──
+for(var t=1;t<=16;t++){
+  (function(n){
+    db.ref('matches/table-'+n).on('value', function(snap){
+      var prev = matchData[n];
+      var s = snap.val();
+      matchData[n] = s;
+
+      // Alert when match finishes
+      if(s && s.matchWinner && (!prev || !prev.matchWinner)){
+        var wname = s['player'+s.matchWinner].name;
+        triggerAlert('🏆 Table '+n+': '+wname+' wins the match!');
+      }
+      // Alert when frame finishes (score changes)
+      if(s && prev && s.currentFrame > prev.currentFrame){
+        var scorer = s['player'+(s.turn===1?2:1)].name;
+        triggerAlert('✓ Table '+n+': Frame won by '+scorer+' · Frame '+s.currentFrame+' starting');
+      }
+
+      updateStats();
+      renderCard(n);
+    });
+  })(t);
+}
+
+// ── LAYOUT CONTROLS ──
+function setCount(n, el){
+  tableCount = n;
+  document.querySelectorAll('.tc-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  buildGrid();
+}
+
+function setLayout(l, el){
+  layout = l;
+  document.querySelectorAll('.ly-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  buildGrid();
+}
+
+function buildGrid(){
+  startTable = parseInt(document.getElementById('start-table-sel').value)||1;
+  var grid = document.getElementById('main-grid');
+
+  // Set grid class
+  var gridClass = 'grid-wrap';
+  if(layout==='compact') gridClass += ' compact';
+  if(tableCount===1) gridClass+=' grid-1';
+  else if(tableCount===2) gridClass+=' grid-2';
+  else if(tableCount===3) gridClass+=' grid-3';
+  else if(tableCount===4) gridClass+=' grid-4';
+  else if(tableCount===5) gridClass+=' grid-5';
+  else gridClass+=' grid-6';
+  grid.className = gridClass;
+
+  // Create cards
+  grid.innerHTML = '';
+  for(var i=0;i<tableCount;i++){
+    var tnum = startTable + i;
+    if(tnum>16) break;
+    var card = document.createElement('div');
+    card.id = 'tcard-'+tnum;
+    grid.appendChild(card);
+    renderCard(tnum);
+  }
+}
+
+// ── RENDER CARD ──
+function renderCard(n){
+  var card = document.getElementById('tcard-'+n);
+  if(!card) return;
+  var s = matchData[n];
+  var isTv = n===tvTable;
+  var isStream = streamingTables[n];
+
+  if(!s || s.status==='finished'){
+    if(s && s.status==='finished'){
+      renderFinished(card, n, s, isTv, isStream);
+    } else {
+      renderEmpty(card, n, isTv, isStream);
+    }
+    return;
+  }
+  renderLive(card, n, s, isTv, isStream);
+}
+
+function renderEmpty(card, n, isTv, isStream){
+  card.className = 'tcard waiting'+(isStream?' streaming':'');
+  var base = window.location.href.replace('dashboard.html','');
+  card.innerHTML =
+    '<div class="tcard-head empty-head">'+
+      '<div class="tnum-label">Table '+n+(isTv?' <span class="tv-badge">TV</span>':'')+(isStream?' <span class="stream-badge">● LIVE</span>':'')+'</div>'+
+      '<div class="status-pip"><div class="pip empty"></div><span style="color:rgba(232,244,224,0.25);font-size:0.65rem">AVAILABLE</span></div>'+
+    '</div>'+
+    '<div class="tcard-empty">'+
+      '<div class="empty-icon">🎱</div>'+
+      '<div class="empty-text">No match in progress</div>'+
+      '<button class="act-btn act-go" onclick="openStartModal('+n+')">+ Start Match</button>'+
+    '</div>'+
+    '<div class="ref-links">'+
+      '<a class="ref-link" href="'+base+'referee.html?table='+n+'" target="_blank">📱 Referee</a>'+
+      '<a class="ref-link" href="'+base+'scoreboard.html?table='+n+'" target="_blank">📺 Scoreboard</a>'+
+      '<span class="ref-link" onclick="toggleStream('+n+')" style="cursor:pointer">'+(isStream?'⏹ Stop Stream':'🔴 Stream')+'</span>'+
+    '</div>';
+}
+
+function renderFinished(card, n, s, isTv, isStream){
+  card.className = 'tcard finished';
+  var wname = s['player'+s.matchWinner]?s['player'+s.matchWinner].name:'–';
+  var base = window.location.href.replace('dashboard.html','');
+  card.innerHTML =
+    '<div class="tcard-head done-head">'+
+      '<div class="tnum-label">Table '+n+(isTv?' <span class="tv-badge">TV</span>':'')+'</div>'+
+      '<div class="status-pip"><div class="pip done"></div><span style="color:#e74c3c;font-size:0.65rem">FINISHED</span></div>'+
+    '</div>'+
+    '<div class="tcard-done">'+
+      '<div class="done-icon">🏆</div>'+
+      '<div class="done-winner">'+esc(wname)+'</div>'+
+      '<div class="done-sub">'+esc(s.player1.name)+' '+s.player1.frames+' – '+s.player2.frames+' '+esc(s.player2.name)+'</div>'+
+      '<div class="done-sub" style="margin-top:4px">'+esc(s.tournament||'')+'</div>'+
+    '</div>'+
+    '<div class="tcard-actions">'+
+      '<button class="act-btn act-go" onclick="openStartModal('+n+')">+ New Match</button>'+
+      '<button class="act-btn act-end" onclick="clearTable('+n+')">Clear Table</button>'+
+    '</div>'+
+    '<div class="ref-links">'+
+      '<a class="ref-link" href="'+base+'referee.html?table='+n+'" target="_blank">📱 Referee</a>'+
+      '<a class="ref-link" href="'+base+'scoreboard.html?table='+n+'" target="_blank">📺 Scoreboard</a>'+
+    '</div>';
+}
+
+function renderLive(card, n, s, isTv, isStream){
+  card.className = 'tcard live'+(isStream?' streaming':'');
+  var brk = s.currentBreak||0;
+  var reds = Math.max(0,s.redsRemaining||15);
+  var p1at = s.turn===1;
+  var p2at = s.turn===2;
+  var base = window.location.href.replace('dashboard.html','');
+
+  // Frame timer
+  var frameTime = '–';
+  if(s.frameStartTime){
+    var elapsed = Math.floor((Date.now()-s.frameStartTime)/1000);
+    var fm=Math.floor(elapsed/60),fs=elapsed%60;
+    frameTime=fm.toString().padStart(2,'0')+':'+fs.toString().padStart(2,'0');
+  }
+
+  // Shot clock
+  var scDisplay='', scClass='timer-val';
+  if(s.shotClockEnabled && s.shotClockStarted){
+    var dur=s.shotClockDuration||60;
+    var scElapsed=Math.floor((Date.now()-s.shotClockStarted)/1000);
+    var scRem=Math.max(0,dur-scElapsed);
+    scDisplay=scRem+'s';
+    scClass='timer-val'+(scRem<=0?' danger':scRem<=10?' danger':scRem<=20?' warn':'');
+  }
+
+  // Break balls
+  var balls=(s.breakBalls||[]).slice(-6).map(function(b){
+    return '<div class="bball bb-'+b.color+'">'+b.value+'</div>';
+  }).join('');
+
+  // Points remaining
+  var ptsLeft=(reds*8)+27;
+  var diff=Math.abs(s.player1.score-s.player2.score);
+  var needsSnookers = diff>ptsLeft&&diff>0;
+
+  card.innerHTML =
+    '<div class="tcard-head live-head">'+
+      '<div class="tnum-label live">Table '+n+(isTv?' <span class="tv-badge">TV</span>':'')+(isStream?' <span class="stream-badge">● LIVE</span>':'')+'</div>'+
+      '<div class="status-pip"><div class="pip live"></div><span style="color:#2ecc71;font-size:0.65rem">LIVE</span></div>'+
+    '</div>'+
+    '<div class="tcard-live">'+
+      // Score row
+      '<div class="score-row">'+
+        '<div class="player-col'+(p1at?' at':'')+'">'+
+          '<div class="pname">'+esc(s.player1.name)+'</div>'+
+          '<div class="pscore-pts">'+s.player1.score+' pts</div>'+
+        '</div>'+
+        '<div class="score-center">'+
+          '<div class="frames-display">'+
+            '<div class="frame-num">'+s.player1.frames+'</div>'+
+            '<div class="frame-dash">–</div>'+
+            '<div class="frame-num">'+s.player2.frames+'</div>'+
+          '</div>'+
+          '<div style="font-size:0.58rem;color:rgba(232,244,224,0.3);letter-spacing:1px">FRAMES</div>'+
+        '</div>'+
+        '<div class="player-col right'+(p2at?' at':'')+'">'+
+          '<div class="pname">'+esc(s.player2.name)+'</div>'+
+          '<div class="pscore-pts">'+s.player2.score+' pts</div>'+
+        '</div>'+
+      '</div>'+
+      // Timers
+      '<div class="timers-row">'+
+        '<div class="timer-block"><div class="timer-val">'+frameTime+'</div><div class="timer-lbl">Frame</div></div>'+
+        '<div class="frame-info-lbl">Frame '+s.currentFrame+' · BO'+s.bestOf+'<br>'+esc(s.tournament||'')+'</div>'+
+        (scDisplay?'<div class="timer-block"><div class="'+scClass+'">'+scDisplay+'</div><div class="timer-lbl">Shot Clock</div></div>':'<div></div>')+
+      '</div>'+
+      // Break bar
+      (brk>0?
+        '<div class="break-bar">'+
+          '<div class="brk-left">'+
+            '<div class="brk-lbl">Break</div>'+
+            '<div class="brk-who">'+(s.breakPlayer===1?esc(s.player1.name):esc(s.player2.name))+'</div>'+
+            '<div class="brk-val">'+brk+(brk>=100?' <span style="font-size:0.7rem;color:#f0c040">CENTURY</span>':'')+'</div>'+
+          '</div>'+
+          '<div class="brk-balls">'+balls+'</div>'+
+        '</div>':'')+
+      // Stats strip
+      '<div style="display:flex;justify-content:space-between;font-size:0.65rem;color:rgba(232,244,224,0.35);padding:4px 0;">'+
+        '<span>'+reds+' reds left</span>'+
+        '<span>'+ptsLeft+' pts remaining</span>'+
+        (needsSnookers?'<span style="color:#e74c3c;font-weight:bold">Needs Snookers</span>':
+          '<span>Diff: '+diff+'</span>')+
+      '</div>'+
+    '</div>'+
+    '<div class="tcard-actions">'+
+      '<button class="act-btn act-ref" onclick="window.open(\''+base+'referee.html?table='+n+'\',\'_blank\')">📱 Ref</button>'+
+      '<button class="act-btn act-ref" onclick="window.open(\''+base+'scoreboard.html?table='+n+'\',\'_blank\')">📺 Score</button>'+
+      '<span class="act-btn act-stream" onclick="copyOBS('+n+')" title="Copy OBS link">🎥 OBS</span>'+
+      '<button class="act-btn act-end" onclick="endMatch('+n+')">End</button>'+
+    '</div>'+
+    '<div class="ref-links">'+
+      '<span class="ref-link" style="cursor:pointer" onclick="toggleStream('+n+')">'+(isStream?'⏹ Stop Stream':'🔴 Mark Streaming')+'</span>'+
+      '<span class="ref-link" style="cursor:pointer" onclick="openStartModal('+n+')">↺ Replace Match</span>'+
+    '</div>';
+}
+
+// ── STATS ──
+function updateStats(){
+  var live=0,empty=0,done=0,highBreak=0;
+  for(var n=1;n<=16;n++){
+    var s=matchData[n];
+    if(!s) empty++;
+    else if(s.status==='finished') done++;
+    else if(s.status==='active'){ live++; highBreak=Math.max(highBreak,s.currentBreak||0); }
+  }
+  document.getElementById('s-live').textContent=live;
+  document.getElementById('s-empty').textContent=empty;
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-total-matches').textContent=live;
+  document.getElementById('s-breaks').textContent=highBreak||'–';
+}
+
+// ── TIMERS — refresh cards every 5s for timer updates ──
+setInterval(function(){
+  for(var i=0;i<tableCount;i++){
+    var n=startTable+i;
+    if(n>16) break;
+    if(matchData[n]&&matchData[n].status==='active') renderCard(n);
+  }
+}, 5000);
+
+// ── ALERT ──
+function triggerAlert(msg){
+  var strip=document.getElementById('alert-strip');
+  var txt=document.getElementById('alert-text');
+  alerts.push(msg);
+  txt.textContent=alerts[alerts.length-1];
+  strip.classList.add('show');
+  // Vibrate if on mobile
+  if(navigator.vibrate) navigator.vibrate([200,100,200]);
+}
+function dismissAlert(){ alerts=[]; document.getElementById('alert-strip').classList.remove('show'); }
+
+// ── START MATCH MODAL ──
+function openStartModal(n){
+  modalTable=n;
+  document.getElementById('modal-tnum').textContent=n;
+  document.getElementById('m-p1').value='';
+  document.getElementById('m-p2').value='';
+  document.getElementById('m-round').value='';
+  document.getElementById('start-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('start-modal').classList.remove('open'); modalTable=null; }
+
+function confirmStart(){
+  var p1=document.getElementById('m-p1').value.trim();
+  var p2=document.getElementById('m-p2').value.trim();
+  var bo=parseInt(document.getElementById('m-bo').value);
+  var bf=parseInt(document.getElementById('m-bf').value);
+  var round=document.getElementById('m-round').value.trim();
+  if(!p1||!p2){alert('Enter both player names.');return;}
+  var now=Date.now();
+  db.ref('matches/table-'+modalTable).set({
+    tableNumber:modalTable, tournament:round||'Match',
+    bestOf:bo, currentFrame:1, status:'active', matchWinner:null,
+    turn:bf, breakPlayer:bf, currentBreak:0,
+    breakBalls:[], redsRemaining:15, lastFoul:null,
+    bestBreak1:0, bestBreak2:0,
+    frameStartTime:now, matchStartTime:now,
+    shotClockEnabled:false, shotClockDuration:60, shotClockStarted:now,
+    player1:{name:p1,frames:0,score:0},
+    player2:{name:p2,frames:0,score:0}
+  }).then(closeModal);
+}
+
+// ── END / CLEAR ──
+function endMatch(n){ if(!confirm('End match on Table '+n+'?'))return; db.ref('matches/table-'+n+'/status').set('finished'); }
+function clearTable(n){ if(!confirm('Clear Table '+n+' completely?'))return; db.ref('matches/table-'+n).remove(); }
+
+// ── STREAM TOGGLE ──
+function toggleStream(n){ streamingTables[n]=!streamingTables[n]; renderCard(n); }
+
+// ── COPY OBS ──
+function copyOBS(n){
+  var url=window.location.href.replace('dashboard.html','')+'overlay.html?table='+n;
+  navigator.clipboard.writeText(url).then(function(){
+    triggerAlert('✓ OBS link copied for Table '+n+' — paste into OBS Browser Source');
+  });
+}
+
+// ── UTILS ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── INIT ──
+buildGrid();
+</script>
+</body>
+</html>
