@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Diagnostic — UPBSA TV</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#07120d;color:#e8f4e0;font-family:Arial,sans-serif;min-height:100vh;}
+
+.topbar{background:rgba(0,0,0,0.65);border-bottom:2px solid #c9a227;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.logo{font-size:1.1rem;font-weight:900;color:#c9a227;letter-spacing:3px;}
+.logo small{font-size:0.65rem;color:rgba(232,244,224,0.35);letter-spacing:2px;font-weight:normal;margin-left:8px;}
+.nav{display:flex;gap:6px;}
+.navlink{padding:6px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(232,244,224,0.55);text-decoration:none;font-size:0.75rem;letter-spacing:1px;}
+.navlink:hover{border-color:#c9a227;color:#c9a227;}
+
+.main{padding:24px;max-width:1100px;margin:0 auto;}
+
+/* Summary bar */
+.summary-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:24px;}
+.sum-card{background:#0d2018;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+.sum-num{font-size:1.6rem;font-weight:900;color:#c9a227;line-height:1;}
+.sum-lbl{font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;color:rgba(232,244,224,0.35);}
+.sum-num.green{color:#2ecc71;}
+.sum-num.red{color:#e74c3c;}
+.sum-num.blue{color:#5dade2;}
+
+/* Section */
+.sec-title{font-size:0.68rem;font-weight:bold;letter-spacing:3px;color:#c9a227;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:rgba(201,162,39,0.2);}
+
+.card{background:#0d2018;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px;margin-bottom:16px;}
+
+/* Status rows */
+.status-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.83rem;}
+.status-row:last-child{border-bottom:none;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.dot.ok{background:#2ecc71;box-shadow:0 0 6px rgba(46,204,113,0.5);}
+.dot.warn{background:#f1c40f;box-shadow:0 0 6px rgba(241,196,15,0.5);animation:blink 1s infinite;}
+.dot.err{background:#e74c3c;box-shadow:0 0 6px rgba(231,76,60,0.5);}
+.dot.off{background:rgba(255,255,255,0.15);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.status-label{flex:1;color:#e8f4e0;}
+.status-detail{font-size:0.72rem;color:rgba(232,244,224,0.4);text-align:right;}
+.status-badge{font-size:0.6rem;padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.sb-live{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3);}
+.sb-fin{background:rgba(41,128,185,0.15);color:#5dade2;border:1px solid rgba(41,128,185,0.3);}
+.sb-empty{background:rgba(255,255,255,0.05);color:rgba(232,244,224,0.3);border:1px solid rgba(255,255,255,0.08);}
+.sb-pending{background:rgba(201,162,39,0.1);color:#c9a227;border:1px solid rgba(201,162,39,0.25);}
+
+/* Grid for tables */
+.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;}
+
+/* Raw data */
+pre{background:#060f0a;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;font-size:0.72rem;color:#7aaa7a;overflow:auto;white-space:pre-wrap;word-break:break-all;max-height:280px;line-height:1.5;margin-top:10px;}
+
+/* Actions */
+.action-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.act-btn{padding:10px 14px;border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:bold;letter-spacing:1px;border:none;transition:opacity .15s;}
+.act-btn:hover{opacity:.85;}
+.act-go{background:linear-gradient(135deg,#1c3f1c,#0d2318);color:#c9a227;border:1.5px solid #c9a227;}
+.act-warn{background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid rgba(231,76,60,0.35);}
+.act-blue{background:rgba(41,128,185,0.12);color:#5dade2;border:1px solid rgba(41,128,185,0.3);}
+.act-msg{font-size:0.8rem;margin-top:10px;padding:8px 12px;border-radius:6px;display:none;}
+.act-msg.ok{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:#2ecc71;}
+.act-msg.er{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#e74c3c;}
+
+footer{text-align:center;padding:32px 0;font-size:0.62rem;color:rgba(232,244,224,0.1);letter-spacing:1px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">UPBSA TV<small>System Diagnostic</small></div>
+  <div class="nav">
+    <a href="dashboard.html" class="navlink">Dashboard</a>
+    <a href="tournament.html" class="navlink">Tournaments</a>
+    <a href="players.html" class="navlink">Players</a>
+    <button onclick="runAllChecks()" class="navlink" style="cursor:pointer;border-color:rgba(201,162,39,0.4);color:#c9a227;">Run All Checks</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Summary bar -->
+  <div class="summary-bar">
+    <div class="sum-card"><div class="sum-num green" id="sum-live">–</div><div class="sum-lbl">Live Matches</div></div>
+    <div class="sum-card"><div class="sum-num" id="sum-players">–</div><div class="sum-lbl">Players</div></div>
+    <div class="sum-card"><div class="sum-num blue" id="sum-registry">–</div><div class="sum-lbl">Registry Entries</div></div>
+    <div class="sum-card"><div class="sum-num" id="sum-history">–</div><div class="sum-lbl">Past Matches</div></div>
+    <div class="sum-card"><div class="sum-num" id="sum-tournaments">–</div><div class="sum-lbl">Tournaments</div></div>
+    <div class="sum-card"><div class="sum-num" id="sum-counter">–</div><div class="sum-lbl">Match Counter</div></div>
+  </div>
+
+  <!-- Firebase Connection -->
+  <div class="sec-title">Firebase Connection</div>
+  <div class="card">
+    <div class="status-row">
+      <div class="dot warn" id="conn-dot"></div>
+      <div class="status-label" id="conn-text">Connecting...</div>
+      <div class="status-detail" id="conn-detail"></div>
+    </div>
+    <div class="status-row">
+      <div class="dot warn" id="db-dot"></div>
+      <div class="status-label" id="db-text">Reading database...</div>
+      <div class="status-detail" id="db-detail"></div>
+    </div>
+    <div class="status-row">
+      <div class="dot warn" id="counter-dot"></div>
+      <div class="status-label" id="counter-text">Checking match counter...</div>
+      <div class="status-detail" id="counter-detail"></div>
+    </div>
+  </div>
+
+  <!-- Live Tables -->
+  <div class="sec-title">Live Tables (1 – 16)</div>
+  <div class="card">
+    <div class="tables-grid" id="tables-grid">
+      <div style="color:rgba(232,244,224,0.25);font-size:0.82rem">Checking tables...</div>
+    </div>
+  </div>
+
+  <!-- Match Registry -->
+  <div class="sec-title">Match Registry</div>
+  <div class="card">
+    <div id="registry-rows">
+      <div style="color:rgba(232,244,224,0.25);font-size:0.82rem">Loading registry...</div>
+    </div>
+  </div>
+
+  <!-- Player Registry -->
+  <div class="sec-title">Player Registry</div>
+  <div class="card">
+    <div id="player-rows">
+      <div style="color:rgba(232,244,224,0.25);font-size:0.82rem">Loading players...</div>
+    </div>
+  </div>
+
+  <!-- Tournaments -->
+  <div class="sec-title">Tournaments</div>
+  <div class="card">
+    <div id="tournament-rows">
+      <div style="color:rgba(232,244,224,0.25);font-size:0.82rem">Loading tournaments...</div>
+    </div>
+  </div>
+
+  <!-- OBS Design Theme -->
+  <div class="sec-title">OBS Design Theme</div>
+  <div class="card">
+    <div id="theme-rows">
+      <div style="color:rgba(232,244,224,0.25);font-size:0.82rem">Loading theme...</div>
+    </div>
+  </div>
+
+  <!-- Raw DB snapshot -->
+  <div class="sec-title">Raw Database Snapshot</div>
+  <div class="card">
+    <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="act-btn act-blue" onclick="showRaw('/')">Full DB</button>
+      <button class="act-btn act-blue" onclick="showRaw('matches')">Matches</button>
+      <button class="act-btn act-blue" onclick="showRaw('match_registry')">Registry</button>
+      <button class="act-btn act-blue" onclick="showRaw('match_history')">History</button>
+      <button class="act-btn act-blue" onclick="showRaw('players')">Players</button>
+      <button class="act-btn act-blue" onclick="showRaw('tournaments')">Tournaments</button>
+      <button class="act-btn act-blue" onclick="showRaw('design')">Design</button>
+      <button class="act-btn act-blue" onclick="showRaw('meta')">Meta</button>
+    </div>
+    <pre id="raw-output">Click a button above to view raw data.</pre>
+  </div>
+
+  <!-- Actions -->
+  <div class="sec-title">Actions</div>
+  <div class="card">
+    <div class="action-grid">
+      <button class="act-btn act-go" onclick="writeTestMatch()">Write Test Match (Table 1)</button>
+      <button class="act-btn act-blue" onclick="clearTestMatch()">Clear Table 1</button>
+      <button class="act-btn act-warn" onclick="clearAllMatches()">Clear All Live Matches</button>
+      <button class="act-btn act-warn" onclick="clearRegistry()">Clear Match Registry</button>
+      <button class="act-btn act-warn" onclick="clearHistory()">Clear Match History</button>
+      <button class="act-btn act-warn" onclick="resetCounter()">Reset Match Counter to 0</button>
+      <button class="act-btn act-warn" style="background:rgba(155,89,182,0.12);color:#9b59b6;border-color:rgba(155,89,182,0.4);grid-column:1/-1;" onclick="fullTournamentReset()">FULL TOURNAMENT RESET — Clear everything for new tournament</button>
+    </div>
+    <div class="act-msg" id="act-msg"></div>
+  </div>
+
+</div>
+
+<footer>UPBSA TV · System Diagnostic · Firebase: snooker-scorer-56573</footer>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+// ── UTILS ──
+function setDot(id, state){ var el=document.getElementById(id); if(el) el.className='dot '+state; }
+function setText(id, txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
+function setStat(id, val){ var el=document.getElementById(id); if(el) el.textContent=val; }
+function showMsg(txt, type){ var el=document.getElementById('act-msg'); if(!el)return; el.textContent=txt; el.className='act-msg '+(type||'ok'); el.style.display='block'; setTimeout(function(){el.style.display='none';},4000); }
+
+// ── CONNECTION ──
+db.ref('.info/connected').on('value', function(snap){
+  if(snap.val()){
+    setDot('conn-dot','ok'); setText('conn-text','Connected to Firebase');
+    setText('conn-detail','asia-southeast1.firebasedatabase.app');
+  } else {
+    setDot('conn-dot','err'); setText('conn-text','NOT connected to Firebase');
+    setText('conn-detail','Check internet connection');
+  }
+});
+
+// ── DB READ CHECK ──
+db.ref('/').once('value', function(snap){
+  var data = snap.val();
+  if(data){
+    setDot('db-dot','ok'); setText('db-text','Database readable · '+Object.keys(data).length+' root keys found');
+    setText('db-detail', Object.keys(data).join(', '));
+  } else {
+    setDot('db-dot','warn'); setText('db-text','Database is empty — no data written yet');
+  }
+}, function(err){
+  setDot('db-dot','err'); setText('db-text','Read error: '+err.message);
+});
+
+// ── MATCH COUNTER ──
+db.ref('meta/matchCounter').on('value', function(snap){
+  var val = snap.val()||0;
+  setDot('counter-dot', val>0?'ok':'warn');
+  setText('counter-text', 'Match counter: UPBSA-'+String(val).padStart(4,'0')+' · '+val+' matches created');
+  setText('counter-detail', 'Next ID: UPBSA-'+String(val+1).padStart(4,'0'));
+  setStat('sum-counter', val);
+});
+
+// ── LIVE TABLES ──
+var tableData = {};
+var liveCount = 0;
+function renderTablesGrid(){
+  var grid = document.getElementById('tables-grid');
+  var rows = '';
+  liveCount = 0;
+  for(var n=1;n<=16;n++){
+    var m = tableData[n];
+    if(!m){
+      rows+='<div class="status-row"><div class="dot off"></div><div class="status-label" style="color:rgba(232,244,224,0.3)">Table '+n+'</div><span class="status-badge sb-empty">Empty</span></div>';
+    } else if(m.status==='active'){
+      liveCount++;
+      var mid = m.matchId?('<span style="font-size:0.62rem;color:#c9a227;margin-left:6px">'+m.matchId+'</span>'):'';
+      rows+='<div class="status-row"><div class="dot ok"></div><div class="status-label">Table '+n+' · '+esc(m.player1.name)+' vs '+esc(m.player2.name)+mid+'</div><span class="status-badge sb-live">LIVE F'+m.currentFrame+'</span></div>';
+    } else if(m.status==='finished'){
+      var wname = m['player'+m.matchWinner]?m['player'+m.matchWinner].name:'?';
+      rows+='<div class="status-row"><div class="dot err"></div><div class="status-label" style="color:rgba(232,244,224,0.55)">Table '+n+' · Winner: '+esc(wname)+'</div><span class="status-badge sb-fin">FINISHED</span></div>';
+    } else {
+      rows+='<div class="status-row"><div class="dot warn"></div><div class="status-label">Table '+n+' · Status: '+esc(m.status)+'</div></div>';
+    }
+  }
+  grid.innerHTML = rows;
+  setStat('sum-live', liveCount);
+}
+
+for(var t=1;t<=16;t++){
+  (function(n){
+    db.ref('matches/table-'+n).on('value', function(snap){
+      tableData[n] = snap.val();
+      renderTablesGrid();
+    });
+  })(t);
+}
+
+// ── MATCH REGISTRY ──
+db.ref('match_registry').on('value', function(snap){
+  var data = snap.val()||{};
+  var entries = Object.values(data);
+  setStat('sum-registry', entries.length);
+  var rows = document.getElementById('registry-rows');
+  if(!entries.length){
+    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No matches in registry yet. Start a match or generate a tournament draw.</div></div>';
+    return;
+  }
+  var counts = {pending:0, active:0, finished:0};
+  entries.forEach(function(m){ counts[m.status||'pending']=(counts[m.status||'pending']||0)+1; });
+  var html = '<div class="status-row">'+
+    '<div class="dot ok"></div>'+
+    '<div class="status-label">'+entries.length+' total entries</div>'+
+    '<div class="status-detail">'+
+      '<span class="status-badge sb-pending">'+counts.pending+' pending</span> '+
+      '<span class="status-badge sb-live">'+counts.active+' active</span> '+
+      '<span class="status-badge sb-fin">'+counts.finished+' finished</span>'+
+    '</div>'+
+  '</div>';
+  // Show last 5
+  var recent = entries.sort(function(a,b){return (b.startTime||b.createdAt||0)-(a.startTime||a.createdAt||0);}).slice(0,5);
+  recent.forEach(function(m){
+    var st = m.status||'pending';
+    var sc = {pending:'sb-pending',active:'sb-live',finished:'sb-fin'}[st]||'sb-empty';
+    html+='<div class="status-row">'+
+      '<div class="dot '+(st==='active'?'ok':st==='finished'?'off':'warn')+'"></div>'+
+      '<div class="status-label"><strong>'+esc(m.matchId||'–')+'</strong> · '+esc(m.p1||'TBD')+' vs '+esc(m.p2||'TBD')+'</div>'+
+      '<span class="status-badge '+sc+'">'+st+'</span>'+
+    '</div>';
+  });
+  if(entries.length>5) html+='<div style="font-size:0.72rem;color:rgba(232,244,224,0.3);padding:7px 0">...and '+(entries.length-5)+' more entries</div>';
+  rows.innerHTML = html;
+});
+
+// ── PLAYERS ──
+db.ref('players').on('value', function(snap){
+  var data = snap.val()||{};
+  var players = Object.values(data);
+  setStat('sum-players', players.length);
+  var rows = document.getElementById('player-rows');
+  if(!players.length){
+    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No players in registry. Import via players.html.</div></div>';
+    return;
+  }
+  // Count by sport
+  var sports = {};
+  var states = new Set();
+  players.forEach(function(p){
+    sports[p.sport||'unknown']=(sports[p.sport||'unknown']||0)+1;
+    if(p.state) states.add(p.state);
+  });
+  var html = '<div class="status-row"><div class="dot ok"></div><div class="status-label">'+players.length+' players across '+states.size+' states</div></div>';
+  Object.keys(sports).forEach(function(s){
+    html+='<div class="status-row"><div class="dot ok"></div><div class="status-label">'+esc(s)+'</div><div class="status-detail">'+sports[s]+' players</div></div>';
+  });
+  rows.innerHTML = html;
+});
+
+// ── TOURNAMENTS ──
+db.ref('tournaments').on('value', function(snap){
+  var data = snap.val()||{};
+  var ts = Object.values(data);
+  setStat('sum-tournaments', ts.length);
+  var rows = document.getElementById('tournament-rows');
+  if(!ts.length){
+    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No tournaments created yet.</div></div>';
+    return;
+  }
+  var html = '';
+  ts.forEach(function(t){
+    var st = t.status||'draft';
+    var sc = {draft:'sb-empty',active:'sb-live',finished:'sb-fin'}[st]||'sb-empty';
+    var cats = t.categories?Object.values(t.categories).length:0;
+    var drawMatches = 0;
+    if(t.draw) Object.values(t.draw).forEach(function(d){ if(d&&d.matches) drawMatches+=Object.keys(d.matches).length; });
+    html+='<div class="status-row">'+
+      '<div class="dot '+(st==='active'?'ok':st==='finished'?'off':'warn')+'"></div>'+
+      '<div class="status-label"><strong>'+esc(t.name||'Unnamed')+'</strong> · '+esc(t.sport||'')+'</div>'+
+      '<div class="status-detail">'+cats+' cats · '+drawMatches+' matches drawn</div>'+
+      '<span class="status-badge '+sc+'">'+st+'</span>'+
+    '</div>';
+  });
+  rows.innerHTML = html;
+});
+
+// ── MATCH HISTORY ──
+db.ref('match_history').on('value', function(snap){
+  setStat('sum-history', Object.keys(snap.val()||{}).length);
+});
+
+// ── OBS DESIGN THEME ──
+db.ref('design').on('value', function(snap){
+  var data = snap.val();
+  var rows = document.getElementById('theme-rows');
+  if(!data){
+    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No design theme set. Open design.html and click "Apply to OBS".</div></div>';
+    return;
+  }
+  var html = '';
+  var at = data.activeTheme;
+  if(at){
+    html+='<div class="status-row"><div class="dot ok"></div><div class="status-label">Active theme set</div><div class="status-detail">Font: '+esc(at.font||'–')+' · Bar: '+at.barH+'px · Accent: '+esc(at.accent||'–')+'</div></div>';
+  } else {
+    html+='<div class="status-row"><div class="dot warn"></div><div class="status-label">No active theme applied yet</div></div>';
+  }
+  var themes = data.themes?Object.keys(data.themes):[];
+  html+='<div class="status-row"><div class="dot '+(themes.length>0?'ok':'off')+'"></div><div class="status-label">'+themes.length+' saved theme'+(themes.length===1?'':'s')+' in library</div><div class="status-detail">'+themes.map(function(k){return esc(k);}).join(', ')+'</div></div>';
+  rows.innerHTML = html;
+});
+
+// ── RAW VIEW ──
+function showRaw(path){
+  document.getElementById('raw-output').textContent = 'Loading '+path+'...';
+  db.ref(path).once('value', function(snap){
+    var data = snap.val();
+    if(data===null){
+      document.getElementById('raw-output').textContent = '(empty — no data at path: '+path+')';
+    } else {
+      document.getElementById('raw-output').textContent = JSON.stringify(data, null, 2);
+    }
+  }, function(err){
+    document.getElementById('raw-output').textContent = 'ERROR reading '+path+': '+err.message;
+  });
+}
+
+// ── ACTIONS ──
+function writeTestMatch(){
+  var now = Date.now();
+  db.ref('meta/matchCounter').transaction(
+    function(cur){ return (cur||0)+1; },
+    function(err, committed, snap){
+      var mid = committed ? ('UPBSA-'+String(snap.val()).padStart(4,'0')) : 'TEST-0001';
+      var testData = {
+        matchId:mid, tableNumber:1, tournament:'UPBSA Diagnostic Test',
+        bestOf:9, currentFrame:3, status:'active', matchWinner:null,
+        turn:1, breakPlayer:1, frameBreaker:1, currentBreak:73,
+        breakBalls:[
+          {color:'red',value:1},{color:'black',value:7},
+          {color:'red',value:1},{color:'pink',value:6},
+          {color:'red',value:1},{color:'black',value:7},
+          {color:'red',value:1},{color:'black',value:7},
+          {color:'red',value:1},{color:'blue',value:5}
+        ],
+        redsRemaining:10, lastFoul:null,
+        bestBreak1:73, bestBreak2:34,
+        frameStartTime:now-300000, matchStartTime:now-900000,
+        shotClockEnabled:true, shotClockDuration:60, shotClockStarted:now-20000,
+        player1:{name:'Rajat Khaneja', frames:1, score:73, state:'Haryana'},
+        player2:{name:'Aditya Mehta', frames:1, score:18, state:'Delhi'}
+      };
+      db.ref('matches/table-1').set(testData).then(function(){
+        db.ref('match_registry/'+mid).set({
+          matchId:mid, tournament:'UPBSA Diagnostic Test', bestOf:9,
+          tableNumber:1, status:'active',
+          p1:'Rajat Khaneja', p1state:'Haryana',
+          p2:'Aditya Mehta', p2state:'Delhi',
+          startTime:now, referee:'Test Referee'
+        });
+        showMsg('Test match written to Table 1 as '+mid+' — check dashboard.html and scoreboard.html?table=1', 'ok');
+      }).catch(function(e){ showMsg('Write failed: '+e.message, 'er'); });
+    }
+  );
+}
+
+function clearTestMatch(){
+  db.ref('matches/table-1').remove().then(function(){
+    showMsg('Table 1 cleared.', 'ok');
+  });
+}
+
+function clearAllMatches(){
+  if(!confirm('Clear ALL live matches from all tables? This cannot be undone.'))return;
+  db.ref('matches').remove().then(function(){ showMsg('All live matches cleared.', 'ok'); });
+}
+
+function clearRegistry(){
+  if(!confirm('Clear entire match registry? This removes all UPBSA match IDs.'))return;
+  db.ref('match_registry').remove().then(function(){ showMsg('Match registry cleared.', 'ok'); });
+}
+
+function clearHistory(){
+  if(!confirm('Clear all match history?'))return;
+  db.ref('match_history').remove().then(function(){ showMsg('Match history cleared.', 'ok'); });
+}
+
+function resetCounter(){
+  if(!confirm('Reset match counter to 0? Next match will be UPBSA-0001. Only do this for a fresh start.'))return;
+  db.ref('meta/matchCounter').set(0).then(function(){ showMsg('Counter reset to 0. Next match: UPBSA-0001', 'ok'); });
+}
+
+function runAllChecks(){
+  showMsg('Running all checks...', 'ok');
+  showRaw('/');
+}
+
+function fullTournamentReset(){
+  if(!confirm(
+    'FULL TOURNAMENT RESET\n\n' +
+    'This will permanently delete:\n' +
+    '  • All live match data (all 16 tables)\n' +
+    '  • Match registry (all UPBSA IDs)\n' +
+    '  • Match history\n' +
+    '  • Tournament draws\n' +
+    '  • OBS design themes\n\n' +
+    'The following will be KEPT:\n' +
+    '  • Player registry\n' +
+    '  • Tournament setup (names, categories)\n' +
+    '  • Match counter (IDs continue from current number)\n\n' +
+    'Type OK to confirm — this cannot be undone.'
+  )) return;
+
+  var confirm2 = prompt('Type RESET to confirm full tournament reset:','');
+  if(!confirm2 || confirm2.trim().toUpperCase() !== 'RESET'){
+    showMsg('Reset cancelled — you must type RESET to confirm.', 'er');
+    return;
+  }
+
+  showMsg('Resetting...', 'ok');
+
+  var deletes = [
+    db.ref('matches').remove(),
+    db.ref('match_registry').remove(),
+    db.ref('match_history').remove(),
+    db.ref('design/activeTheme').remove(),
+    db.ref('design/themes').remove()
+  ];
+
+  // Clear draws from all tournaments but keep tournament metadata
+  db.ref('tournaments').once('value', function(snap){
+    var ts = snap.val()||{};
+    Object.keys(ts).forEach(function(tid){
+      deletes.push(db.ref('tournaments/'+tid+'/draw').remove());
+      deletes.push(db.ref('tournaments/'+tid+'/status').set('draft'));
+    });
+
+    Promise.all(deletes).then(function(){
+      showMsg(
+        'Tournament reset complete. All match data cleared. ' +
+        'Players and tournament setup preserved. ' +
+        'Match counter continues from current value.',
+        'ok'
+      );
+    }).catch(function(e){
+      showMsg('Reset failed: '+e.message, 'er');
+    });
+  });
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
