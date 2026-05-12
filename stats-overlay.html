@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Stats Overlay — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:1920px;height:1080px;
+  background:transparent;
+  overflow:hidden;
+  font-family:'Barlow Condensed',sans-serif;
+}
+
+/* ── STAT CARD ── */
+#stat-card{
+  position:absolute;
+  bottom:110px; /* sits above the score bar */
+  left:50%;
+  transform:translateX(-50%);
+  min-width:420px;
+  max-width:700px;
+  opacity:0;
+  transition:opacity .4s ease;
+  pointer-events:none;
+}
+#stat-card.show{opacity:1;}
+
+.stat-inner{
+  background:rgba(6,12,7,0.94);
+  border:1px solid rgba(201,162,39,0.35);
+  border-radius:6px;
+  overflow:hidden;
+  display:flex;
+  align-items:stretch;
+  box-shadow:0 4px 24px rgba(0,0,0,0.6);
+}
+
+/* Left accent bar */
+.stat-accent{
+  width:4px;
+  background:linear-gradient(to bottom,#c9a227,#7a5a10);
+  flex-shrink:0;
+}
+.stat-accent.green{background:linear-gradient(to bottom,#22c55e,#14532d);}
+.stat-accent.blue{background:linear-gradient(to bottom,#3b82f6,#1e3a8a);}
+.stat-accent.red{background:linear-gradient(to bottom,#ef4444,#7f1d1d);}
+
+/* Label */
+.stat-label{
+  font-size:0.62rem;
+  font-weight:700;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:rgba(201,162,39,0.7);
+  padding:10px 14px 0;
+  white-space:nowrap;
+}
+.stat-label.green{color:rgba(34,197,94,0.8);}
+.stat-label.blue{color:rgba(59,130,246,0.8);}
+
+/* Value */
+.stat-value{
+  font-family:'Bebas Neue',cursive;
+  font-size:2.2rem;
+  color:#ffffff;
+  padding:2px 14px 10px;
+  line-height:1;
+  white-space:nowrap;
+}
+.stat-value span{
+  color:#c9a227;
+  margin-left:8px;
+  font-size:2.8rem;
+}
+
+/* Content area */
+.stat-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+/* Progress bar variant */
+.stat-bar-wrap{
+  padding:8px 14px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.stat-bar-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.stat-bar-name{
+  font-size:0.85rem;
+  font-weight:600;
+  color:#e8f4e0;
+  width:180px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.stat-bar-track{
+  flex:1;
+  height:6px;
+  background:rgba(255,255,255,0.08);
+  border-radius:3px;
+  overflow:hidden;
+}
+.stat-bar-fill{
+  height:100%;
+  border-radius:3px;
+  background:linear-gradient(to right,#c9a227,#f0c040);
+  transition:width .6s ease;
+}
+.stat-bar-fill.green{background:linear-gradient(to right,#22c55e,#4ade80);}
+.stat-bar-fill.blue{background:linear-gradient(to right,#3b82f6,#60a5fa);}
+.stat-bar-num{
+  font-family:'Bebas Neue',cursive;
+  font-size:1.2rem;
+  color:#c9a227;
+  min-width:36px;
+  text-align:right;
+}
+
+/* Double stat (two values side by side) */
+.stat-double{
+  display:flex;
+  padding:8px 14px 10px;
+  gap:24px;
+}
+.stat-double-item{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.sdi-lbl{font-size:0.58rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(232,244,224,0.4);}
+.sdi-val{font-family:'Bebas Neue',cursive;font-size:2.2rem;color:#fff;line-height:1;}
+.sdi-val.gold{color:#c9a227;}
+.sdi-val.green{color:#22c55e;}
+.sdi-name{font-size:0.72rem;color:rgba(232,244,224,0.5);margin-top:1px;}
+
+/* Century badge special */
+.century-wrap{
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.century-icon{
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,#c9a227,#7a5a10);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 0 16px rgba(201,162,39,0.4);
+}
+.century-icon-text{font-family:'Bebas Neue';font-size:0.85rem;color:#000;letter-spacing:1px;}
+.century-info{}
+.century-name{font-size:1.1rem;font-weight:700;color:#fff;letter-spacing:1px;}
+.century-detail{font-size:0.72rem;color:rgba(232,244,224,0.5);margin-top:2px;}
+.century-val{font-family:'Bebas Neue',cursive;font-size:2.8rem;color:#c9a227;line-height:1;margin-left:auto;padding-right:14px;}
+
+/* Animation */
+@keyframes slideUp{
+  from{transform:translateX(-50%) translateY(20px);opacity:0;}
+  to{transform:translateX(-50%) translateY(0);opacity:1;}
+}
+#stat-card.show{animation:slideUp .4s ease forwards;}
+
+/* Position variants */
+#stat-card.pos-topleft{left:24px;transform:none;top:110px;bottom:auto;}
+#stat-card.pos-topright{right:24px;left:auto;transform:none;top:110px;bottom:auto;}
+#stat-card.pos-bottomleft{left:24px;transform:none;}
+#stat-card.pos-bottomright{right:24px;left:auto;transform:none;}
+</style>
+</head>
+<body>
+
+<!-- Stat card — hidden by default, shown when triggered -->
+<div id="stat-card">
+  <div class="stat-inner" id="stat-inner">
+    <div class="stat-accent" id="stat-accent"></div>
+    <div class="stat-content" id="stat-content"></div>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+var params = new URLSearchParams(location.search);
+var tableParam = params.get('table') || '1';
+var autoRotate = params.get('auto') !== '0'; // default on
+var rotateInterval = parseInt(params.get('interval')) || 8; // seconds per stat
+var posParam = params.get('pos') || 'bottom'; // bottom/topleft/topright/bottomleft/bottomright
+
+// Apply position
+var card = document.getElementById('stat-card');
+if(posParam !== 'bottom') card.classList.add('pos-'+posParam);
+
+// ── DATA ──
+var liveMatch = null;
+var allMatches = {};
+var matchHistory = {};
+var statsConfig = null; // from Firebase control
+var rotateTimer = null;
+var currentStatIdx = 0;
+var statsQueue = [];
+
+// Firebase listeners
+db.ref('matches/table-'+tableParam).on('value', function(s){
+  liveMatch = s.val();
+  buildStatsQueue();
+});
+
+for(var t=1;t<=16;t++){
+  (function(n){
+    db.ref('matches/table-'+n).on('value',function(s){
+      allMatches[n]=s.val();
+      buildStatsQueue();
+    });
+  })(t);
+}
+
+db.ref('match_history').on('value', function(s){
+  matchHistory = s.val()||{};
+  buildStatsQueue();
+});
+
+// Stats control — overlay can be triggered from stats-control
+db.ref('stats_overlay').on('value', function(s){
+  statsConfig = s.val();
+  if(statsConfig){
+    if(statsConfig.show === false){
+      hideCard();
+    } else if(statsConfig.statId){
+      showSpecificStat(statsConfig.statId);
+    }
+    if(statsConfig.position) applyPosition(statsConfig.position);
+  }
+});
+
+function applyPosition(pos){
+  card.className = 'stat-card';
+  if(pos !== 'bottom') card.classList.add('pos-'+pos);
+}
+
+// ── STATS COMPUTATION ──
+function buildStatsQueue(){
+  var stats = [];
+  var live = liveMatch;
+  var history = Object.values(matchHistory);
+
+  // 1. Highest break of match (if live match)
+  if(live && live.status === 'active'){
+    var hb1 = live.bestBreak1||0, hb2 = live.bestBreak2||0;
+    if(hb1 > 0 || hb2 > 0){
+      stats.push({id:'match-hb', type:'hb-compare', label:'Highest Break — This Match',
+        p1:{name:live.player1.name, val:hb1},
+        p2:{name:live.player2.name, val:hb2},
+        accent:'gold'});
+    }
+    // 2. Frame score
+    stats.push({id:'frame-score', type:'double', label:'Frame Score',
+      left:{label:'Frames Won', val:live.player1.frames, name:live.player1.name, color:'gold'},
+      right:{label:'Frames Won', val:live.player2.frames, name:live.player2.name, color:''},
+      accent:'gold'});
+    // 3. Points this frame
+    if(live.player1.score > 0 || live.player2.score > 0){
+      stats.push({id:'frame-pts', type:'double', label:'Points — This Frame',
+        left:{label:'Points', val:live.player1.score, name:live.player1.name, color:'gold'},
+        right:{label:'Points', val:live.player2.score, name:live.player2.name, color:''},
+        accent:'blue'});
+    }
+  }
+
+  // 4. Tournament highest break (from history + live)
+  var allBreaks = [];
+  history.forEach(function(m){
+    if(m.bestBreak1>0) allBreaks.push({name:m.p1||'', val:m.bestBreak1, event:m.tournament||''});
+    if(m.bestBreak2>0) allBreaks.push({name:m.p2||'', val:m.bestBreak2, event:m.tournament||''});
+  });
+  Object.values(allMatches).forEach(function(m){
+    if(!m||m.status!=='active') return;
+    if(m.bestBreak1>0) allBreaks.push({name:m.player1.name, val:m.bestBreak1, event:m.tournament||''});
+    if(m.bestBreak2>0) allBreaks.push({name:m.player2.name, val:m.bestBreak2, event:m.tournament||''});
+  });
+  allBreaks.sort(function(a,b){return b.val-a.val;});
+  if(allBreaks.length){
+    var top = allBreaks[0];
+    stats.push({id:'tourn-hb', type:'century', label:'Highest Break — Tournament',
+      name:top.name, val:top.val, detail:top.event, accent:'gold', icon:'HB'});
+  }
+
+  // 5. Centuries
+  var centuries = allBreaks.filter(function(b){return b.val>=100;});
+  if(centuries.length){
+    stats.push({id:'centuries', type:'double', label:'Tournament Centuries',
+      left:{label:'Centuries', val:centuries.length, name:'This Event', color:'gold'},
+      right:{label:'Highest', val:allBreaks[0]?allBreaks[0].val:0, name:allBreaks[0]?allBreaks[0].name:'', color:''},
+      accent:'gold'});
+  }
+
+  // 6. Live matches count
+  var liveCount = Object.values(allMatches).filter(function(m){return m&&m.status==='active';}).length;
+  var doneCount = history.length;
+  if(liveCount > 0 || doneCount > 0){
+    stats.push({id:'match-count', type:'double', label:'Tournament Progress',
+      left:{label:'Live Now', val:liveCount, name:'Tables Active', color:'green'},
+      right:{label:'Completed', val:doneCount, name:'Matches Done', color:'blue'},
+      accent:'green'});
+  }
+
+  statsQueue = stats;
+  if(autoRotate && stats.length > 0) startRotation();
+}
+
+// ── ROTATION ──
+function startRotation(){
+  if(rotateTimer) clearInterval(rotateTimer);
+  showStat(currentStatIdx % statsQueue.length);
+  rotateTimer = setInterval(function(){
+    currentStatIdx = (currentStatIdx+1) % statsQueue.length;
+    showStat(currentStatIdx);
+  }, rotateInterval * 1000);
+}
+
+function showSpecificStat(id){
+  var idx = statsQueue.findIndex(function(s){return s.id===id;});
+  if(idx >= 0){ currentStatIdx = idx; showStat(idx); }
+}
+
+function showStat(idx){
+  var stat = statsQueue[idx];
+  if(!stat) return;
+  renderStat(stat);
+  card.classList.add('show');
+}
+
+function hideCard(){
+  card.classList.remove('show');
+}
+
+// ── RENDER ──
+function renderStat(stat){
+  var accent = document.getElementById('stat-accent');
+  var content = document.getElementById('stat-content');
+  accent.className = 'stat-accent'+(stat.accent&&stat.accent!=='gold'?' '+stat.accent:'');
+
+  if(stat.type === 'hb-compare'){
+    var max = Math.max(stat.p1.val, stat.p2.val, 1);
+    content.innerHTML =
+      '<div class="stat-label">'+esc(stat.label)+'</div>'+
+      '<div class="stat-bar-wrap">'+
+        barRow(stat.p1.name, stat.p1.val, max, stat.p1.val>=stat.p2.val?'gold':'blue')+
+        barRow(stat.p2.name, stat.p2.val, max, stat.p2.val>stat.p1.val?'gold':'blue')+
+      '</div>';
+  }
+  else if(stat.type === 'double'){
+    content.innerHTML =
+      '<div class="stat-label">'+esc(stat.label)+'</div>'+
+      '<div class="stat-double">'+
+        doubleItem(stat.left)+
+        doubleItem(stat.right)+
+      '</div>';
+  }
+  else if(stat.type === 'century'){
+    content.innerHTML =
+      '<div class="century-wrap">'+
+        '<div class="century-icon"><div class="century-icon-text">'+esc(stat.icon||'HB')+'</div></div>'+
+        '<div class="century-info">'+
+          '<div class="century-name">'+esc(stat.name)+'</div>'+
+          '<div class="century-detail">'+esc(stat.label)+'</div>'+
+          '<div class="century-detail" style="margin-top:1px">'+esc(stat.detail||'')+'</div>'+
+        '</div>'+
+        '<div class="century-val">'+stat.val+'</div>'+
+      '</div>';
+  }
+  else {
+    content.innerHTML = '<div class="stat-label">'+esc(stat.label)+'</div><div class="stat-value">'+stat.val+'</div>';
+  }
+}
+
+function barRow(name, val, max, color){
+  var pct = max>0 ? Math.round((val/max)*100) : 0;
+  return '<div class="stat-bar-row">'+
+    '<div class="stat-bar-name">'+esc(name)+'</div>'+
+    '<div class="stat-bar-track"><div class="stat-bar-fill'+(color&&color!=='gold'?' '+color:'')+'" style="width:'+pct+'%"></div></div>'+
+    '<div class="stat-bar-num">'+val+'</div>'+
+  '</div>';
+}
+
+function doubleItem(d){
+  return '<div class="stat-double-item">'+
+    '<div class="sdi-lbl">'+esc(d.label)+'</div>'+
+    '<div class="sdi-val'+(d.color?' '+d.color:'')+'">'+d.val+'</div>'+
+    '<div class="sdi-name">'+esc(d.name)+'</div>'+
+  '</div>';
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+</script>
+</body>
+</html>

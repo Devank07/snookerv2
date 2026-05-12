@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Stats Control — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#1a1a1a;--bg2:#222;--bg3:#282828;--border:#2e2e2e;--border2:#363636;--gold:#c9a227;--green:#22c55e;--text:#f0f0f0;--text2:#a0a0a0;--text3:#555;}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;}
+
+.hdr{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.hdr-title{font-size:0.9rem;font-weight:800;color:#1a1a1a;letter-spacing:2px;}
+.hdr-title span{color:var(--gold);}
+.back{font-size:0.72rem;color:#888;text-decoration:none;padding:4px 10px;border:1px solid #ddd;border-radius:5px;}
+
+.main{padding:16px;}
+
+/* Auto rotate toggle */
+.auto-row{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.auto-info{}
+.auto-lbl{font-size:0.88rem;font-weight:700;color:var(--text);}
+.auto-sub{font-size:0.7rem;color:var(--text3);margin-top:2px;}
+.toggle-wrap{display:flex;align-items:center;gap:10px;}
+.toggle-lbl{font-size:0.75rem;color:var(--text2);}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-slider{position:absolute;inset:0;background:#333;border-radius:24px;transition:.2s;}
+.toggle-slider::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.2s;}
+input:checked + .toggle-slider{background:rgba(34,197,94,0.3);border:1px solid var(--green);}
+input:checked + .toggle-slider::before{transform:translateX(20px);background:var(--green);}
+
+/* Interval row */
+.interval-row{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.interval-lbl{font-size:0.82rem;color:var(--text2);}
+.interval-sel{padding:5px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:0.8rem;cursor:pointer;}
+.interval-sel:focus{outline:none;border-color:var(--gold);}
+
+/* Hide/Show all */
+.master-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.master-btn{padding:11px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;letter-spacing:1px;text-align:center;transition:all .15s;}
+.btn-show{background:rgba(34,197,94,0.1);border:1.5px solid rgba(34,197,94,0.35);color:var(--green);}
+.btn-show:active{background:rgba(34,197,94,0.2);}
+.btn-hide{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444;}
+.btn-hide:active{background:rgba(239,68,68,0.15);}
+
+/* Section label */
+.slbl{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+
+/* Stat trigger cards */
+.stat-cards{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.stat-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:all .15s;
+}
+.stat-card:hover{background:var(--bg3);border-color:var(--border2);}
+.stat-card:active{transform:scale(.98);}
+.stat-card.active{border-color:var(--gold);background:rgba(201,162,39,0.06);}
+.sc-icon{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;letter-spacing:1px;}
+.sci-gold{background:rgba(201,162,39,0.12);color:var(--gold);border:1px solid rgba(201,162,39,0.25);}
+.sci-green{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
+.sci-blue{background:rgba(59,130,246,0.1);color:#60a5fa;border:1px solid rgba(59,130,246,0.2);}
+.sc-info{flex:1;}
+.sc-name{font-size:0.82rem;font-weight:600;color:var(--text);}
+.sc-desc{font-size:0.65rem;color:var(--text3);margin-top:2px;}
+.sc-show-btn{padding:5px 12px;border-radius:5px;background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.25);color:var(--gold);font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:1px;}
+.sc-show-btn:active{background:rgba(201,162,39,0.2);}
+
+/* Position picker */
+.pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;}
+.pos-btn{padding:8px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:0.72rem;cursor:pointer;text-align:center;transition:all .15s;}
+.pos-btn:hover{border-color:var(--gold);color:var(--gold);}
+.pos-btn.on{background:rgba(201,162,39,0.1);border-color:var(--gold);color:var(--gold);}
+
+/* OBS info */
+.obs-info{background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;}
+.obs-url{font-family:monospace;font-size:0.72rem;color:#60a5fa;word-break:break-all;line-height:1.5;}
+.obs-lbl{font-size:0.62rem;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.copy-btn{margin-top:7px;padding:5px 12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:5px;color:#60a5fa;font-size:0.7rem;font-weight:700;cursor:pointer;letter-spacing:1px;}
+
+/* Table selector */
+.table-sel{padding:6px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:0.82rem;width:100%;margin-bottom:10px;}
+.table-sel:focus{outline:none;border-color:var(--gold);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">Stats<span>.TV</span> Control</div>
+  <a href="dashboard.html" class="back">← Dashboard</a>
+</div>
+
+<div class="main">
+
+  <!-- OBS URL -->
+  <div class="slbl">OBS Browser Source URL</div>
+  <div class="obs-info">
+    <div class="obs-lbl">Add this as a Browser Source in OBS (1920×1080)</div>
+    <div class="obs-url" id="obs-url-display">–</div>
+    <button class="copy-btn" onclick="copyOBSUrl()">Copy URL</button>
+  </div>
+
+  <!-- Table for match stats -->
+  <div class="slbl">Match Stats — Table</div>
+  <select class="table-sel" id="table-sel" onchange="updateOBSUrl()">
+    <option value="1">Table 1</option>
+    <option value="2">Table 2</option>
+    <option value="3">Table 3</option>
+    <option value="4">Table 4</option>
+    <option value="5">Table 5</option>
+    <option value="6">Table 6</option>
+  </select>
+
+  <!-- Master controls -->
+  <div class="master-btns">
+    <button class="master-btn btn-show" onclick="showOverlay()">Show Overlay</button>
+    <button class="master-btn btn-hide" onclick="hideOverlay()">Hide Overlay</button>
+  </div>
+
+  <!-- Auto rotate -->
+  <div class="auto-row">
+    <div class="auto-info">
+      <div class="auto-lbl">Auto Rotate</div>
+      <div class="auto-sub">Cycles through all stats automatically</div>
+    </div>
+    <div class="toggle-wrap">
+      <label class="toggle">
+        <input type="checkbox" id="auto-toggle" checked onchange="updateAutoRotate()">
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-lbl" id="auto-lbl">On</span>
+    </div>
+  </div>
+
+  <div class="interval-row">
+    <span class="interval-lbl">Seconds per stat</span>
+    <select class="interval-sel" id="interval-sel" onchange="updateInterval()">
+      <option value="5">5 sec</option>
+      <option value="8" selected>8 sec</option>
+      <option value="10">10 sec</option>
+      <option value="15">15 sec</option>
+    </select>
+  </div>
+
+  <!-- Individual stat triggers -->
+  <div class="slbl">Show Specific Stat</div>
+  <div class="stat-cards">
+
+    <div class="stat-card" id="sc-match-hb">
+      <div class="sc-icon sci-gold">HB</div>
+      <div class="sc-info">
+        <div class="sc-name">Highest Break — This Match</div>
+        <div class="sc-desc">Best break for each player in the current match</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('match-hb')">Show</button>
+    </div>
+
+    <div class="stat-card" id="sc-frame-score">
+      <div class="sc-icon sci-gold">FS</div>
+      <div class="sc-info">
+        <div class="sc-name">Frame Score</div>
+        <div class="sc-desc">Frames won by each player</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('frame-score')">Show</button>
+    </div>
+
+    <div class="stat-card" id="sc-frame-pts">
+      <div class="sc-icon sci-blue">PTS</div>
+      <div class="sc-info">
+        <div class="sc-name">Points This Frame</div>
+        <div class="sc-desc">Current frame points for each player</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('frame-pts')">Show</button>
+    </div>
+
+    <div class="stat-card" id="sc-tourn-hb">
+      <div class="sc-icon sci-gold">🏆</div>
+      <div class="sc-info">
+        <div class="sc-name">Highest Break — Tournament</div>
+        <div class="sc-desc">Best break across all matches in the event</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('tourn-hb')">Show</button>
+    </div>
+
+    <div class="stat-card" id="sc-centuries">
+      <div class="sc-icon sci-gold">100</div>
+      <div class="sc-info">
+        <div class="sc-name">Centuries</div>
+        <div class="sc-desc">Total century breaks in the tournament</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('centuries')">Show</button>
+    </div>
+
+    <div class="stat-card" id="sc-match-count">
+      <div class="sc-icon sci-green">📊</div>
+      <div class="sc-info">
+        <div class="sc-name">Tournament Progress</div>
+        <div class="sc-desc">Live matches and completed matches count</div>
+      </div>
+      <button class="sc-show-btn" onclick="triggerStat('match-count')">Show</button>
+    </div>
+
+  </div>
+
+  <!-- Position -->
+  <div class="slbl">Overlay Position</div>
+  <div class="pos-grid">
+    <div class="pos-btn" onclick="setPosition('topleft',this)">↖ Top Left</div>
+    <div class="pos-btn" onclick="setPosition('topright',this)">↗ Top Right</div>
+    <div class="pos-btn on" onclick="setPosition('bottom',this)">↓ Bottom Center</div>
+    <div class="pos-btn" onclick="setPosition('bottomleft',this)">↙ Bottom Left</div>
+  </div>
+
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+var currentPosition = 'bottom';
+
+function getBaseUrl(){
+  return location.href.replace('stats-control.html','')+'stats-overlay.html';
+}
+
+function updateOBSUrl(){
+  var tbl = document.getElementById('table-sel').value;
+  var auto = document.getElementById('auto-toggle').checked;
+  var interval = document.getElementById('interval-sel').value;
+  var url = getBaseUrl()+'?table='+tbl+'&auto='+(auto?'1':'0')+'&interval='+interval+'&pos='+currentPosition;
+  document.getElementById('obs-url-display').textContent = url;
+}
+
+function copyOBSUrl(){
+  var url = document.getElementById('obs-url-display').textContent;
+  navigator.clipboard.writeText(url).then(function(){
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent='Copied!'; setTimeout(function(){btn.textContent='Copy URL';},1500);
+  });
+}
+
+function showOverlay(){ db.ref('stats_overlay').update({show:true}); }
+function hideOverlay(){ db.ref('stats_overlay').set({show:false}); }
+
+function triggerStat(id){
+  db.ref('stats_overlay').update({show:true, statId:id, position:currentPosition});
+  // Highlight active card
+  document.querySelectorAll('.stat-card').forEach(function(c){c.classList.remove('active');});
+  var sc = document.getElementById('sc-'+id);
+  if(sc) sc.classList.add('active');
+  setTimeout(function(){if(sc) sc.classList.remove('active');}, 2000);
+}
+
+function updateAutoRotate(){
+  var on = document.getElementById('auto-toggle').checked;
+  document.getElementById('auto-lbl').textContent = on?'On':'Off';
+  db.ref('stats_overlay').update({autoRotate:on});
+  updateOBSUrl();
+}
+
+function updateInterval(){
+  var v = document.getElementById('interval-sel').value;
+  db.ref('stats_overlay').update({interval:+v});
+  updateOBSUrl();
+}
+
+function setPosition(pos, el){
+  currentPosition = pos;
+  document.querySelectorAll('.pos-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  db.ref('stats_overlay').update({position:pos});
+  updateOBSUrl();
+}
+
+// Init
+updateOBSUrl();
+</script>
+</body>
+</html>
