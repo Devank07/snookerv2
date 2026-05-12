@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UPBSA.gg — Live Results & Brackets</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f0f0f;--bg2:#161616;--bg3:#1e1e1e;--bg4:#242424;
+  --border:#2e2e2e;--border2:#333;
+  --gold:#c9a227;--gold2:#e8b830;
+  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+  --text:#f0f0f0;--text2:#a0a0a0;--text3:#666;
+  --live:#22c55e;
+}
+html,body{background:#1a1a1a;color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px;}
+
+/* ── HEADER ── */
+.site-nav{
+  background:#fff;border-bottom:1px solid #e0e0e0;
+  height:48px;display:flex;align-items:center;
+  padding:0 20px;gap:0;position:sticky;top:0;z-index:100;
+}
+.site-logo{
+  margin-right:24px;text-decoration:none;
+  display:flex;align-items:center;gap:10px;
+}
+.site-logo img{height:36px;width:36px;border-radius:50%;object-fit:cover;}
+.site-logo-text{
+  font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;
+  font-weight:800;letter-spacing:3px;color:#1a1a1a;
+  display:flex;flex-direction:column;line-height:1;
+}
+.site-logo-text small{font-size:0.55rem;color:#aaa;letter-spacing:2px;font-weight:500;}
+@keyframes glow{from{box-shadow:0 0 4px var(--gold)}to{box-shadow:0 0 12px var(--gold)}}
+.nav-links{display:flex;align-items:center;gap:0;flex:1;}
+.nav-link{
+  padding:0 14px;height:48px;display:flex;align-items:center;
+  color:#555;font-size:0.82rem;font-weight:500;
+  text-decoration:none;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;
+  letter-spacing:0.5px;
+}
+.nav-link:hover{color:#111;}
+.nav-link.on{color:#111;border-bottom-color:var(--gold);}
+.nav-right{display:flex;align-items:center;gap:12px;margin-left:auto;}
+.live-badge{
+  display:flex;align-items:center;gap:5px;
+  font-size:0.7rem;font-weight:700;letter-spacing:2px;
+  color:var(--live);
+}
+.live-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
+#nav-clock{font-size:0.8rem;color:#999;font-family:monospace;letter-spacing:1px;}
+
+/* ── TICKER ── */
+.ticker{
+  background:#1a1a1a;border-bottom:1px solid var(--border);
+  height:32px;display:flex;align-items:center;overflow:hidden;
+}
+.ticker-tag{
+  background:var(--gold);color:#000;
+  font-size:0.65rem;font-weight:800;letter-spacing:2px;
+  padding:0 12px;height:100%;display:flex;align-items:center;
+  flex-shrink:0;
+}
+.ticker-inner{white-space:nowrap;animation:ticker 50s linear infinite;padding-left:24px;}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-item{display:inline-block;padding:0 28px;font-size:0.78rem;color:var(--text2);}
+.t-live{color:var(--live);font-weight:600;}
+.t-score{color:var(--gold);font-weight:700;}
+
+/* ── MAIN ── */
+.main{max-width:1200px;margin:0 auto;padding:24px 20px;}
+
+/* ── SECTION HEADER ── */
+.sec-hdr{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:16px;
+}
+.sec-title{
+  font-size:0.7rem;font-weight:700;letter-spacing:3px;
+  text-transform:uppercase;color:var(--text2);
+  display:flex;align-items:center;gap:8px;
+}
+.sec-title::before{content:'';width:3px;height:14px;background:var(--gold);border-radius:2px;}
+.sec-line{flex:1;height:1px;background:var(--border);}
+
+/* ── LIVE MATCH CARDS ── */
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:32px;}
+.match-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;
+  transition:border-color .15s;cursor:pointer;
+}
+.match-card:hover{border-color:var(--border2);}
+.match-card.is-live{border-color:rgba(34,197,94,0.35);}
+.mc-head{
+  padding:8px 12px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid var(--border);
+  background:var(--bg3);
+}
+.mc-event{font-size:0.7rem;color:var(--text3);letter-spacing:0.5px;}
+.mc-mid{font-size:0.65rem;color:var(--text3);font-family:monospace;}
+.mc-status-live{
+  font-size:0.62rem;font-weight:700;letter-spacing:2px;
+  color:var(--live);display:flex;align-items:center;gap:4px;
+}
+.mc-status-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--live);animation:pulse 1.5s infinite;}
+.mc-status-done{font-size:0.62rem;color:var(--text3);letter-spacing:1px;}
+.mc-body{padding:10px 12px;}
+.mc-players{display:flex;align-items:stretch;gap:0;}
+.mc-player{flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 0;}
+.mc-player.right{align-items:flex-end;text-align:right;}
+.mc-player.at .mc-name{color:var(--gold);}
+.mc-name{font-size:0.88rem;font-weight:600;color:var(--text);}
+.mc-state{font-size:0.65rem;color:var(--text3);}
+.mc-score-col{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:0 12px;gap:2px;min-width:60px;
+}
+.mc-frames{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.6rem;font-weight:800;color:var(--gold);
+  display:flex;align-items:center;gap:4px;line-height:1;
+}
+.mc-frames-sep{font-size:1rem;color:var(--border2);}
+.mc-meta{font-size:0.62rem;color:var(--text3);letter-spacing:1px;}
+.mc-break{
+  margin-top:6px;padding:4px 8px;background:var(--bg4);
+  border-radius:4px;display:flex;align-items:center;
+  justify-content:space-between;
+}
+.mc-brk-label{font-size:0.62rem;color:var(--text3);letter-spacing:1px;}
+.mc-brk-val{font-size:0.88rem;font-weight:700;color:var(--text);}
+
+/* ── TOURNAMENT CARDS ── */
+.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px;margin-bottom:32px;}
+.event-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;cursor:pointer;
+  transition:border-color .15s,background .15s;
+}
+.event-card:hover{border-color:var(--border2);background:var(--bg3);}
+.ec-head{
+  padding:12px 14px;display:flex;align-items:center;
+  gap:12px;border-bottom:1px solid var(--border);
+}
+.ec-icon{
+  width:40px;height:40px;border-radius:5px;
+  background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.ec-icon-text{font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:800;color:var(--gold);letter-spacing:1px;text-align:center;}
+.ec-info{flex:1;min-width:0;}
+.ec-name{font-size:0.9rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ec-sub{font-size:0.7rem;color:var(--text3);margin-top:2px;}
+.sport-tag{
+  font-size:0.6rem;font-weight:700;letter-spacing:1px;
+  padding:2px 7px;border-radius:10px;text-transform:uppercase;flex-shrink:0;
+}
+.st-snooker{background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.25);}
+.st-billiards{background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);}
+.st-pool{background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.25);}
+.ec-body{padding:10px 14px;display:flex;gap:16px;flex-wrap:wrap;}
+.ec-stat{display:flex;flex-direction:column;gap:2px;}
+.ec-stat-val{font-size:0.8rem;font-weight:600;color:var(--text);}
+.ec-stat-lbl{font-size:0.62rem;color:var(--text3);letter-spacing:0.5px;}
+.status-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:0.65rem;font-weight:700;letter-spacing:1px;
+  padding:3px 8px;border-radius:10px;text-transform:uppercase;
+}
+.sp-live{background:rgba(34,197,94,0.12);color:var(--live);border:1px solid rgba(34,197,94,0.25);}
+.sp-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--live);animation:pulse 1.5s infinite;}
+.sp-draft{background:rgba(255,255,255,0.05);color:var(--text3);border:1px solid var(--border);}
+.sp-done{background:rgba(59,130,246,0.1);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);}
+.ec-cats{display:flex;gap:4px;flex-wrap:wrap;padding:0 14px 10px;}
+.ec-cat{font-size:0.62rem;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text3);}
+
+/* ── TOURNAMENT DETAIL VIEW ── */
+.t-detail{display:none;}
+.t-detail.show{display:block;}
+.t-detail-head{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:20px;margin-bottom:16px;
+}
+.t-back{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:0.75rem;color:var(--text3);cursor:pointer;
+  margin-bottom:14px;transition:color .15s;
+}
+.t-back:hover{color:var(--text);}
+.t-head-inner{display:flex;align-items:flex-start;gap:16px;}
+.t-head-icon{
+  width:60px;height:60px;border-radius:8px;flex-shrink:0;
+  background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.2);
+  display:flex;align-items:center;justify-content:center;
+}
+.t-head-icon-text{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:var(--gold);letter-spacing:2px;text-align:center;line-height:1.2;}
+.t-head-info{flex:1;}
+.t-head-name{font-size:1.4rem;font-weight:800;color:var(--text);margin-bottom:4px;line-height:1.2;}
+.t-head-meta{font-size:0.78rem;color:var(--text3);display:flex;flex-wrap:wrap;gap:16px;margin-top:8px;}
+.t-head-meta span{display:flex;align-items:center;gap:4px;}
+.t-head-meta span::before{content:'·';color:var(--border2);}
+.t-head-meta span:first-child::before{display:none;}
+
+/* Category tabs VLR style */
+.cat-nav{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto;}
+.cat-nav-item{
+  padding:10px 18px;font-size:0.8rem;font-weight:500;
+  color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap;
+}
+.cat-nav-item:hover{color:var(--text);}
+.cat-nav-item.on{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* ── BRACKET ── */
+.bracket-wrap{overflow-x:auto;padding-bottom:16px;}
+.bracket{display:flex;gap:0;align-items:flex-start;}
+.br-round{display:flex;flex-direction:column;flex-shrink:0;}
+.br-round-head{
+  font-size:0.65rem;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text3);
+  padding:0 12px 12px;text-align:center;white-space:nowrap;
+}
+.br-matches{display:flex;flex-direction:column;}
+.br-match-wrap{display:flex;align-items:center;position:relative;}
+.br-connector{
+  width:24px;flex-shrink:0;position:relative;
+}
+.br-connector.has-line{
+  border-right:1px solid var(--border2);
+}
+
+/* Match slot in bracket */
+.br-slot{
+  width:220px;flex-shrink:0;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:5px;overflow:hidden;
+  transition:border-color .15s;
+}
+.br-slot:hover{border-color:var(--border2);}
+.br-slot.is-live{border-color:rgba(34,197,94,0.4);}
+.br-slot.is-live .br-slot-player.winner{color:var(--gold);}
+.br-slot-player{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 10px;border-bottom:1px solid var(--border);
+  font-size:0.8rem;
+  transition:background .15s;
+}
+.br-slot-player:last-child{border-bottom:none;}
+.br-slot-player.winner{background:rgba(201,162,39,0.06);color:var(--gold);font-weight:600;}
+.br-slot-player.loser{color:var(--text3);}
+.br-slot-player.tbd{color:var(--text3);font-style:italic;}
+.br-slot-player.at-table{color:var(--gold);}
+.br-pname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.br-pstate{font-size:0.62rem;color:var(--text3);margin-left:4px;flex-shrink:0;}
+.br-pscore{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1rem;font-weight:700;
+  min-width:18px;text-align:right;margin-left:6px;flex-shrink:0;
+}
+.br-slot-status{
+  padding:3px 10px;font-size:0.58rem;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;
+  background:var(--bg3);color:var(--text3);
+  display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--border);
+}
+.br-slot-status.live{background:rgba(34,197,94,0.06);color:var(--live);}
+.br-slot-status.live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--live);animation:pulse 1.5s infinite;}
+.br-slot-bo{font-size:0.58rem;color:var(--text3);}
+
+/* Connector lines */
+.br-h-line{width:24px;height:1px;background:var(--border2);flex-shrink:0;}
+
+/* Round Robin / Group stage */
+.rr-table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+.rr-table th{
+  background:var(--bg3);padding:7px 10px;text-align:left;
+  font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text3);border-bottom:1px solid var(--border);font-weight:600;
+}
+.rr-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;}
+.rr-table tr:hover td{background:rgba(255,255,255,0.015);}
+.rr-player-cell{font-weight:500;display:flex;align-items:center;gap:8px;}
+.rr-state{font-size:0.65rem;color:var(--text3);}
+.rr-score{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.9rem;color:var(--gold);}
+
+/* Groups grid */
+.groups-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:20px;}
+.group-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.group-head{
+  background:var(--bg3);border-bottom:1px solid var(--border);
+  padding:8px 12px;display:flex;justify-content:space-between;align-items:center;
+}
+.group-name{font-size:0.7rem;font-weight:700;color:var(--gold);letter-spacing:2px;}
+.group-adv{font-size:0.62rem;color:var(--text3);}
+.group-player-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 12px;border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.group-player-row:last-child{border-bottom:none;}
+.gp-seed{
+  width:18px;height:18px;border-radius:50%;
+  background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.6rem;color:var(--gold);font-weight:700;flex-shrink:0;
+}
+.gp-name{font-size:0.78rem;color:var(--text);flex:1;}
+.gp-state{font-size:0.62rem;color:var(--text3);}
+
+/* ── RESULTS TABLE ── */
+.results-table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+.results-table th{
+  background:var(--bg2);padding:8px 12px;text-align:left;
+  font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text3);border-bottom:1px solid var(--border);font-weight:600;
+}
+.results-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;}
+.results-table tr:hover td{background:rgba(255,255,255,0.015);}
+.winner-name{font-weight:600;color:var(--gold);}
+.mid-cell{font-family:monospace;font-size:0.72rem;color:var(--text3);}
+.score-bold{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:0.95rem;color:var(--gold);}
+
+/* ── EMPTY / LOADING ── */
+.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:0.85rem;line-height:1.8;}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;margin-bottom:10px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{text-align:center;padding:32px;font-size:0.65rem;color:var(--text3);border-top:1px solid var(--border);margin-top:32px;letter-spacing:2px;}
+
+@media(max-width:600px){
+  .main{padding:14px 12px;}
+  .br-slot{width:170px;}
+  .events-grid,.live-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="site-nav">
+  <a class="site-logo">
+    <img src="upbsa-logo.jpg" alt="UPBSA Logo">
+    <div class="site-logo-text">UPBSA.TV<small>LIVE RESULTS</small></div>
+  </a>
+  <div class="nav-links">
+    <div class="nav-link on" id="nl-live" onclick="showSection('live',this)">Live Scores</div>
+    <div class="nav-link" id="nl-events" onclick="showSection('events',this)">Events</div>
+    <div class="nav-link" id="nl-results" onclick="showSection('results',this)">Results</div>
+  </div>
+  <div class="nav-right">
+    <div class="live-badge" id="live-badge" style="display:none">LIVE</div>
+    <div id="nav-clock">00:00</div>
+  </div>
+</nav>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-tag">LIVE</div>
+  <div class="ticker-inner" id="ticker-inner">Loading...</div>
+</div>
+
+<div class="main">
+
+  <!-- ── LIVE SCORES ── -->
+  <div id="sec-live">
+    <div class="sec-hdr">
+      <div class="sec-title">Live Now</div>
+      <div class="sec-line"></div>
+    </div>
+    <div class="live-grid" id="live-grid">
+      <div class="empty"><div class="spinner"></div><br>No matches live right now.</div>
+    </div>
+    <div class="sec-hdr"><div class="sec-title">All Events</div><div class="sec-line"></div></div>
+    <div class="events-grid" id="events-grid-live">
+      <div class="empty"><div class="spinner"></div><br>Loading tournaments...</div>
+    </div>
+  </div>
+
+  <!-- ── EVENTS ── -->
+  <div id="sec-events" style="display:none">
+    <div class="sec-hdr">
+      <div class="sec-title">Events & Tournaments</div>
+      <div class="sec-line"></div>
+    </div>
+    <div class="events-grid" id="events-grid-main">
+      <div class="empty"><div class="spinner"></div></div>
+    </div>
+    <!-- Tournament detail -->
+    <div id="t-detail" class="t-detail">
+      <div class="t-back" onclick="backToEvents()">← All Events</div>
+      <div class="t-detail-head">
+        <div class="t-head-inner">
+          <div class="t-head-icon"><div class="t-head-icon-text" id="td-icon">UP</div></div>
+          <div class="t-head-info">
+            <div class="t-head-name" id="td-name">–</div>
+            <div id="td-status-pill"></div>
+            <div class="t-head-meta" id="td-meta"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cat-nav" id="cat-nav"></div>
+      <div id="bracket-content"></div>
+    </div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div id="sec-results" style="display:none">
+    <div class="sec-hdr"><div class="sec-title">Match Results</div><div class="sec-line"></div></div>
+    <table class="results-table">
+      <thead><tr>
+        <th>Match ID</th><th>Player 1</th><th>Score</th><th>Player 2</th>
+        <th>Event</th><th>Date</th>
+      </tr></thead>
+      <tbody id="results-body">
+        <tr><td colspan="6"><div class="empty"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>UPBSA.TV · UPBSA.gg · Live results updated in real time</footer>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+var liveMatches = {}, allTournaments = {}, matchHistory = {};
+var activeTid = null, activeCat = null;
+
+// ── CLOCK ──
+setInterval(function(){
+  var n=new Date(), el=document.getElementById('nav-clock');
+  if(el) el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+},1000);
+
+// ── FIREBASE ──
+for(var t=1;t<=16;t++){
+  (function(n){db.ref('matches/table-'+n).on('value',function(s){liveMatches[n]=s.val();renderAll();});})(t);
+}
+db.ref('tournaments').on('value',function(s){allTournaments=s.val()||{};renderAll();});
+db.ref('match_history').limitToLast(80).on('value',function(s){matchHistory=s.val()||{};renderResults();});
+
+function renderAll(){renderTicker();renderLiveGrid();renderEventsGrid();if(activeTid&&activeCat) renderBracket();}
+
+// ── SECTION SWITCH ──
+function showSection(name,el){
+  ['live','events','results'].forEach(function(s){document.getElementById('sec-'+s).style.display='none';});
+  document.getElementById('sec-'+name).style.display='block';
+  document.querySelectorAll('.nav-link').forEach(function(l){l.classList.remove('on');});
+  el.classList.add('on');
+  if(name==='events'){document.getElementById('t-detail').classList.remove('show');renderEventsGrid();}
+}
+
+// ── TICKER ──
+function renderTicker(){
+  var live=Object.values(liveMatches).filter(function(m){return m&&m.status==='active';});
+  var liveBadge=document.getElementById('live-badge');
+  if(liveBadge) liveBadge.style.display=live.length?'flex':'none';
+  var items=live.map(function(m){
+    return '<span class="t-item"><span class="t-live">● T'+m.tableNumber+'</span> '+
+      esc(m.player1.name)+' <span class="t-score">'+m.player1.frames+' – '+m.player2.frames+'</span> '+esc(m.player2.name)+
+      (m.currentBreak>0?' · Break <span class="t-score">'+m.currentBreak+'</span>':'')+
+    '</span>';
+  });
+  if(!items.length) items=['<span class="t-item" style="color:var(--text3)">No live matches right now</span>'];
+  var inner=document.getElementById('ticker-inner');
+  if(inner) inner.innerHTML=items.join('')+items.join('');
+}
+
+// ── LIVE GRID ──
+function renderLiveGrid(){
+  var grid=document.getElementById('live-grid');
+  if(!grid) return;
+  var live=Object.values(liveMatches).filter(function(m){return m&&m.status==='active';});
+  if(!live.length){grid.innerHTML='<div class="empty">No matches live right now.<br>Check back soon.</div>';return;}
+  grid.innerHTML=live.map(function(m){
+    var p1at=m.turn===1,p2at=m.turn===2;
+    var brk=m.currentBreak||0;
+    var ptsLeft=(Math.max(0,m.redsRemaining||15)*8)+27;
+    return '<div class="match-card is-live">'+
+      '<div class="mc-head">'+
+        '<div class="mc-event">'+esc(m.tournament||'')+'</div>'+
+        '<div class="mc-mid">'+(m.matchId||'')+'</div>'+
+        '<div class="mc-status-live">LIVE</div>'+
+      '</div>'+
+      '<div class="mc-body">'+
+        '<div class="mc-players">'+
+          '<div class="mc-player'+(p1at?' at':'')+'">'+
+            '<div class="mc-name">'+esc(m.player1.name)+'</div>'+
+            '<div class="mc-state">'+(m.player1.state||'')+'</div>'+
+          '</div>'+
+          '<div class="mc-score-col">'+
+            '<div class="mc-frames"><span>'+m.player1.frames+'</span><span class="mc-frames-sep">–</span><span>'+m.player2.frames+'</span></div>'+
+            '<div class="mc-meta">F'+m.currentFrame+' · BO'+m.bestOf+'</div>'+
+          '</div>'+
+          '<div class="mc-player right'+(p2at?' at':'')+'">'+
+            '<div class="mc-name">'+esc(m.player2.name)+'</div>'+
+            '<div class="mc-state">'+(m.player2.state||'')+'</div>'+
+          '</div>'+
+        '</div>'+
+        (brk>0?'<div class="mc-break"><span class="mc-brk-label">BREAK · '+(m.breakPlayer===1?m.player1.name:m.player2.name)+'</span><span class="mc-brk-val">'+brk+'</span></div>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── EVENTS GRID ──
+function renderEventsGrid(){
+  ['events-grid-live','events-grid-main'].forEach(function(gid){
+    var grid=document.getElementById(gid); if(!grid) return;
+    var ts=Object.entries(allTournaments);
+    if(!ts.length){grid.innerHTML='<div class="empty">No tournaments yet.</div>';return;}
+    ts.sort(function(a,b){return (b[1].createdAt||0)-(a[1].createdAt||0);});
+    var sportLabels={snooker:'Snooker',billiards:'Billiards','8ball':'8-Ball','9ball':'9-Ball','10ball':'10-Ball'};
+    var sportClass={snooker:'st-snooker',billiards:'st-billiards','8ball':'st-pool','9ball':'st-pool','10ball':'st-pool'};
+    var stClass={draft:'sp-draft',active:'sp-live',finished:'sp-done'};
+    var stLabel={draft:'Draft',active:'Ongoing',finished:'Finished'};
+    grid.innerHTML=ts.map(function(e){
+      var id=e[0],t=e[1];
+      var cats=t.categories?Object.values(t.categories):[];
+      var st=t.status||'draft';
+      var abbr=((t.name||'').split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase()).slice(0,4);
+      return '<div class="event-card" onclick="openEvent(\''+id+'\')">'+
+        '<div class="ec-head">'+
+          '<div class="ec-icon"><div class="ec-icon-text">'+abbr+'</div></div>'+
+          '<div class="ec-info">'+
+            '<div class="ec-name">'+esc(t.name||'Unnamed')+'</div>'+
+            '<div class="ec-sub">'+(t.venue?esc(t.venue):'')+'</div>'+
+          '</div>'+
+          '<span class="sport-tag '+(sportClass[t.sport]||'st-snooker')+'">'+esc(sportLabels[t.sport]||t.sport||'')+'</span>'+
+        '</div>'+
+        '<div class="ec-body">'+
+          '<div class="ec-stat"><div class="ec-stat-val"><span class="status-pill '+stClass[st]+'">'+stLabel[st]+'</span></div><div class="ec-stat-lbl">Status</div></div>'+
+          (t.startDate?'<div class="ec-stat"><div class="ec-stat-val">'+t.startDate+(t.endDate?' – '+t.endDate:'')+'</div><div class="ec-stat-lbl">Dates</div></div>':'')+
+          '<div class="ec-stat"><div class="ec-stat-val">'+(t.tables||'–')+'</div><div class="ec-stat-lbl">Tables</div></div>'+
+        '</div>'+
+        (cats.length?'<div class="ec-cats">'+cats.map(function(c){return '<span class="ec-cat">'+esc(c.name)+'</span>';}).join('')+'</div>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// ── OPEN EVENT ──
+function openEvent(tid){
+  var t=allTournaments[tid]; if(!t) return;
+  activeTid=tid;
+  showSection('events',document.getElementById('nl-events'));
+  document.getElementById('t-detail').classList.add('show');
+  document.getElementById('events-grid-main').style.display='none';
+  var abbr=((t.name||'').split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase()).slice(0,4);
+  document.getElementById('td-icon').textContent=abbr;
+  document.getElementById('td-name').textContent=t.name||'';
+  var st=t.status||'draft';
+  var stClass={draft:'sp-draft',active:'sp-live',finished:'sp-done'};
+  var stLabel={draft:'Draft',active:'Ongoing',finished:'Finished'};
+  document.getElementById('td-status-pill').innerHTML='<span class="status-pill '+stClass[st]+'">'+stLabel[st]+'</span>';
+  var meta=[];
+  if(t.startDate) meta.push('<span>'+t.startDate+(t.endDate?' – '+t.endDate:'')+'</span>');
+  if(t.venue) meta.push('<span>'+esc(t.venue)+'</span>');
+  if(t.sport) meta.push('<span>'+esc(t.sport)+'</span>');
+  document.getElementById('td-meta').innerHTML=meta.join('');
+  // Category tabs
+  var cats=t.categories?Object.values(t.categories):[];
+  var catNav=document.getElementById('cat-nav');
+  catNav.innerHTML=cats.map(function(c,i){
+    return '<div class="cat-nav-item'+(i===0?' on':'')+'" onclick="switchCat(\''+esc(c.name)+'\',this)">'+esc(c.name)+'</div>';
+  }).join('');
+  activeCat=cats[0]?cats[0].name:null;
+  renderBracket();
+}
+
+function backToEvents(){
+  activeTid=null; activeCat=null;
+  document.getElementById('t-detail').classList.remove('show');
+  document.getElementById('events-grid-main').style.display='';
+}
+
+function switchCat(name,el){
+  activeCat=name;
+  document.querySelectorAll('#cat-nav .cat-nav-item').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  renderBracket();
+}
+
+// ── BRACKET RENDERER ──
+function renderBracket(){
+  var cont=document.getElementById('bracket-content'); if(!cont) return;
+  var t=allTournaments[activeTid]; if(!t||!activeCat){cont.innerHTML='<div class="empty">No data.</div>';return;}
+  var catKey=ck(activeCat);
+  var draw=t.draw&&t.draw[catKey];
+  if(!draw||draw.empty){cont.innerHTML='<div class="empty">Draw not generated yet.</div>';return;}
+  var matches=Object.values(draw.matches||{});
+  var html='';
+  if(draw.format==='knockout'){
+    html+=renderKnockoutBracket(matches,'Knockout');
+  } else if(draw.format==='rr'){
+    html+=renderGroupSection(draw,matches);
+    html+=renderRRMatches(matches);
+  } else {
+    // Hybrid
+    html+='<div class="sec-hdr" style="margin-top:4px;"><div class="sec-title">Group Stage</div><div class="sec-line"></div></div>';
+    html+=renderGroupSection(draw,matches.filter(function(m){return m.stage==='part1';}));
+    html+='<div class="sec-hdr" style="margin-top:20px;"><div class="sec-title">Round Robin</div><div class="sec-line"></div></div>';
+    html+=renderRRMatches(matches.filter(function(m){return m.stage==='part2';}));
+    html+='<div class="sec-hdr" style="margin-top:20px;"><div class="sec-title">Knockout Bracket</div><div class="sec-line"></div></div>';
+    html+=renderKnockoutBracket(matches.filter(function(m){return m.stage==='part3';}),'Knockout');
+  }
+  cont.innerHTML=html;
+}
+
+function renderGroupSection(draw, matches){
+  var groups=draw.groups||[];
+  if(!groups.length) return '';
+  var html='<div class="groups-row">';
+  groups.forEach(function(g){
+    html+='<div class="group-card">'+
+      '<div class="group-head"><div class="group-name">'+esc(g.name)+'</div><div class="group-adv">Top '+g.advance+' advance</div></div>';
+    (g.players||[]).forEach(function(p,i){
+      html+='<div class="group-player-row">'+
+        '<div class="gp-seed">'+(i+1)+'</div>'+
+        '<div class="gp-name">'+esc(p.name)+'</div>'+
+        '<div class="gp-state">'+esc(p.state||'')+'</div>'+
+      '</div>';
+    });
+    html+='</div>';
+  });
+  return html+'</div>';
+}
+
+function renderRRMatches(matches){
+  if(!matches.length) return '<div class="empty">No matches.</div>';
+  var html='<table class="rr-table"><thead><tr><th>Player 1</th><th>Score</th><th>Player 2</th><th>BO</th><th>Status</th></tr></thead><tbody>';
+  matches.forEach(function(m){
+    var lm=findLiveMatch(m.matchId);
+    var isLive=lm&&lm.status==='active',isDone=lm&&lm.status==='finished';
+    var p1=(m.p1&&m.p1.name)||'TBD',p2=(m.p2&&m.p2.name)||'TBD';
+    if(lm){p1=lm.player1.name;p2=lm.player2.name;}
+    var sc=isLive||isDone?((lm.player1.frames)+' – '+(lm.player2.frames)):'–';
+    html+='<tr>'+
+      '<td><div class="rr-player-cell">'+esc(p1)+'<span class="rr-state">'+esc((m.p1&&m.p1.state)||'')+'</span></div></td>'+
+      '<td><span class="rr-score">'+sc+'</span></td>'+
+      '<td><div class="rr-player-cell">'+esc(p2)+'<span class="rr-state">'+esc((m.p2&&m.p2.state)||'')+'</span></div></td>'+
+      '<td style="color:var(--text3);font-size:0.75rem">BO'+m.bo+'</td>'+
+      '<td>'+(isLive?'<span class="status-pill sp-live">LIVE</span>':isDone?'<span class="status-pill sp-done">Done</span>':'<span style="font-size:0.68rem;color:var(--text3)">Pending</span>')+'</td>'+
+    '</tr>';
+  });
+  return html+'</tbody></table>';
+}
+
+function renderKnockoutBracket(matches, title){
+  if(!matches.length) return '<div class="empty">No bracket matches yet.</div>';
+  // Group by round
+  var rounds={};
+  matches.forEach(function(m){
+    var r=m.round||1;
+    if(!rounds[r]) rounds[r]=[];
+    rounds[r].push(m);
+  });
+  var roundNums=Object.keys(rounds).map(Number).sort(function(a,b){return a-b;});
+  var totalRounds=roundNums.length;
+  var SLOT_H=80; // px per match card (approx)
+  var GAP=8;
+
+  var html='<div class="bracket-wrap"><div class="bracket">';
+  roundNums.forEach(function(r,ri){
+    var ms=rounds[r].slice().sort(function(a,b){return (a.id||'').localeCompare(b.id||'');});
+    var rname=ms[0]&&ms[0].roundName?ms[0].roundName:'Round '+r;
+    // Spacing: each slot in this round needs to span 2^ri base slots
+    var slotsPerMatch=Math.pow(2,ri);
+    var slotH=slotsPerMatch*(SLOT_H+GAP)-GAP;
+    html+='<div class="br-round">'+
+      '<div class="br-round-head">'+esc(rname)+'</div>'+
+      '<div class="br-matches" style="gap:'+GAP+'px">';
+    ms.forEach(function(m,mi){
+      var lm=findLiveMatch(m.matchId);
+      var isLive=lm&&lm.status==='active',isDone=lm&&lm.status==='finished';
+      var p1n=(m.p1&&m.p1.name)||'TBD',p2n=(m.p2&&m.p2.name)||'TBD';
+      var p1s=(m.p1&&m.p1.state)||'',p2s=(m.p2&&m.p2.state)||'';
+      var p1f=0,p2f=0;
+      if(lm){p1n=lm.player1.name;p2n=lm.player2.name;p1s=lm.player1.state||'';p2s=lm.player2.state||'';p1f=lm.player1.frames;p2f=lm.player2.frames;}
+      var isTbd1=p1n==='TBD',isTbd2=p2n==='TBD';
+      var w=lm&&lm.matchWinner;
+      var p1at=lm&&lm.turn===1,p2at=lm&&lm.turn===2;
+      // Determine winner based on frames
+      var p1cls=(isDone&&w===1)?'winner':(isDone&&w===2)?'loser':isTbd1?'tbd':(p1at&&isLive?'at-table':'');
+      var p2cls=(isDone&&w===2)?'winner':(isDone&&w===1)?'loser':isTbd2?'tbd':(p2at&&isLive?'at-table':'');
+      // Has right connector line to next round (all except final round)
+      var hasNext=ri<totalRounds-1;
+      var matchH=SLOT_H;
+      html+='<div class="br-match-wrap" style="height:'+slotH+'px;margin-bottom:0">'+
+        // Vertical centering within slot
+        '<div style="display:flex;align-items:center;height:100%;">'+
+          // Left connector from previous round
+          (ri>0?'<div class="br-h-line"></div>':'<div style="width:8px"></div>')+
+          '<div class="br-slot'+(isLive?' is-live':'')+'">'+
+            '<div class="br-slot-player '+p1cls+'">'+
+              '<div class="br-pname">'+esc(p1n)+'</div>'+
+              '<div class="br-pstate">'+esc(p1s)+'</div>'+
+              (isLive||isDone?'<div class="br-pscore">'+p1f+'</div>':'<div class="br-pscore" style="color:var(--text3)">–</div>')+
+            '</div>'+
+            '<div class="br-slot-player '+p2cls+'">'+
+              '<div class="br-pname">'+esc(p2n)+'</div>'+
+              '<div class="br-pstate">'+esc(p2s)+'</div>'+
+              (isLive||isDone?'<div class="br-pscore">'+p2f+'</div>':'<div class="br-pscore" style="color:var(--text3)">–</div>')+
+            '</div>'+
+            '<div class="br-slot-status'+(isLive?' live':'')+'">'+
+              (isLive?'LIVE':isDone?'DONE':'BO'+m.bo)+
+              (m.table>0?'<span class="br-slot-bo">T'+m.table+'</span>':'')+
+            '</div>'+
+          '</div>'+
+          // Right connector
+          (hasNext?'<div class="br-h-line"></div>':'<div style="width:8px"></div>')+
+        '</div>'+
+      '</div>';
+    });
+    html+='</div></div>';
+  });
+  return html+'</div></div>';
+}
+
+// ── RESULTS ──
+function renderResults(){
+  var tb=document.getElementById('results-body'); if(!tb) return;
+  var rows=Object.values(matchHistory).reverse();
+  if(!rows.length){tb.innerHTML='<tr><td colspan="6"><div class="empty">No results yet.</div></td></tr>';return;}
+  tb.innerHTML=rows.map(function(r){
+    var w=r.winner||'';
+    var dt=r.endTime?new Date(r.endTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'–';
+    return '<tr>'+
+      '<td class="mid-cell">'+(r.matchId||'–')+'</td>'+
+      '<td><span class="'+(w===r.p1?'winner-name':'')+'">'+esc(r.p1||'')+'</span><br><span style="font-size:0.65rem;color:var(--text3)">'+esc(r.p1state||'')+'</span></td>'+
+      '<td class="score-bold">'+(r.p1frames||0)+' – '+(r.p2frames||0)+'</td>'+
+      '<td style="text-align:right"><span class="'+(w===r.p2?'winner-name':'')+'">'+esc(r.p2||'')+'</span><br><span style="font-size:0.65rem;color:var(--text3);float:right">'+esc(r.p2state||'')+'</span></td>'+
+      '<td style="font-size:0.75rem;color:var(--text3)">'+esc(r.tournament||'–')+'</td>'+
+      '<td style="font-size:0.72rem;color:var(--text3);white-space:nowrap">'+dt+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ── UTILS ──
+function findLiveMatch(mid){
+  if(!mid) return null;
+  return Object.values(liveMatches).find(function(m){return m&&m.matchId===mid;})||null;
+}
+function ck(n){return (n||'').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'').toLowerCase();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
