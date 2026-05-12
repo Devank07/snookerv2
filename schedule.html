@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Match Schedule — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#1a1a1a;--bg2:#222;--bg3:#282828;--bg4:#2e2e2e;
+  --border:#2e2e2e;--border2:#363636;
+  --gold:#c9a227;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f97316;
+  --text:#f0f0f0;--text2:#a0a0a0;--text3:#555;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+
+/* ── NAV ── */
+.topnav{background:#fff;border-bottom:1px solid #e0e0e0;height:48px;display:flex;align-items:center;padding:0 20px;gap:0;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.nav-logo{display:flex;align-items:center;gap:9px;margin-right:24px;text-decoration:none;}
+.nav-logo img{width:30px;height:30px;border-radius:50%;object-fit:cover;border:1px solid rgba(201,162,39,0.4);}
+.nav-logo-text{font-weight:800;font-size:0.9rem;letter-spacing:3px;color:#1a1a1a;}
+.nav-logo-dot{color:var(--gold);}
+.nav-links{display:flex;align-items:center;flex:1;}
+.nav-a{padding:0 13px;height:48px;display:flex;align-items:center;font-size:0.78rem;font-weight:500;color:#555;border-bottom:2px solid transparent;transition:all .15s;text-decoration:none;white-space:nowrap;}
+.nav-a:hover{color:#111;}
+.nav-a.on{color:#111;border-bottom-color:var(--gold);}
+#nav-clock{font-size:0.8rem;color:#999;font-family:monospace;letter-spacing:1px;margin-left:auto;}
+
+/* ── HERO STRIP ── */
+.hero-strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.hero-title{font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:800;color:var(--text);letter-spacing:2px;}
+.hero-sub{font-size:0.78rem;color:var(--text3);margin-top:2px;}
+.stats-pills{display:flex;gap:8px;flex-wrap:wrap;}
+.stat-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:0.72rem;font-weight:600;letter-spacing:1px;}
+.sp-live{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.25);}
+.sp-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+.sp-pending{background:rgba(201,162,39,0.08);color:var(--gold);border:1px solid rgba(201,162,39,0.2);}
+.sp-done{background:rgba(59,130,246,0.08);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── FILTERS ── */
+.filter-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;overflow-x:auto;}
+.filter-btn{padding:5px 14px;border-radius:20px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .15s;white-space:nowrap;letter-spacing:0.5px;}
+.filter-btn:hover{border-color:var(--gold);color:var(--gold);}
+.filter-btn.on{background:var(--gold);border-color:var(--gold);color:#000;}
+.filter-sep{width:1px;height:20px;background:var(--border2);flex-shrink:0;}
+.search-input{padding:5px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;color:var(--text);font-size:0.75rem;width:200px;outline:none;transition:border-color .15s;}
+.search-input:focus{border-color:var(--gold);}
+.search-input::placeholder{color:var(--text3);}
+
+/* ── MAIN ── */
+.main{padding:20px 24px;max-width:1200px;margin:0 auto;}
+
+/* ── TABLE OVERVIEW ── */
+.tables-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:24px;}
+.table-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s;}
+.table-card.live{border-color:rgba(34,197,94,0.35);}
+.table-card.next{border-color:rgba(201,162,39,0.35);}
+.tc-head{padding:8px 11px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3);}
+.tc-num{font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;color:var(--text2);letter-spacing:2px;}
+.tc-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);}
+.tc-dot.live{background:var(--green);animation:pulse 1.5s infinite;}
+.tc-dot.next{background:var(--gold);}
+.tc-body{padding:8px 11px;}
+.tc-match{font-size:0.75rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-match.empty{color:var(--text3);font-weight:400;font-style:italic;}
+.tc-sub{font-size:0.62rem;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-status{font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+.tc-status.live{color:var(--green);}
+.tc-status.next{color:var(--gold);}
+.tc-status.idle{color:var(--text3);}
+
+/* ── SECTION LABEL ── */
+.sec-label{font-size:0.65rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.sec-label.live{color:var(--green);}
+.sec-label.next{color:var(--gold);}
+.sec-label.done{color:var(--blue);}
+
+/* ── MATCH ROWS ── */
+.match-list{display:flex;flex-direction:column;gap:4px;margin-bottom:24px;}
+
+.match-row{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:11px 14px;
+  display:grid;
+  grid-template-columns:80px 1fr auto auto;
+  align-items:center;gap:12px;
+  transition:border-color .15s,background .15s;
+  cursor:default;
+}
+.match-row:hover{background:var(--bg3);}
+.match-row.is-live{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.03);}
+.match-row.is-live:hover{background:rgba(34,197,94,0.05);}
+.match-row.is-next{border-color:rgba(201,162,39,0.3);}
+.match-row.is-done{opacity:0.55;}
+
+/* ID column */
+.mr-id{display:flex;flex-direction:column;gap:3px;}
+.mr-mid{font-family:monospace;font-size:0.72rem;color:var(--gold);font-weight:700;letter-spacing:1px;}
+.mr-round{font-size:0.6rem;color:var(--text3);letter-spacing:0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mr-tournament{font-size:0.58rem;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Players column */
+.mr-players{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.mr-player{display:flex;align-items:center;gap:8px;}
+.mr-player.winner .mr-name{color:var(--gold);font-weight:700;}
+.mr-player.loser .mr-name{color:var(--text3);}
+.mr-player.at .mr-name{color:var(--green);}
+.mr-name{font-size:0.82rem;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mr-state{font-size:0.62rem;color:var(--text3);flex-shrink:0;}
+.mr-score{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;color:var(--gold);min-width:16px;text-align:right;flex-shrink:0;}
+.mr-vs{font-size:0.62rem;color:var(--text3);padding:0 4px;}
+
+/* Info column */
+.mr-info{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
+.mr-bo{font-size:0.68rem;color:var(--text3);white-space:nowrap;}
+.mr-table{font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.1);color:var(--blue);border:1px solid rgba(59,130,246,0.2);white-space:nowrap;}
+.mr-table.tv{background:rgba(239,68,68,0.1);color:var(--red);border-color:rgba(239,68,68,0.2);}
+.mr-table.tbd{background:rgba(255,255,255,0.04);color:var(--text3);border-color:var(--border);}
+
+/* Status column */
+.mr-status{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;min-width:90px;}
+.status-badge{display:inline-flex;align-items:center;gap:3px;font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
+.sb-live{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.25);}
+.sb-live::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+.sb-next{background:rgba(201,162,39,0.1);color:var(--gold);border:1px solid rgba(201,162,39,0.25);}
+.sb-pending{background:rgba(255,255,255,0.05);color:var(--text3);border:1px solid var(--border);}
+.sb-done{background:rgba(59,130,246,0.08);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+.load-match-btn{padding:4px 10px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:5px;color:var(--gold);font-size:0.65rem;font-weight:700;cursor:pointer;letter-spacing:1px;white-space:nowrap;transition:background .15s;}
+.load-match-btn:hover{background:rgba(201,162,39,0.2);}
+
+/* ── LOAD MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal-box{background:#1e1e1e;border:1px solid rgba(201,162,39,0.3);border-radius:12px;padding:22px;width:100%;max-width:400px;}
+.modal-title{font-size:0.9rem;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:1px;}
+.modal-sub{font-size:0.78rem;color:var(--text2);margin-bottom:16px;line-height:1.5;}
+.tbl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;}
+.tbl-opt{padding:10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;font-size:0.85rem;font-weight:700;text-align:center;transition:all .15s;}
+.tbl-opt:hover{border-color:var(--gold);color:var(--gold);}
+.tbl-opt.sel{border-color:var(--gold);background:rgba(201,162,39,0.1);color:var(--gold);}
+.tbl-opt.occ{border-color:rgba(239,68,68,0.25);color:rgba(239,68,68,0.55);}
+.modal-btns{display:flex;gap:8px;}
+.modal-confirm{flex:1;padding:10px;background:linear-gradient(135deg,rgba(201,162,39,0.15),rgba(201,162,39,0.08));border:1.5px solid var(--gold);border-radius:7px;color:var(--gold);font-size:0.82rem;font-weight:700;cursor:pointer;letter-spacing:1px;}
+.modal-cancel{padding:10px 14px;background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:0.82rem;cursor:pointer;}
+
+/* Empty state */
+.empty{text-align:center;padding:32px;color:var(--text3);font-size:0.85rem;}
+
+/* TV mode - larger text for venue display */
+.tv-mode .match-row{padding:14px 18px;border-radius:10px;}
+.tv-mode .mr-name{font-size:1rem;}
+.tv-mode .mr-mid{font-size:0.8rem;}
+.tv-mode .mr-score{font-size:1.2rem;}
+
+@media(max-width:700px){
+  .main{padding:14px 12px;}
+  .match-row{grid-template-columns:70px 1fr auto;gap:8px;}
+  .mr-info{display:none;}
+  .tables-strip{grid-template-columns:repeat(3,1fr);}
+  .hero-strip{padding:12px 14px;}
+  .filter-bar{padding:8px 12px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="topnav">
+  <a class="nav-logo" href="index.html">
+    <img src="upbsa-logo.jpg" alt="UPBSA">
+    <span class="nav-logo-text">UPBSA<span class="nav-logo-dot">.TV</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="dashboard.html" class="nav-a">Dashboard</a>
+    <a href="tournament.html" class="nav-a">Tournaments</a>
+    <a href="schedule.html" class="nav-a on">Schedule</a>
+    <a href="bracket.html" target="_blank" class="nav-a">Live Bracket ↗</a>
+  </div>
+  <div id="nav-clock">00:00</div>
+</div>
+
+<!-- HERO -->
+<div class="hero-strip">
+  <div>
+    <div class="hero-title">Match Schedule</div>
+    <div class="hero-sub" id="hero-sub">Loading matches...</div>
+  </div>
+  <div class="stats-pills">
+    <div class="stat-pill sp-live" id="pill-live">0 Live</div>
+    <div class="stat-pill sp-pending" id="pill-pending">0 Pending</div>
+    <div class="stat-pill sp-done" id="pill-done">0 Done</div>
+    <button onclick="toggleTV()" id="tv-btn" style="padding:5px 12px;background:rgba(255,255,255,0.05);border:1px solid #333;border-radius:20px;color:#888;font-size:0.7rem;cursor:pointer;letter-spacing:1px;">TV Mode</button>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filter-bar">
+  <button class="filter-btn on" onclick="setFilter('all',this)">All Matches</button>
+  <button class="filter-btn" onclick="setFilter('live',this)">Live</button>
+  <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+  <button class="filter-btn" onclick="setFilter('done',this)">Done</button>
+  <div class="filter-sep"></div>
+  <input class="search-input" id="search-input" placeholder="Search player or event..." oninput="renderAll()">
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main-content">
+
+  <!-- Table overview -->
+  <div class="sec-label">Tables</div>
+  <div class="tables-strip" id="tables-strip"></div>
+
+  <!-- Live now -->
+  <div id="sec-live" style="display:none">
+    <div class="sec-label live">● Live Now</div>
+    <div class="match-list" id="list-live"></div>
+  </div>
+
+  <!-- Next up -->
+  <div id="sec-next" style="display:none">
+    <div class="sec-label next">Next Up</div>
+    <div class="match-list" id="list-next"></div>
+  </div>
+
+  <!-- Pending -->
+  <div id="sec-pending" style="display:none">
+    <div class="sec-label">Pending</div>
+    <div class="match-list" id="list-pending"></div>
+  </div>
+
+  <!-- Done -->
+  <div id="sec-done" style="display:none">
+    <div class="sec-label done">Completed</div>
+    <div class="match-list" id="list-done"></div>
+  </div>
+
+  <div class="empty" id="empty-state" style="display:none">No matches found. Generate a tournament draw to populate the schedule.</div>
+</div>
+
+<!-- LOAD MATCH MODAL -->
+<div class="modal-bg" id="load-modal">
+  <div class="modal-box">
+    <div class="modal-title">Load Match onto Table</div>
+    <div class="modal-sub" id="load-modal-sub">–</div>
+    <div class="tbl-grid" id="load-tbl-grid"></div>
+    <div class="modal-btns">
+      <button class="modal-confirm" onclick="confirmLoad()">Load Match</button>
+      <button class="modal-cancel" onclick="closeLoadModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+var liveMatches = {};
+var allRegistry = {};
+var filter = 'all';
+var tvMode = false;
+var loadingMatch = null;
+var loadTable = null;
+
+// ── CLOCK ──
+setInterval(function(){
+  var n=new Date(), el=document.getElementById('nav-clock');
+  if(el) el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0');
+},1000);
+
+// ── FIREBASE ──
+for(var t=1;t<=16;t++){
+  (function(n){
+    db.ref('matches/table-'+n).on('value',function(s){
+      liveMatches[n]=s.val(); renderAll();
+    });
+  })(t);
+}
+db.ref('match_registry').on('value',function(s){
+  allRegistry=s.val()||{}; renderAll();
+});
+
+// ── FILTER ──
+function setFilter(f,el){
+  filter=f;
+  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  renderAll();
+}
+
+function toggleTV(){
+  tvMode=!tvMode;
+  document.getElementById('main-content').classList.toggle('tv-mode',tvMode);
+  document.getElementById('tv-btn').textContent=tvMode?'Normal Mode':'TV Mode';
+  document.getElementById('tv-btn').style.color=tvMode?'var(--gold)':'#888';
+}
+
+// ── RENDER ALL ──
+function renderAll(){
+  var q=(document.getElementById('search-input').value||'').toLowerCase();
+
+  // Build enriched match list
+  var matches = Object.values(allRegistry).map(function(m){
+    var liveM = findLive(m.matchId);
+    var status = liveM ? (liveM.status==='active'?'live':'done') : (m.status||'pending');
+    if(m.status==='finished') status='done';
+    return Object.assign({}, m, {
+      liveData: liveM,
+      computedStatus: status,
+      p1live: liveM?liveM.player1.name:m.p1||'TBD',
+      p2live: liveM?liveM.player2.name:m.p2||'TBD',
+      p1f: liveM?liveM.player1.frames:m.p1frames||0,
+      p2f: liveM?liveM.player2.frames:m.p2frames||0,
+      tableNum: liveM?liveM.tableNumber:(m.tableNumber||0),
+    });
+  });
+
+  // Apply filter
+  if(filter!=='all'){
+    matches = matches.filter(function(m){
+      if(filter==='live') return m.computedStatus==='live';
+      if(filter==='pending') return m.computedStatus==='pending';
+      if(filter==='done') return m.computedStatus==='done';
+      return true;
+    });
+  }
+
+  // Apply search
+  if(q){
+    matches = matches.filter(function(m){
+      return (m.matchId||'').toLowerCase().includes(q)||
+             (m.p1live||'').toLowerCase().includes(q)||
+             (m.p2live||'').toLowerCase().includes(q)||
+             (m.tournament||'').toLowerCase().includes(q)||
+             (m.roundName||'').toLowerCase().includes(q);
+    });
+  }
+
+  // Sort: live first, then by matchId (sequential = creation order)
+  matches.sort(function(a,b){
+    var order={live:0,pending:1,done:2};
+    var ao=order[a.computedStatus]||1, bo=order[b.computedStatus]||1;
+    if(ao!==bo) return ao-bo;
+    return (a.matchId||'').localeCompare(b.matchId||'');
+  });
+
+  // Stats
+  var live=matches.filter(function(m){return m.computedStatus==='live';}).length;
+  var pending=matches.filter(function(m){return m.computedStatus==='pending';}).length;
+  var done=matches.filter(function(m){return m.computedStatus==='done';}).length;
+  document.getElementById('pill-live').textContent=live+' Live';
+  document.getElementById('pill-pending').textContent=pending+' Pending';
+  document.getElementById('pill-done').textContent=done+' Done';
+  document.getElementById('hero-sub').textContent=
+    (live+pending+done)+' total matches · '+live+' live · '+pending+' pending';
+
+  // Sections
+  renderSection('live', matches.filter(function(m){return m.computedStatus==='live';}), true);
+  // Next up = first 3 pending with assigned table
+  var nextUp = matches.filter(function(m){return m.computedStatus==='pending'&&m.tableNum>0;}).slice(0,3);
+  var remaining = matches.filter(function(m){return m.computedStatus==='pending'&&!nextUp.includes(m);});
+  renderSection('next', nextUp, false);
+  renderSection('pending', remaining, false);
+  renderSection('done', matches.filter(function(m){return m.computedStatus==='done';}), false);
+
+  // Empty state
+  var hasAny = matches.length > 0;
+  document.getElementById('empty-state').style.display = hasAny?'none':'block';
+
+  // Tables strip
+  renderTables();
+}
+
+function renderSection(id, matches, isLive){
+  var sec = document.getElementById('sec-'+id);
+  var list = document.getElementById('list-'+id);
+  if(!matches.length){ sec.style.display='none'; return; }
+  sec.style.display='block';
+  var tvTable = 1; // could be loaded from Firebase
+  list.innerHTML = matches.map(function(m){
+    var isLiveM = m.computedStatus==='live';
+    var isDone = m.computedStatus==='done';
+    var lm = m.liveData;
+    var w = lm&&lm.matchWinner;
+    var p1cls = (isDone&&w===1)?'winner':(isDone&&w===2)?'loser':(lm&&lm.turn===1&&isLiveM)?'at':'';
+    var p2cls = (isDone&&w===2)?'winner':(isDone&&w===1)?'loser':(lm&&lm.turn===2&&isLiveM)?'at':'';
+    var showScore = isLiveM||isDone;
+    var tblNum = m.tableNum;
+    var tblHtml = tblNum>0?
+      '<div class="mr-table'+(tblNum===tvTable?' tv':'')+'">T'+tblNum+(tblNum===tvTable?' 📺':'')+'</div>':
+      '<div class="mr-table tbd">No Table</div>';
+    var statusHtml = isLiveM?
+      '<span class="status-badge sb-live">LIVE F'+(lm?lm.currentFrame:'?')+'</span>':
+      isDone?
+      '<span class="status-badge sb-done">DONE</span>':
+      id==='next'?
+      '<span class="status-badge sb-next">NEXT UP</span>':
+      '<span class="status-badge sb-pending">PENDING</span>';
+    var actionHtml = !isLiveM&&!isDone?
+      '<button class="load-match-btn" onclick="openLoadModal(\''+esc(m.matchId||'')+'\',event)">Load →</button>':'';
+    var rowClass = 'match-row'+(isLiveM?' is-live':id==='next'?' is-next':isDone?' is-done':'');
+    return '<div class="'+rowClass+'">'+
+      // ID col
+      '<div class="mr-id">'+
+        '<div class="mr-mid">'+esc(m.matchId||'–')+'</div>'+
+        '<div class="mr-round">'+esc(m.roundName||m.tournament||'–')+'</div>'+
+        '<div class="mr-tournament">'+esc(m.tournament||'')+'</div>'+
+      '</div>'+
+      // Players col
+      '<div class="mr-players">'+
+        '<div class="mr-player '+p1cls+'">'+
+          '<div class="mr-name">'+esc(m.p1live||'TBD')+'</div>'+
+          '<div class="mr-state">'+esc(m.p1state||'')+'</div>'+
+          (showScore?'<div class="mr-score">'+m.p1f+'</div>':'')+
+        '</div>'+
+        '<div class="mr-vs">vs</div>'+
+        '<div class="mr-player '+p2cls+'">'+
+          '<div class="mr-name">'+esc(m.p2live||'TBD')+'</div>'+
+          '<div class="mr-state">'+esc(m.p2state||'')+'</div>'+
+          (showScore?'<div class="mr-score">'+m.p2f+'</div>':'')+
+        '</div>'+
+      '</div>'+
+      // Info col
+      '<div class="mr-info">'+
+        '<div class="mr-bo">BO'+(m.bestOf||'?')+'</div>'+
+        tblHtml+
+      '</div>'+
+      // Status col
+      '<div class="mr-status">'+
+        statusHtml+
+        actionHtml+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderTables(){
+  var strip=document.getElementById('tables-strip');
+  var html='';
+  for(var i=1;i<=6;i++){
+    var m=liveMatches[i];
+    var isLive=m&&m.status==='active';
+    // Find next pending match for this table
+    var nextM=Object.values(allRegistry).find(function(r){return r.status==='pending'&&r.tableNumber===i;});
+    var cls='table-card'+(isLive?' live':nextM?' next':'');
+    var dotCls='tc-dot'+(isLive?' live':nextM?' next':'');
+    var matchText=isLive?(m.player1.name+' vs '+m.player2.name):nextM?(nextM.p1||'TBD')+' vs '+(nextM.p2||'TBD'):'Available';
+    var subText=isLive?('F'+m.currentFrame+'/'+m.bestOf+' · '+(m.matchId||'')):nextM?(nextM.matchId||''):'';
+    var statusText=isLive?'LIVE':nextM?'Next Up':'Idle';
+    var statusCls=isLive?'live':nextM?'next':'idle';
+    html+='<div class="'+cls+'">'+
+      '<div class="tc-head"><div class="tc-num">TABLE '+i+'</div><div class="'+dotCls+'"></div></div>'+
+      '<div class="tc-body">'+
+        '<div class="tc-match'+((!isLive&&!nextM)?' empty':'')+'">'+esc(matchText)+'</div>'+
+        '<div class="tc-sub">'+esc(subText)+'</div>'+
+        '<div class="tc-status '+statusCls+'">'+statusText+'</div>'+
+      '</div>'+
+    '</div>';
+  }
+  strip.innerHTML=html;
+}
+
+// ── LOAD MATCH ──
+function openLoadModal(matchId, event){
+  if(event) event.stopPropagation();
+  var m=allRegistry[matchId]; if(!m)return;
+  loadingMatch=m; loadTable=null;
+  document.getElementById('load-modal-sub').textContent=
+    (m.p1||'TBD')+' vs '+(m.p2||'TBD')+' · '+(m.tournament||'')+' · BO'+(m.bestOf||'?');
+  var grid=document.getElementById('load-tbl-grid'); grid.innerHTML='';
+  for(var i=1;i<=6;i++){
+    (function(n){
+      var occ=liveMatches[n]&&liveMatches[n].status==='active';
+      var d=document.createElement('div');
+      d.className='tbl-opt'+(occ?' occ':'');
+      d.innerHTML='T'+n+(occ?'<br><span style="font-size:0.55rem">Live</span>':'');
+      d.onclick=function(){
+        if(occ&&!confirm('Table '+n+' is live. Replace it?')) return;
+        loadTable=n;
+        document.querySelectorAll('.tbl-opt').forEach(function(b){b.classList.remove('sel');});
+        d.classList.add('sel');
+      };
+      grid.appendChild(d);
+    })(i);
+  }
+  document.getElementById('load-modal').classList.add('open');
+}
+function closeLoadModal(){document.getElementById('load-modal').classList.remove('open');loadingMatch=null;loadTable=null;}
+function confirmLoad(){
+  if(!loadTable){alert('Select a table.');return;}
+  if(!loadingMatch) return;
+  var m=loadingMatch, now=Date.now(), bf=m.firstBreak||1;
+  var mdata={
+    matchId:m.matchId, sport:m.sport||'snooker', tableNumber:loadTable,
+    tournament:m.tournament||'Match', bestOf:m.bestOf||5,
+    currentFrame:1, status:'active', matchWinner:null,
+    turn:bf, breakPlayer:bf, frameBreaker:bf, currentBreak:0,
+    breakBalls:[], redsRemaining:15, lastFoul:null,
+    bestBreak1:0, bestBreak2:0,
+    frameStartTime:now, matchStartTime:now,
+    shotClockEnabled:false, shotClockDuration:60, shotClockStarted:now,
+    player1:{name:m.p1||'Player 1',frames:0,score:0,state:m.p1state||''},
+    player2:{name:m.p2||'Player 2',frames:0,score:0,state:m.p2state||''}
+  };
+  db.ref('matches/table-'+loadTable).set(mdata);
+  db.ref('match_registry/'+m.matchId).update({status:'active',tableNumber:loadTable,startTime:now});
+  closeLoadModal();
+}
+
+// ── UTILS ──
+function findLive(matchId){
+  if(!matchId) return null;
+  return Object.values(liveMatches).find(function(m){return m&&m.matchId===matchId;})||null;
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
