@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre-Match Intro — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:1280px;height:720px;
+  overflow:hidden;
+  background:#000;
+  font-family:'Barlow Condensed',sans-serif;
+}
+
+/* ── TABLE BG ── */
+.bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse at 50% 60%, rgba(20,80,20,0.85) 0%, rgba(4,20,4,0.95) 70%),
+    linear-gradient(180deg,#020d02,#0a2a0a);
+  overflow:hidden;
+}
+/* Green cloth lines */
+.bg::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,0.025) 40px,rgba(255,255,255,0.025) 41px),
+    repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,0.015) 40px,rgba(255,255,255,0.015) 41px);
+}
+/* Vignette */
+.bg::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,0,0.7) 100%);
+}
+
+/* Diagonal light beam */
+.light-beam{
+  position:absolute;
+  top:-100px;left:50%;
+  width:600px;height:1000px;
+  background:linear-gradient(180deg,rgba(255,220,50,0.06),transparent 70%);
+  transform:translateX(-50%) rotate(-15deg);
+  pointer-events:none;
+}
+
+/* ── TOP BANNER ── */
+.top-banner{
+  position:absolute;
+  top:0;left:0;right:0;
+  height:90px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.92),rgba(0,0,0,0.75));
+  border-bottom:3px solid #c9a227;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  z-index:10;
+}
+.banner-logo-left,.banner-logo-right{
+  width:64px;height:64px;
+  border-radius:8px;
+  background:rgba(201,162,39,0.12);
+  border:2px solid rgba(201,162,39,0.35);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  overflow:hidden;
+}
+.banner-logo-left img,.banner-logo-right img{width:100%;height:100%;object-fit:contain;}
+.logo-placeholder{font-family:'Bebas Neue',cursive;font-size:1rem;color:rgba(201,162,39,0.7);letter-spacing:2px;text-align:center;padding:4px;}
+
+.banner-center{flex:1;text-align:center;padding:0 20px;}
+.banner-tournament{
+  font-family:'Bebas Neue',cursive;
+  font-size:2rem;
+  color:#c9a227;
+  letter-spacing:6px;
+  line-height:1;
+  text-shadow:0 0 30px rgba(201,162,39,0.4);
+}
+.banner-subtitle{
+  font-size:0.78rem;
+  font-weight:600;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.5);
+  margin-top:2px;
+}
+
+/* ── MAIN CONTENT ── */
+.main{
+  position:absolute;
+  top:90px;bottom:80px;left:0;right:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  z-index:10;
+}
+
+/* Player side */
+.player-side{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px 40px;
+  position:relative;
+}
+
+/* Player photo slot */
+.player-photo{
+  width:180px;height:180px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.04);
+  border:3px solid rgba(201,162,39,0.3);
+  margin-bottom:20px;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  position:relative;
+}
+.player-photo img{width:100%;height:100%;object-fit:cover;}
+.player-initials{
+  font-family:'Bebas Neue',cursive;
+  font-size:4rem;
+  color:rgba(201,162,39,0.4);
+  letter-spacing:3px;
+}
+
+/* Player names */
+.player-firstname{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:1.8rem;
+  font-weight:600;
+  color:rgba(255,255,255,0.85);
+  letter-spacing:3px;
+  text-transform:uppercase;
+  line-height:1;
+  text-align:center;
+}
+.player-surname{
+  font-family:'Bebas Neue',cursive;
+  font-size:3.8rem;
+  color:#ffffff;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  line-height:1;
+  text-align:center;
+  text-shadow:0 2px 20px rgba(0,0,0,0.8);
+}
+.player-state{
+  font-size:0.85rem;
+  font-weight:600;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.4);
+  margin-top:6px;
+  text-align:center;
+}
+
+/* At-table highlight */
+.player-side.p1 .player-surname{color:#f0c040;text-shadow:0 0 30px rgba(240,192,64,0.4);}
+
+/* VS CENTER */
+.vs-center{
+  width:220px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  position:relative;
+}
+
+/* Round label */
+.round-label{
+  font-family:'Bebas Neue',cursive;
+  font-size:2rem;
+  color:#c9a227;
+  letter-spacing:5px;
+  text-align:center;
+  line-height:1;
+  padding:6px 16px;
+  border-top:2px solid rgba(201,162,39,0.4);
+  border-bottom:2px solid rgba(201,162,39,0.4);
+  white-space:nowrap;
+}
+
+/* VS badge */
+.vs-badge{
+  width:90px;height:90px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#1a4a1a,#0d2e0d);
+  border:3px solid #c9a227;
+  box-shadow:0 0 30px rgba(201,162,39,0.3),0 0 60px rgba(201,162,39,0.1);
+  display:flex;align-items:center;justify-content:center;
+}
+.vs-text{
+  font-family:'Bebas Neue',cursive;
+  font-size:2.2rem;
+  color:#c9a227;
+  letter-spacing:3px;
+  text-shadow:0 0 20px rgba(201,162,39,0.5);
+}
+
+/* Best of label */
+.bo-label{
+  font-size:0.75rem;
+  font-weight:700;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.35);
+  text-align:center;
+}
+.bo-num{
+  font-family:'Bebas Neue',cursive;
+  font-size:1.4rem;
+  color:rgba(255,255,255,0.5);
+  letter-spacing:2px;
+}
+
+/* Divider lines */
+.divider-line{
+  position:absolute;
+  top:10%;bottom:10%;
+  width:1px;
+  background:linear-gradient(180deg,transparent,rgba(201,162,39,0.3),transparent);
+}
+.divider-line.left{left:0;}
+.divider-line.right{right:0;}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:80px;
+  background:linear-gradient(0deg,rgba(0,0,0,0.92),rgba(0,0,0,0.7));
+  border-top:3px solid #c9a227;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 40px;
+  z-index:10;
+}
+.bottom-info{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.88rem;
+  font-weight:600;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.45);
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+.bottom-info span{
+  display:flex;align-items:center;gap:6px;
+}
+.bottom-info span::before{
+  content:'·';
+  color:rgba(201,162,39,0.4);
+  font-size:1.2rem;
+}
+.bottom-info span:first-child::before{display:none;}
+.upbsa-brand{
+  font-family:'Bebas Neue',cursive;
+  font-size:1.6rem;
+  letter-spacing:5px;
+  color:#c9a227;
+}
+
+/* ── COUNTDOWN ── */
+.countdown{
+  position:absolute;
+  top:108px;right:24px;
+  z-index:20;
+  width:52px;height:52px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.6);
+  border:2px solid rgba(201,162,39,0.3);
+  display:flex;align-items:center;justify-content:center;
+}
+.countdown-num{
+  font-family:'Bebas Neue',cursive;
+  font-size:1.5rem;
+  color:rgba(201,162,39,0.6);
+  line-height:1;
+}
+
+/* ── TABLE BADGE ── */
+.table-badge{
+  position:absolute;
+  top:108px;left:24px;
+  z-index:20;
+  background:rgba(0,0,0,0.7);
+  border:1px solid rgba(201,162,39,0.4);
+  border-radius:6px;
+  padding:6px 14px;
+  font-family:'Barlow Condensed';
+  font-size:0.8rem;
+  font-weight:700;
+  letter-spacing:2px;
+  color:rgba(201,162,39,0.8);
+  text-transform:uppercase;
+}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.anim-left{animation:slideLeft .6s ease both;}
+.anim-right{animation:slideRight .6s ease both;}
+.anim-scale{animation:scaleIn .5s ease both;}
+.anim-fade{animation:fadeIn .7s ease both;}
+.anim-delay1{animation-delay:.2s;}
+.anim-delay2{animation-delay:.4s;}
+.anim-delay3{animation-delay:.6s;}
+.anim-delay4{animation-delay:.8s;}
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg"></div>
+<div class="light-beam"></div>
+
+<!-- Table badge -->
+<div class="table-badge" id="table-badge">Table –</div>
+
+<!-- Countdown -->
+<div class="countdown"><div class="countdown-num" id="countdown">15</div></div>
+
+<!-- Top banner -->
+<div class="top-banner anim-fade">
+  <div class="banner-logo-left" id="logo-left">
+    <div class="logo-placeholder" id="logo-left-text">LOGO</div>
+  </div>
+  <div class="banner-center">
+    <div class="banner-tournament" id="banner-tournament">ALL INDIA OPEN SNOOKER CHAMPIONSHIP 2026</div>
+    <div class="banner-subtitle" id="banner-subtitle">ALEXANDER CLUB · UPBSA.TV</div>
+  </div>
+  <div class="banner-logo-right" id="logo-right">
+    <div class="logo-placeholder" id="logo-right-text">LOGO</div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+  <!-- Player 1 -->
+  <div class="player-side p1 anim-left anim-delay1">
+    <div class="divider-line right"></div>
+    <div class="player-photo">
+      <div class="player-initials" id="p1-initials">RK</div>
+    </div>
+    <div class="player-firstname" id="p1-firstname">Rajat</div>
+    <div class="player-surname" id="p1-surname">Khaneja</div>
+    <div class="player-state" id="p1-state">Haryana</div>
+  </div>
+
+  <!-- VS center -->
+  <div class="vs-center">
+    <div class="round-label anim-fade anim-delay2" id="round-label">FINAL</div>
+    <div class="vs-badge anim-scale anim-delay3">
+      <div class="vs-text">VS</div>
+    </div>
+    <div style="text-align:center;" class="anim-fade anim-delay4">
+      <div class="bo-label">Best of</div>
+      <div class="bo-num" id="bo-num">17</div>
+    </div>
+  </div>
+
+  <!-- Player 2 -->
+  <div class="player-side p2 anim-right anim-delay1">
+    <div class="divider-line left"></div>
+    <div class="player-photo">
+      <div class="player-initials" id="p2-initials">AM</div>
+    </div>
+    <div class="player-firstname" id="p2-firstname">Aditya</div>
+    <div class="player-surname" id="p2-surname">Mehta</div>
+    <div class="player-state" id="p2-state">Delhi</div>
+  </div>
+
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar anim-fade anim-delay3">
+  <div class="bottom-info">
+    <span id="bottom-venue">Alexander Athletic Club</span>
+    <span id="bottom-date">8 April 2026</span>
+    <span id="bottom-sport">Snooker</span>
+  </div>
+  <div class="upbsa-brand">UPBSA.TV</div>
+</div>
+
+<!-- ══ EDITOR PANEL (hidden in OBS, shown in editor mode) ══ -->
+<div id="editor-panel" style="display:none;position:fixed;top:0;right:0;width:320px;height:100vh;background:rgba(4,10,5,0.97);border-left:2px solid #c9a227;overflow-y:auto;z-index:100;padding:16px;font-family:Arial,sans-serif;">
+  <div style="font-size:0.72rem;font-weight:bold;letter-spacing:3px;color:#c9a227;text-transform:uppercase;margin-bottom:14px;">Intro Editor</div>
+
+  <!-- Tournament -->
+  <div style="margin-bottom:10px;">
+    <label style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px;">Tournament Name</label>
+    <input id="e-tournament" type="text" value="ALL INDIA OPEN SNOOKER CHAMPIONSHIP 2026" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+  </div>
+  <div style="margin-bottom:10px;">
+    <label style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px;">Subtitle / Sponsors</label>
+    <input id="e-subtitle" type="text" value="ALEXANDER CLUB · UPBSA.TV" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+  </div>
+
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Round & Match</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Round</label>
+      <select id="e-round" style="width:100%;padding:7px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.8rem;">
+        <option>FINAL</option>
+        <option>SEMI FINAL</option>
+        <option>QUARTER FINAL</option>
+        <option>LAST 16</option>
+        <option>LAST 32</option>
+        <option>LAST 64</option>
+        <option>PRE-QUARTER FINAL</option>
+        <option>GROUP STAGE</option>
+        <option>ROUND ROBIN</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Best Of</label>
+      <select id="e-bo" style="width:100%;padding:7px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.8rem;">
+        <option>1</option><option>3</option><option>5</option><option>7</option>
+        <option>9</option><option>11</option><option>13</option><option>17</option><option>19</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Player 1</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">First Name</label>
+      <input id="e-p1f" type="text" value="Rajat" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+    </div>
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Surname</label>
+      <input id="e-p1s" type="text" value="Khaneja" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+    </div>
+  </div>
+  <div style="margin-bottom:10px;">
+    <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">State / Association</label>
+    <input id="e-p1state" type="text" value="Haryana" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+  </div>
+
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Player 2</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">First Name</label>
+      <input id="e-p2f" type="text" value="Aditya" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+    </div>
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Surname</label>
+      <input id="e-p2s" type="text" value="Mehta" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+    </div>
+  </div>
+  <div style="margin-bottom:10px;">
+    <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">State / Association</label>
+    <input id="e-p2state" type="text" value="Delhi" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+  </div>
+
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Venue & Info</div>
+  <div style="margin-bottom:8px;">
+    <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Venue</label>
+    <input id="e-venue" type="text" value="Alexander Athletic Club" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Date</label>
+      <input id="e-date" type="text" value="8 April 2026" style="width:100%;padding:7px 9px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.82rem;">
+    </div>
+    <div>
+      <label style="font-size:0.6rem;color:rgba(232,244,224,0.35);display:block;margin-bottom:3px;">Table</label>
+      <select id="e-table" style="width:100%;padding:7px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.8rem;">
+        <option value="0">No Table</option>
+        <option value="1">Table 1</option><option value="2">Table 2</option>
+        <option value="3">Table 3</option><option value="4">Table 4</option>
+        <option value="5">Table 5</option><option value="6">Table 6</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Colour -->
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Accent Colour</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <div onclick="setAccent('#c9a227')" style="width:28px;height:28px;border-radius:5px;background:#c9a227;cursor:pointer;border:2px solid white;"></div>
+    <div onclick="setAccent('#2ecc71')" style="width:28px;height:28px;border-radius:5px;background:#2ecc71;cursor:pointer;border:2px solid transparent;"></div>
+    <div onclick="setAccent('#e74c3c')" style="width:28px;height:28px;border-radius:5px;background:#e74c3c;cursor:pointer;border:2px solid transparent;"></div>
+    <div onclick="setAccent('#5dade2')" style="width:28px;height:28px;border-radius:5px;background:#5dade2;cursor:pointer;border:2px solid transparent;"></div>
+    <div onclick="setAccent('#9b59b6')" style="width:28px;height:28px;border-radius:5px;background:#9b59b6;cursor:pointer;border:2px solid transparent;"></div>
+    <input type="color" id="e-accent" value="#c9a227" onchange="setAccent(this.value)" style="width:28px;height:28px;border-radius:5px;cursor:pointer;border:none;padding:0;">
+  </div>
+
+  <!-- Load from Firebase -->
+  <div style="font-size:0.6rem;color:rgba(232,244,224,0.4);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px;">Load from Live Match</div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;">
+    <select id="e-load-table" style="flex:1;padding:7px;background:#122a1c;border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:#e8f4e0;font-size:0.8rem;">
+      <option value="1">Table 1</option><option value="2">Table 2</option>
+      <option value="3">Table 3</option><option value="4">Table 4</option>
+      <option value="5">Table 5</option><option value="6">Table 6</option>
+    </select>
+    <button onclick="loadFromTable()" style="padding:7px 12px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.35);border-radius:6px;color:#c9a227;font-size:0.78rem;font-weight:bold;cursor:pointer;">Load</button>
+  </div>
+
+  <!-- Action buttons -->
+  <button onclick="applyAll()" style="width:100%;padding:11px;background:linear-gradient(135deg,#1c3f1c,#0d2318);color:#c9a227;border:1.5px solid #c9a227;border-radius:8px;font-size:0.88rem;font-weight:bold;cursor:pointer;letter-spacing:2px;margin-bottom:8px;">Apply Changes</button>
+  <button onclick="saveToFirebase()" style="width:100%;padding:10px;background:rgba(41,128,185,0.12);color:#5dade2;border:1px solid rgba(41,128,185,0.35);border-radius:8px;font-size:0.85rem;font-weight:bold;cursor:pointer;letter-spacing:2px;margin-bottom:8px;">Save to Firebase</button>
+  <button onclick="takeScreenshot()" style="width:100%;padding:10px;background:rgba(155,89,182,0.12);color:#9b59b6;border:1px solid rgba(155,89,182,0.35);border-radius:8px;font-size:0.85rem;font-weight:bold;cursor:pointer;letter-spacing:2px;margin-bottom:8px;">Screenshot (Thumbnail)</button>
+  <button onclick="startCountdown()" style="width:100%;padding:10px;background:rgba(231,76,60,0.12);color:#e74c3c;border:1px solid rgba(231,76,60,0.35);border-radius:8px;font-size:0.85rem;font-weight:bold;cursor:pointer;letter-spacing:2px;">Start Countdown</button>
+
+  <div style="font-size:0.68rem;color:rgba(232,244,224,0.2);margin-top:12px;line-height:1.6;">
+    OBS: Add as Browser Source 1280×720.<br>
+    Thumbnail: Click Screenshot to download 1280×720 PNG.
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+var params = new URLSearchParams(location.search);
+var obsMode = params.get('obs') === '1';
+var editMode = params.get('edit') === '1';
+var tableParam = params.get('table');
+var accent = '#c9a227';
+var countdownInterval = null;
+
+// ── SHOW EDITOR IF IN EDIT MODE ──
+if(editMode){
+  document.getElementById('editor-panel').style.display = 'block';
+  document.body.style.width = '100vw';
+  document.body.style.height = '100vh';
+}
+
+// ── OBS MODE: reads from Firebase intro config ──
+if(obsMode || tableParam){
+  var introRef = db.ref('intro_config');
+  introRef.on('value', function(snap){
+    var d = snap.val();
+    if(d) applyData(d);
+  });
+  // Also watch for countdown trigger
+  db.ref('intro_countdown').on('value', function(snap){
+    var v = snap.val();
+    if(v && v.running) doCountdown(v.seconds||15);
+  });
+}
+
+// Load from specific table if ?table= param
+if(tableParam){
+  db.ref('matches/table-'+tableParam).on('value', function(snap){
+    var m = snap.val();
+    if(m){
+      applyData({
+        tournament: m.tournament||'',
+        round: m.tournament||'',
+        bo: m.bestOf||5,
+        p1f: m.player1.name.split(' ')[0]||'',
+        p1s: m.player1.name.split(' ').slice(1).join(' ')||m.player1.name,
+        p1state: m.player1.state||'',
+        p2f: m.player2.name.split(' ')[0]||'',
+        p2s: m.player2.name.split(' ').slice(1).join(' ')||m.player2.name,
+        p2state: m.player2.state||'',
+        table: m.tableNumber||tableParam
+      });
+    }
+  });
+}
+
+function applyData(d){
+  if(d.tournament) document.getElementById('banner-tournament').textContent = d.tournament.toUpperCase();
+  if(d.subtitle) document.getElementById('banner-subtitle').textContent = d.subtitle;
+  if(d.round) document.getElementById('round-label').textContent = d.round.toUpperCase();
+  if(d.bo) document.getElementById('bo-num').textContent = d.bo;
+  if(d.p1f) document.getElementById('p1-firstname').textContent = d.p1f.toUpperCase();
+  if(d.p1s){ document.getElementById('p1-surname').textContent = d.p1s.toUpperCase(); setInitials('p1',d.p1f,d.p1s); }
+  if(d.p1state) document.getElementById('p1-state').textContent = d.p1state.toUpperCase();
+  if(d.p2f) document.getElementById('p2-firstname').textContent = d.p2f.toUpperCase();
+  if(d.p2s){ document.getElementById('p2-surname').textContent = d.p2s.toUpperCase(); setInitials('p2',d.p2f,d.p2s); }
+  if(d.p2state) document.getElementById('p2-state').textContent = d.p2state.toUpperCase();
+  if(d.venue) document.getElementById('bottom-venue').textContent = d.venue;
+  if(d.date) document.getElementById('bottom-date').textContent = d.date;
+  if(d.sport) document.getElementById('bottom-sport').textContent = d.sport;
+  if(d.table && +d.table > 0) document.getElementById('table-badge').textContent = 'Table '+d.table;
+  else document.getElementById('table-badge').style.display='none';
+  if(d.accent) setAccent(d.accent);
+  // Sync editor inputs
+  if(editMode){
+    ['tournament','subtitle','round','bo','p1f','p1s','p1state','p2f','p2s','p2state','venue','date'].forEach(function(k){
+      var el = document.getElementById('e-'+k);
+      if(el && d[k]) el.value = d[k];
+    });
+    if(d.table){ var ts=document.getElementById('e-table'); if(ts) ts.value=d.table; }
+  }
+}
+
+function setInitials(player, first, last){
+  var i = document.getElementById(player+'-initials');
+  if(i) i.textContent = (first?first[0].toUpperCase():'') + (last?last[0].toUpperCase():'');
+}
+
+function setAccent(color){
+  accent = color;
+  document.documentElement.style.setProperty('--gold', color);
+  // Update color swatches border
+  document.querySelectorAll('#editor-panel div[onclick]').forEach(function(el){
+    el.style.border = el.getAttribute('onclick').includes(color) ? '2px solid white' : '2px solid transparent';
+  });
+}
+
+function applyAll(){
+  var d = {
+    tournament: document.getElementById('e-tournament').value,
+    subtitle: document.getElementById('e-subtitle').value,
+    round: document.getElementById('e-round').value,
+    bo: document.getElementById('e-bo').value,
+    p1f: document.getElementById('e-p1f').value,
+    p1s: document.getElementById('e-p1s').value,
+    p1state: document.getElementById('e-p1state').value,
+    p2f: document.getElementById('e-p2f').value,
+    p2s: document.getElementById('e-p2s').value,
+    p2state: document.getElementById('e-p2state').value,
+    venue: document.getElementById('e-venue').value,
+    date: document.getElementById('e-date').value,
+    table: document.getElementById('e-table').value,
+    accent: accent,
+    sport: 'Snooker'
+  };
+  applyData(d);
+}
+
+function saveToFirebase(){
+  applyAll();
+  var d = {
+    tournament: document.getElementById('e-tournament').value,
+    subtitle: document.getElementById('e-subtitle').value,
+    round: document.getElementById('e-round').value,
+    bo: document.getElementById('e-bo').value,
+    p1f: document.getElementById('e-p1f').value,
+    p1s: document.getElementById('e-p1s').value,
+    p1state: document.getElementById('e-p1state').value,
+    p2f: document.getElementById('e-p2f').value,
+    p2s: document.getElementById('e-p2s').value,
+    p2state: document.getElementById('e-p2state').value,
+    venue: document.getElementById('e-venue').value,
+    date: document.getElementById('e-date').value,
+    table: document.getElementById('e-table').value,
+    accent: accent,
+    sport: 'Snooker'
+  };
+  db.ref('intro_config').set(d).then(function(){
+    alert('Saved to Firebase. OBS overlay updated.');
+  });
+}
+
+function loadFromTable(){
+  var n = document.getElementById('e-load-table').value;
+  db.ref('matches/table-'+n).once('value', function(snap){
+    var m = snap.val();
+    if(!m){ alert('No live match on Table '+n); return; }
+    var n1 = m.player1.name.split(' ');
+    var n2 = m.player2.name.split(' ');
+    document.getElementById('e-p1f').value = n1[0]||'';
+    document.getElementById('e-p1s').value = n1.slice(1).join(' ')||n1[0]||'';
+    document.getElementById('e-p1state').value = m.player1.state||'';
+    document.getElementById('e-p2f').value = n2[0]||'';
+    document.getElementById('e-p2s').value = n2.slice(1).join(' ')||n2[0]||'';
+    document.getElementById('e-p2state').value = m.player2.state||'';
+    document.getElementById('e-tournament').value = m.tournament||'';
+    document.getElementById('e-bo').value = m.bestOf||'5';
+    document.getElementById('e-table').value = m.tableNumber||'1';
+    applyAll();
+  });
+}
+
+function startCountdown(){
+  db.ref('intro_countdown').set({running:true, seconds:15, startedAt:Date.now()});
+  doCountdown(15);
+}
+
+function doCountdown(seconds){
+  if(countdownInterval) clearInterval(countdownInterval);
+  var rem = seconds;
+  var el = document.getElementById('countdown');
+  el.style.display='flex';
+  countdownInterval = setInterval(function(){
+    el.textContent = rem;
+    if(rem <= 0){
+      clearInterval(countdownInterval);
+      el.textContent = '▶';
+      db.ref('intro_countdown').set({running:false});
+    }
+    rem--;
+  }, 1000);
+}
+
+function takeScreenshot(){
+  // Uses html2canvas if available, otherwise instructs user
+  if(typeof html2canvas !== 'undefined'){
+    var ep = document.getElementById('editor-panel');
+    ep.style.display = 'none';
+    html2canvas(document.body, {width:1280,height:720,scale:1}).then(function(canvas){
+      var link = document.createElement('a');
+      var p1 = document.getElementById('p1-surname').textContent;
+      var p2 = document.getElementById('p2-surname').textContent;
+      var rnd = document.getElementById('round-label').textContent.replace(/\s+/g,'_');
+      link.download = 'UPBSA_'+p1+'_vs_'+p2+'_'+rnd+'.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if(editMode) ep.style.display = 'block';
+    });
+  } else {
+    alert('To save as thumbnail:\n\n1. Press F11 for fullscreen\n2. Press Print Screen / Screenshot\n3. Crop to 1280×720\n\nOr use OBS > Add Source > Browser Source > 1280×720 > Right click > Screenshot');
+  }
+}
+
+// Hide table badge by default if no table
+if(!tableParam) document.getElementById('table-badge').style.display='none';
+</script>
+<a href="dashboard.html" style="position:fixed;bottom:10px;right:10px;z-index:999;font-size:0.65rem;color:rgba(255,255,255,0.25);background:rgba(0,0,0,0.5);padding:4px 10px;border-radius:4px;text-decoration:none;">← Dashboard</a>
+</body>
+</html>

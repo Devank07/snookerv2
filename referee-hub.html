@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Referee Hub — UPBSA.TV</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{--bg:#07120d;--bg2:#0a1610;--bg3:#0f1f14;--border:rgba(255,255,255,0.07);--gold:#c9a227;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--text:#e8f4e0;--sub:rgba(232,244,224,0.45);}
+html,body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;}
+
+/* Header */
+.hdr{background:var(--bg2);border-bottom:2px solid var(--gold);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-logo img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid rgba(201,162,39,0.4);}
+.hdr-logo-text{font-size:1rem;font-weight:800;color:var(--gold);letter-spacing:3px;}
+.hdr-logo-dot{color:rgba(201,162,39,0.4);}
+.back-link{font-size:0.7rem;color:var(--sub);text-decoration:none;padding:5px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:5px;}
+
+/* Main content */
+.main{flex:1;padding:24px 16px;}
+.page-title{font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.page-sub{font-size:0.8rem;color:var(--sub);margin-bottom:24px;}
+
+/* Step label */
+.step-label{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--sub);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.step-label::before{content:attr(data-step);width:20px;height:20px;border-radius:50%;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--gold);flex-shrink:0;}
+
+/* Sport selector */
+.sport-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+.sport-btn{padding:20px 12px;border-radius:12px;border:2px solid rgba(255,255,255,0.07);background:var(--bg2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:10px;transition:all .15s;}
+.sport-btn:active{transform:scale(.97);}
+.sport-btn.on{border-color:var(--gold);background:rgba(201,162,39,0.08);}
+.sport-icon{font-size:2rem;}
+.sport-name{font-size:0.88rem;font-weight:700;color:var(--text);letter-spacing:1px;}
+.sport-desc{font-size:0.62rem;color:var(--sub);text-align:center;line-height:1.4;}
+
+/* Table grid */
+.table-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px;}
+.table-btn{
+  padding:0;border-radius:10px;border:2px solid var(--border);
+  background:var(--bg2);cursor:pointer;overflow:hidden;
+  transition:all .15s;
+}
+.table-btn.on{border-color:var(--gold);}
+.table-btn:active{transform:scale(.96);}
+.tb-num{padding:14px 8px 6px;font-size:1.1rem;font-weight:800;color:var(--text);text-align:center;}
+.tb-status{padding:0 8px 10px;font-size:0.58rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;text-align:center;}
+.tb-status.live{color:var(--green);}
+.tb-status.idle{color:var(--sub);}
+.tb-status.billiards{color:var(--blue);}
+.tb-live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;margin-right:3px;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Go button */
+.go-btn{
+  width:100%;padding:16px;border-radius:12px;
+  background:linear-gradient(135deg,#1c3f1c,#0d2318);
+  color:var(--gold);border:2px solid var(--gold);
+  font-size:1rem;font-weight:800;letter-spacing:3px;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 4px 20px rgba(201,162,39,0.15);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:12px;
+}
+.go-btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:none;}
+.go-btn:not(:disabled):hover{box-shadow:0 6px 28px rgba(201,162,39,0.25);}
+.go-btn:not(:disabled):active{transform:scale(.98);}
+.go-arrow{font-size:1.2rem;transition:transform .15s;}
+.go-btn:not(:disabled):hover .go-arrow{transform:translateX(4px);}
+
+/* Live match info card */
+.live-info{
+  background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);
+  border-radius:10px;padding:12px 14px;margin-bottom:16px;
+  display:none;
+}
+.live-info.show{display:block;}
+.li-label{font-size:0.58rem;font-weight:700;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.li-label::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+.li-match{font-size:0.85rem;font-weight:700;color:var(--text);}
+.li-sub{font-size:0.7rem;color:var(--sub);margin-top:2px;}
+
+footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(232,244,224,0.15);letter-spacing:1px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">
+    <img src="upbsa-logo.jpg" alt="UPBSA">
+    <div class="hdr-logo-text">UPBSA<span class="hdr-logo-dot">.TV</span></div>
+  </div>
+  <a href="dashboard.html" class="back-link">← Dashboard</a>
+</div>
+
+<div class="main">
+  <div class="page-title">Referee Hub</div>
+  <div class="page-sub">Select your sport and table to open the scoring remote</div>
+
+  <!-- Step 1: Sport -->
+  <div class="step-label" data-step="1">Sport</div>
+  <div class="sport-grid">
+    <div class="sport-btn on" id="sp-snooker" onclick="selectSport('snooker')">
+      <div class="sport-icon">🔴</div>
+      <div class="sport-name">Snooker</div>
+      <div class="sport-desc">Reds & colours<br>Break tracking</div>
+    </div>
+    <div class="sport-btn" id="sp-billiards" onclick="selectSport('billiards')">
+      <div class="sport-icon">🎱</div>
+      <div class="sport-name">Billiards</div>
+      <div class="sport-desc">Points up / Frames<br>Time format</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Table -->
+  <div class="step-label" data-step="2">Table</div>
+  <div class="table-grid" id="table-grid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Live match info for selected table -->
+  <div class="live-info" id="live-info">
+    <div class="li-label">Live on this table</div>
+    <div class="li-match" id="li-match">–</div>
+    <div class="li-sub" id="li-sub">–</div>
+  </div>
+
+  <!-- Go button -->
+  <button class="go-btn" id="go-btn" onclick="goToReferee()" disabled>
+    Open Referee Remote <span class="go-arrow">→</span>
+  </button>
+  <div style="text-align:center;font-size:0.72rem;color:var(--sub)" id="go-hint">Select sport and table first</div>
+
+</div>
+
+<footer>UPBSA.TV · Referee Hub</footer>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+var selectedSport = 'snooker';
+var selectedTable = null;
+var liveMatches = {};
+
+// Watch all tables
+for(var t=1;t<=6;t++){
+  (function(n){
+    db.ref('matches/table-'+n).on('value',function(s){
+      liveMatches[n]=s.val();
+      renderTableGrid();
+      updateLiveInfo();
+    });
+  })(t);
+}
+
+function selectSport(sport){
+  selectedSport = sport;
+  document.getElementById('sp-snooker').classList.toggle('on', sport==='snooker');
+  document.getElementById('sp-billiards').classList.toggle('on', sport==='billiards');
+  updateGoBtn();
+  updateLiveInfo();
+}
+
+function selectTable(n){
+  selectedTable = n;
+  renderTableGrid();
+  updateLiveInfo();
+  updateGoBtn();
+}
+
+function renderTableGrid(){
+  var grid = document.getElementById('table-grid');
+  var html = '';
+  for(var i=1;i<=6;i++){
+    var m = liveMatches[i];
+    var isLive = m && m.status==='active';
+    var sport = m && m.sport;
+    var isOn = selectedTable===i;
+    var statusClass = isLive?(sport==='billiards'?'billiards':'live'):'idle';
+    var statusText = isLive?
+      (sport==='billiards'?'<span class="tb-live-dot"></span>Billiards':'<span class="tb-live-dot"></span>Live')
+      :'Available';
+    html+='<div class="table-btn'+(isOn?' on':'')+'" onclick="selectTable('+i+')">'+
+      '<div class="tb-num">T'+i+'</div>'+
+      '<div class="tb-status '+statusClass+'">'+statusText+'</div>'+
+    '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function updateLiveInfo(){
+  var info = document.getElementById('live-info');
+  var matchEl = document.getElementById('li-match');
+  var subEl = document.getElementById('li-sub');
+  if(!selectedTable){ info.classList.remove('show'); return; }
+  var m = liveMatches[selectedTable];
+  if(m && m.status==='active'){
+    info.classList.add('show');
+    matchEl.textContent = m.player1.name + ' vs ' + m.player2.name;
+    var sportLabel = m.sport==='billiards'?'Billiards':'Snooker';
+    subEl.textContent = sportLabel+' · '+m.matchId+' · F'+(m.currentFrame||1)+'/'+m.bestOf;
+    // Warn if sport mismatch
+    if(m.sport && m.sport !== selectedSport){
+      info.style.borderColor = 'rgba(231,76,60,0.4)';
+      info.style.background = 'rgba(231,76,60,0.05)';
+      document.getElementById('li-label') && (document.querySelector('.li-label').style.color='#e74c3c');
+      subEl.textContent += ' · ⚠ Sport mismatch — switch to '+(m.sport==='billiards'?'Billiards':'Snooker');
+    } else {
+      info.style.borderColor = 'rgba(46,204,113,0.2)';
+      info.style.background = 'rgba(46,204,113,0.05)';
+    }
+  } else {
+    info.classList.remove('show');
+  }
+}
+
+function updateGoBtn(){
+  var btn = document.getElementById('go-btn');
+  var hint = document.getElementById('go-hint');
+  if(selectedTable){
+    btn.disabled = false;
+    var m = liveMatches[selectedTable];
+    var sportName = selectedSport==='snooker'?'Snooker':'Billiards';
+    btn.innerHTML = 'Open '+sportName+' Referee T'+selectedTable+' <span class="go-arrow">→</span>';
+    hint.textContent = selectedSport==='snooker'?
+      'Opens snooker scoring remote for Table '+selectedTable:
+      'Opens billiards scoring remote for Table '+selectedTable;
+  } else {
+    btn.disabled = true;
+    hint.textContent = 'Select sport and table first';
+  }
+}
+
+function goToReferee(){
+  if(!selectedTable) return;
+  var url = selectedSport==='snooker'?
+    'referee.html?table='+selectedTable:
+    'billiards-referee.html?table='+selectedTable;
+  window.location.href = url;
+}
+
+// Init
+renderTableGrid();
+</script>
+</body>
+</html>
