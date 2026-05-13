@@ -1,0 +1,52 @@
+{
+  "name": "UPBSA.TV",
+  "short_name": "UPBSA.TV",
+  "description": "Professional Cue Sports Broadcasting Platform — Live scoring, tournament management and OBS overlays for snooker and billiards",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#c9a227",
+  "background_color": "#1a1a1a",
+  "categories": ["sports", "utilities"],
+  "icons": [
+    {
+      "src": "upbsa-logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "upbsa-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "./dashboard.html",
+      "icons": [{"src": "upbsa-logo.jpg", "sizes": "96x96"}]
+    },
+    {
+      "name": "Referee Hub",
+      "short_name": "Referee",
+      "url": "./referee-hub.html",
+      "icons": [{"src": "upbsa-logo.jpg", "sizes": "96x96"}]
+    },
+    {
+      "name": "Live Bracket",
+      "short_name": "Bracket",
+      "url": "./bracket.html",
+      "icons": [{"src": "upbsa-logo.jpg", "sizes": "96x96"}]
+    },
+    {
+      "name": "Match Schedule",
+      "short_name": "Schedule",
+      "url": "./schedule.html",
+      "icons": [{"src": "upbsa-logo.jpg", "sizes": "96x96"}]
+    }
+  ]
+}
