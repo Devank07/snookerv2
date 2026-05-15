@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="upbsa-logo.jpg">
+<title>Admin — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#000;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--bg5:#2a2a2a;
+  --border:#1e1e1e;--border2:#2a2a2a;--border3:#333;
+  --gold:#c9a227;--gold2:#f0c040;
+  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f97316;--purple:#a855f7;
+  --text:#f0f0f0;--text2:#888;--text3:#444;
+  --nav-h:56px;--tab-h:64px;
+}
+html,body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter',sans-serif;
+  height:100vh;overflow:hidden;
+  max-width:480px;margin:0 auto;
+}
+
+/* ── TOP BAR ── */
+.top-bar{
+  height:var(--nav-h);background:var(--bg);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+  position:sticky;top:0;z-index:50;
+}
+.top-logo{display:flex;align-items:center;gap:8px;flex:1;}
+.top-logo img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(201,162,39,0.5);}
+.top-logo-text{font-weight:800;font-size:0.9rem;letter-spacing:3px;color:var(--gold);}
+.top-logo-dot{color:var(--text3);}
+.top-clock{font-family:monospace;font-size:0.85rem;color:var(--text3);letter-spacing:1px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(34,197,94,0.5);}
+.conn-dot.offline{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,0.5);}
+
+/* ── SCROLL AREA ── */
+.scroll-area{
+  height:calc(100vh - var(--nav-h) - var(--tab-h));
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ── BOTTOM TABS ── */
+.bottom-tabs{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;
+  height:var(--tab-h);background:var(--bg2);
+  border-top:1px solid var(--border2);
+  display:grid;grid-template-columns:repeat(5,1fr);
+  z-index:50;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab-btn{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;cursor:pointer;
+  transition:all .15s;padding:8px 4px;
+  border:none;background:none;
+}
+.tab-icon{font-size:1.3rem;line-height:1;}
+.tab-label{font-size:0.55rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+.tab-btn.on .tab-label{color:var(--gold);}
+.tab-btn.on .tab-icon{filter:drop-shadow(0 0 4px rgba(201,162,39,0.5));}
+
+/* ── PAGES ── */
+.page{display:none;padding:14px;}
+.page.on{display:block;}
+
+/* ── HOME PAGE ── */
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.stat-card{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:12px;padding:14px;
+}
+.sc-num{font-size:2rem;font-weight:900;line-height:1;margin-bottom:4px;}
+.sc-num.gold{color:var(--gold);}
+.sc-num.green{color:var(--green);}
+.sc-num.blue{color:var(--blue);}
+.sc-num.orange{color:var(--orange);}
+.sc-lbl{font-size:0.65rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+
+/* Alert cards */
+.alert-card{
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+  border-radius:10px;padding:12px 14px;margin-bottom:10px;
+  display:flex;align-items:center;gap:10px;
+}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.alert-text{font-size:0.8rem;color:var(--red);font-weight:500;}
+
+/* Section title */
+.sec-title{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;margin-top:16px;display:flex;align-items:center;gap:8px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border2);}
+
+/* Quick actions grid */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.quick-btn{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:12px;padding:16px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;transition:all .15s;text-decoration:none;
+}
+.quick-btn:active{transform:scale(.96);background:var(--bg3);}
+.quick-btn-icon{font-size:1.6rem;}
+.quick-btn-label{font-size:0.72rem;font-weight:600;color:var(--text);text-align:center;letter-spacing:0.5px;}
+.quick-btn-sub{font-size:0.6rem;color:var(--text3);text-align:center;}
+
+/* ── TABLES PAGE ── */
+.table-list{display:flex;flex-direction:column;gap:8px;}
+.tcard{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:12px;overflow:hidden;
+}
+.tcard.live{border-color:rgba(34,197,94,0.3);}
+.tcard.done{border-color:rgba(59,130,246,0.2);}
+.tcard-head{
+  padding:10px 14px;display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border-bottom:1px solid var(--border);
+}
+.tcard-num{font-size:0.72rem;font-weight:800;letter-spacing:2px;color:var(--text2);text-transform:uppercase;}
+.tcard-mid{font-family:monospace;font-size:0.65rem;color:var(--gold);flex:1;}
+.tcard-status{font-size:0.6rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
+.ts-live{color:var(--green);}
+.ts-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+.ts-idle{color:var(--text3);}
+.ts-done{color:var(--blue);}
+.tcard-body{padding:10px 14px;}
+.tcard-players{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.tcard-p{display:flex;flex-direction:column;gap:1px;}
+.tcard-pname{font-size:0.85rem;font-weight:700;color:var(--text);}
+.tcard-pname.at{color:var(--gold);}
+.tcard-pstate{font-size:0.62rem;color:var(--text3);}
+.tcard-score{font-family:'Inter';font-size:1.4rem;font-weight:900;color:var(--gold);text-align:center;}
+.tcard-meta{font-size:0.62rem;color:var(--text3);text-align:center;}
+.tcard-break{background:var(--bg4);border-radius:6px;padding:5px 10px;display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:8px;}
+.tcard-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.ta-btn{
+  flex:1;padding:8px 6px;border-radius:8px;
+  font-size:0.68rem;font-weight:700;cursor:pointer;
+  border:none;text-align:center;letter-spacing:0.5px;
+  text-decoration:none;transition:all .15s;
+  min-width:60px;
+}
+.ta-btn:active{opacity:.75;}
+.ta-ref{background:rgba(59,130,246,0.12);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+.ta-scr{background:rgba(34,197,94,0.1);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
+.ta-load{background:rgba(201,162,39,0.1);color:var(--gold);border:1px solid rgba(201,162,39,0.25);}
+.ta-end{background:rgba(239,68,68,0.08);color:var(--red);border:1px solid rgba(239,68,68,0.2);}
+.ta-clr{background:rgba(239,68,68,0.05);color:rgba(239,68,68,0.6);border:1px solid rgba(239,68,68,0.15);}
+.tcard-empty{padding:16px 14px;text-align:center;}
+.te-text{font-size:0.8rem;color:var(--text3);}
+
+/* ── SCHEDULE PAGE ── */
+.sched-group{margin-bottom:16px;}
+.sched-label{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.sched-label.live{color:var(--green);}
+.sched-label.next{color:var(--gold);}
+.sched-label::after{content:'';flex:1;height:1px;background:var(--border2);}
+.match-row{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:10px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:6px;cursor:pointer;
+}
+.match-row:active{background:var(--bg3);}
+.match-row.live{border-color:rgba(34,197,94,0.25);background:rgba(34,197,94,0.02);}
+.mr-mid-col{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.mr-mid-id{font-family:monospace;font-size:0.7rem;color:var(--gold);font-weight:700;}
+.mr-mid-round{font-size:0.62rem;color:var(--text3);}
+.mr-players{flex:1;min-width:0;}
+.mr-p{font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mr-p .vs{color:var(--text3);font-weight:400;margin:0 4px;font-size:0.72rem;}
+.mr-score{font-family:'Inter';font-size:1rem;font-weight:800;color:var(--gold);white-space:nowrap;}
+.mr-badge{font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+.mrb-live{background:rgba(34,197,94,0.12);color:var(--green);}
+.mrb-next{background:rgba(201,162,39,0.1);color:var(--gold);}
+.mrb-pending{background:rgba(255,255,255,0.05);color:var(--text3);}
+.mrb-done{background:rgba(59,130,246,0.08);color:var(--blue);}
+
+/* ── TOOLS PAGE ── */
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tool-tile{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:12px;padding:16px 12px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  text-decoration:none;cursor:pointer;transition:all .15s;
+}
+.tool-tile:active{transform:scale(.96);background:var(--bg3);}
+.tt-icon{font-size:1.4rem;}
+.tt-name{font-size:0.8rem;font-weight:700;color:var(--text);line-height:1.2;}
+.tt-sub{font-size:0.62rem;color:var(--text3);line-height:1.4;}
+.tt-badge{font-size:0.55rem;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:4px;text-transform:uppercase;}
+.ttb-admin{background:rgba(201,162,39,0.1);color:var(--gold);}
+.ttb-obs{background:rgba(59,130,246,0.1);color:var(--blue);}
+.ttb-live{background:rgba(34,197,94,0.1);color:var(--green);}
+.ttb-pub{background:rgba(168,85,247,0.1);color:var(--purple);}
+
+/* ── SETTINGS PAGE ── */
+.settings-list{display:flex;flex-direction:column;gap:6px;}
+.setting-row{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:10px;padding:14px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+}
+.setting-row:active{background:var(--bg3);}
+.sr-icon{font-size:1.2rem;width:32px;text-align:center;flex-shrink:0;}
+.sr-info{flex:1;}
+.sr-name{font-size:0.85rem;font-weight:600;color:var(--text);}
+.sr-sub{font-size:0.68rem;color:var(--text3);margin-top:2px;}
+.sr-arrow{color:var(--text3);font-size:0.8rem;}
+
+/* ── LOAD MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal-sheet{
+  background:var(--bg2);border-radius:20px 20px 0 0;
+  padding:20px 16px 32px;width:100%;max-width:480px;
+  border-top:1px solid var(--border2);
+}
+.modal-handle{width:36px;height:4px;background:var(--border3);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-size:0.95rem;font-weight:800;color:var(--gold);margin-bottom:6px;letter-spacing:1px;}
+.modal-sub{font-size:0.78rem;color:var(--text2);margin-bottom:16px;line-height:1.5;}
+.tbl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;}
+.tbl-opt{padding:12px;border-radius:9px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;font-size:0.88rem;font-weight:700;text-align:center;transition:all .15s;}
+.tbl-opt:hover{border-color:var(--gold);color:var(--gold);}
+.tbl-opt.sel{border-color:var(--gold);background:rgba(201,162,39,0.1);color:var(--gold);}
+.tbl-opt.occ{border-color:rgba(239,68,68,0.25);color:rgba(239,68,68,0.55);}
+.modal-btns{display:flex;gap:8px;}
+.modal-confirm{flex:1;padding:12px;background:linear-gradient(135deg,rgba(201,162,39,0.15),rgba(201,162,39,0.08));border:1.5px solid var(--gold);border-radius:10px;color:var(--gold);font-size:0.85rem;font-weight:700;cursor:pointer;letter-spacing:1px;}
+.modal-cancel{padding:12px 16px;background:none;border:1px solid var(--border2);border-radius:10px;color:var(--text2);font-size:0.85rem;cursor:pointer;}
+
+/* PIN GATE CSS injected inline */
+</style>
+</head>
+<body>
+
+  </div>
+  <div class="pin-title">Admin Access</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-err" id="pin-err"></div>
+  <div class="pin-grid">
+    <div class="pin-btn" onclick="pinPress('1')">1</div>
+    <div class="pin-btn" onclick="pinPress('2')">2</div>
+    <div class="pin-btn" onclick="pinPress('3')">3</div>
+    <div class="pin-btn" onclick="pinPress('4')">4</div>
+    <div class="pin-btn" onclick="pinPress('5')">5</div>
+    <div class="pin-btn" onclick="pinPress('6')">6</div>
+    <div class="pin-btn" onclick="pinPress('7')">7</div>
+    <div class="pin-btn" onclick="pinPress('8')">8</div>
+    <div class="pin-btn" onclick="pinPress('9')">9</div>
+    <div class="pin-btn zero" onclick="pinPress('0')">0</div>
+    <div class="pin-btn del" onclick="pinDel()">⌫</div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="top-bar" style="display:none;" id="app-topbar">
+  <div class="top-logo">
+    <img src="upbsa-logo.jpg" alt="UPBSA">
+    <div class="top-logo-text">UPBSA<span class="top-logo-dot">.TV</span></div>
+  </div>
+  <div class="conn-dot" id="conn-dot" title="Connection status"></div>
+  <div class="top-clock" id="top-clock">00:00</div>
+</div>
+
+<!-- APP (hidden until PIN) -->
+<div id="app-wrap" style="display:none;">
+<!-- PAGES -->
+<div class="scroll-area">
+
+  <!-- ── HOME ── -->
+  <div class="page on" id="page-home">
+    <div id="alerts-area"></div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="sc-num green" id="h-live">0</div><div class="sc-lbl">Live Now</div></div>
+      <div class="stat-card"><div class="sc-num gold" id="h-pending">0</div><div class="sc-lbl">Pending</div></div>
+      <div class="stat-card"><div class="sc-num blue" id="h-done">0</div><div class="sc-lbl">Completed</div></div>
+      <div class="stat-card"><div class="sc-num orange" id="h-break">–</div><div class="sc-lbl">Top Break</div></div>
+    </div>
+
+    <div class="sec-title">Quick Actions</div>
+    <div class="quick-grid">
+      <a href="referee-hub.html" class="quick-btn">
+        <div class="quick-btn-icon">🎯</div>
+        <div class="quick-btn-label">Referee Hub</div>
+        <div class="quick-btn-sub">Open scoring remote</div>
+      </a>
+      <div class="quick-btn" onclick="switchTab('tables')">
+        <div class="quick-btn-icon">🎱</div>
+        <div class="quick-btn-label">Tables</div>
+        <div class="quick-btn-sub">Manage live tables</div>
+      </div>
+      <div class="quick-btn" onclick="switchTab('schedule')">
+        <div class="quick-btn-icon">📋</div>
+        <div class="quick-btn-label">Schedule</div>
+        <div class="quick-btn-sub">Load next matches</div>
+      </div>
+      <a href="bracket.html" target="_blank" class="quick-btn">
+        <div class="quick-btn-icon">📡</div>
+        <div class="quick-btn-label">Live Bracket</div>
+        <div class="quick-btn-sub">Public view ↗</div>
+      </a>
+    </div>
+
+    <div class="sec-title">Live Tables</div>
+    <div id="home-tables"></div>
+  </div>
+
+  <!-- ── TABLES ── -->
+  <div class="page" id="page-tables">
+    <div class="sec-title" style="margin-top:4px;">All Tables</div>
+    <div class="table-list" id="tables-list"></div>
+  </div>
+
+  <!-- ── SCHEDULE ── -->
+  <div class="page" id="page-schedule">
+    <div id="sched-live-sec" style="display:none">
+      <div class="sched-label live">● Live Now</div>
+      <div id="sched-live"></div>
+    </div>
+    <div id="sched-next-sec" style="display:none">
+      <div class="sched-label next">Next Up</div>
+      <div id="sched-next"></div>
+    </div>
+    <div id="sched-pending-sec" style="display:none">
+      <div class="sched-label">Pending</div>
+      <div id="sched-pending"></div>
+    </div>
+    <div id="sched-done-sec" style="display:none">
+      <div class="sched-label">Completed</div>
+      <div id="sched-done"></div>
+    </div>
+    <div id="sched-empty" class="te-text" style="text-align:center;padding:32px;display:none;">
+      No matches yet. Generate a tournament draw first.
+    </div>
+  </div>
+
+  <!-- ── TOOLS ── -->
+  <div class="page" id="page-tools">
+    <div class="sec-title" style="margin-top:4px;">Admin</div>
+    <div class="tools-grid" style="margin-bottom:16px;">
+      <a href="dashboard.html" class="tool-tile"><div class="tt-icon">⚡</div><div class="tt-name">Dashboard</div><div class="tt-sub">Full control centre</div><span class="tt-badge ttb-admin">Admin</span></a>
+      <a href="tournament.html" class="tool-tile"><div class="tt-icon">🏆</div><div class="tt-name">Tournaments</div><div class="tt-sub">Draw & schedule</div><span class="tt-badge ttb-admin">Admin</span></a>
+      <a href="players.html" class="tool-tile"><div class="tt-icon">👤</div><div class="tt-name">Players</div><div class="tt-sub">Registry & import</div><span class="tt-badge ttb-admin">Admin</span></a>
+      <a href="schedule.html" class="tool-tile"><div class="tt-icon">📋</div><div class="tt-name">Full Schedule</div><div class="tt-sub">Timeline view</div><span class="tt-badge ttb-admin">Admin</span></a>
+      <a href="diagnostic.html" class="tool-tile"><div class="tt-icon">🔧</div><div class="tt-name">Diagnostic</div><div class="tt-sub">System health</div><span class="tt-badge ttb-admin">Admin</span></a>
+    </div>
+    <div class="sec-title">Broadcast</div>
+    <div class="tools-grid" style="margin-bottom:16px;">
+      <a href="overlay.html?table=1" class="tool-tile"><div class="tt-icon">📺</div><div class="tt-name">OBS Overlay</div><div class="tt-sub">Table 1 overlay</div><span class="tt-badge ttb-obs">OBS</span></a>
+      <a href="scoreboard.html" class="tool-tile"><div class="tt-icon">🖥️</div><div class="tt-name">Scoreboard</div><div class="tt-sub">Broadcast display</div><span class="tt-badge ttb-live">Live</span></a>
+      <a href="builder.html" class="tool-tile"><div class="tt-icon">🎨</div><div class="tt-name">Builder</div><div class="tt-sub">Scoreboard designer</div><span class="tt-badge ttb-obs">OBS</span></a>
+      <a href="stats-control.html" class="tool-tile"><div class="tt-icon">📊</div><div class="tt-name">Stats Overlay</div><div class="tt-sub">Tournament stats</div><span class="tt-badge ttb-obs">OBS</span></a>
+      <a href="intro.html?edit=1" class="tool-tile"><div class="tt-icon">🎬</div><div class="tt-name">Pre-Match Intro</div><div class="tt-sub">OBS + Thumbnail</div><span class="tt-badge ttb-obs">OBS</span></a>
+      <a href="design.html" class="tool-tile"><div class="tt-icon">🖌️</div><div class="tt-name">Quick Theme</div><div class="tt-sub">Fast OBS adjust</div><span class="tt-badge ttb-obs">OBS</span></a>
+    </div>
+    <div class="sec-title">Public</div>
+    <div class="tools-grid">
+      <a href="bracket.html" target="_blank" class="tool-tile"><div class="tt-icon">📡</div><div class="tt-name">Live Bracket</div><div class="tt-sub">Public fan page</div><span class="tt-badge ttb-pub">Public</span></a>
+      <a href="referee-hub.html" class="tool-tile"><div class="tt-icon">🎯</div><div class="tt-name">Referee Hub</div><div class="tt-sub">Sport + table picker</div><span class="tt-badge ttb-live">Referee</span></a>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="page" id="page-settings">
+    <div class="sec-title" style="margin-top:4px;">System</div>
+    <div class="settings-list">
+      <div class="setting-row" onclick="location.href='diagnostic.html'">
+        <div class="sr-icon">🔧</div>
+        <div class="sr-info"><div class="sr-name">System Diagnostic</div><div class="sr-sub">Firebase health, raw data, match counter</div></div>
+        <div class="sr-arrow">›</div>
+      </div>
+      <div class="setting-row" onclick="confirmReset()">
+        <div class="sr-icon">🔄</div>
+        <div class="sr-info"><div class="sr-name">Tournament Reset</div><div class="sr-sub">Clear all matches and draws for new event</div></div>
+        <div class="sr-arrow">›</div>
+      </div>
+      <div class="setting-row" onclick="location.href='dashboard.html'">
+        <div class="sr-icon">⚡</div>
+        <div class="sr-info"><div class="sr-name">Full Dashboard</div><div class="sr-sub">Open desktop control centre</div></div>
+        <div class="sr-arrow">›</div>
+      </div>
+      <div class="setting-row" id="sr-counter">
+        <div class="sr-icon">🔢</div>
+        <div class="sr-info"><div class="sr-name">Match Counter</div><div class="sr-sub" id="counter-sub">Loading...</div></div>
+      </div>
+      <div class="setting-row" id="sr-conn">
+        <div class="sr-icon">🌐</div>
+        <div class="sr-info"><div class="sr-name">Connection</div><div class="sr-sub" id="conn-sub">Checking...</div></div>
+      </div>
+    </div>
+    <div class="sec-title">Session</div>
+    <div class="settings-list">
+      <div class="setting-row" onclick="location.href='index.html'">
+        <div class="sr-icon">🚪</div>
+        <div class="sr-info"><div class="sr-name">Exit Admin Panel</div><div class="sr-sub">Return to UPBSA.TV home</div></div>
+        <div class="sr-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM TABS -->
+<div class="bottom-tabs">
+  <button class="tab-btn on" id="tab-home" onclick="switchTab('home')">
+    <div class="tab-icon">🏠</div><div class="tab-label">Home</div>
+  </button>
+  <button class="tab-btn" id="tab-tables" onclick="switchTab('tables')">
+    <div class="tab-icon">🎱</div><div class="tab-label">Tables</div>
+  </button>
+  <button class="tab-btn" id="tab-schedule" onclick="switchTab('schedule')">
+    <div class="tab-icon">📋</div><div class="tab-label">Schedule</div>
+  </button>
+  <button class="tab-btn" id="tab-tools" onclick="switchTab('tools')">
+    <div class="tab-icon">🛠️</div><div class="tab-label">Tools</div>
+  </button>
+  <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">
+    <div class="tab-icon">⚙️</div><div class="tab-label">Settings</div>
+  </button>
+</div>
+
+<!-- LOAD MATCH MODAL -->
+<div class="modal-bg" id="load-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Load Match</div>
+    <div class="modal-sub" id="load-sub">–</div>
+    <div class="tbl-grid" id="load-tbl-grid"></div>
+    <div class="modal-btns">
+      <button class="modal-confirm" onclick="confirmLoad()">Load onto Table</button>
+      <button class="modal-cancel" onclick="closeLoadModal()">Cancel</button>
+    </div>
+  </div>
+</div><!-- /app-wrap -->
+
+
+
+<!-- ═══════════ PIN GATE ═══════════ -->
+<div id="PIN_GATE" style="
+  position:fixed;inset:0;z-index:9999;
+  background:#000;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:0;padding:0 24px;
+  font-family:'Inter',sans-serif;
+">
+  <!-- Logo -->
+  <img src="upbsa-logo.jpg" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(201,162,39,0.5);box-shadow:0 0 30px rgba(201,162,39,0.2);margin-bottom:16px;">
+  <div style="font-size:1.1rem;font-weight:800;letter-spacing:4px;color:#c9a227;margin-bottom:4px;">UPBSA<span style="color:#333">.TV</span></div>
+  <div style="font-size:0.65rem;font-weight:600;letter-spacing:4px;color:#444;text-transform:uppercase;margin-bottom:28px;">Admin Access</div>
+
+  <!-- Dots -->
+  <div style="display:flex;gap:14px;margin-bottom:32px;" id="PIN_DOTS">
+    <div id="PD0" style="width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all .15s;"></div>
+    <div id="PD1" style="width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all .15s;"></div>
+    <div id="PD2" style="width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all .15s;"></div>
+    <div id="PD3" style="width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all .15s;"></div>
+  </div>
+
+  <!-- Keypad -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:300px;">
+    <button onclick="PK('1')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">1</button>
+    <button onclick="PK('2')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">2</button>
+    <button onclick="PK('3')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">3</button>
+    <button onclick="PK('4')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">4</button>
+    <button onclick="PK('5')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">5</button>
+    <button onclick="PK('6')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">6</button>
+    <button onclick="PK('7')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">7</button>
+    <button onclick="PK('8')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">8</button>
+    <button onclick="PK('9')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">9</button>
+    <div></div>
+    <button onclick="PK('0')" style="height:64px;border-radius:14px;background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.2);color:#c9a227;font-size:1.5rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;-webkit-appearance:none;">0</button>
+    <button onclick="PD()" style="height:64px;border-radius:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;font-size:1.2rem;cursor:pointer;-webkit-appearance:none;">⌫</button>
+  </div>
+</div>
+
+<script>
+var _pin = '';
+var _correct = '2026';
+var _key = 'upbsa_admin_v1';
+
+function PK(k){
+  if(_pin.length >= 4) return;
+  _pin += k;
+  _updateDots();
+  if(_pin.length === 4){
+    setTimeout(function(){
+      if(_pin === _correct){
+        localStorage.setItem(_key, Date.now().toString());
+        document.getElementById('PIN_GATE').style.display = 'none';
+      } else {
+        // Flash red
+        for(var i=0;i<4;i++){
+          var d=document.getElementById('PD'+i);
+          if(d){d.style.background='#ef4444';d.style.borderColor='#ef4444';}
+        }
+        if(navigator.vibrate) navigator.vibrate([80,40,80]);
+        setTimeout(function(){
+          _pin='';
+          _updateDots();
+        }, 600);
+      }
+    }, 100);
+  }
+}
+
+function PD(){
+  _pin = _pin.slice(0,-1);
+  _updateDots();
+}
+
+function _updateDots(){
+  for(var i=0;i<4;i++){
+    var d=document.getElementById('PD'+i);
+    if(!d) continue;
+    if(i < _pin.length){
+      d.style.background='#c9a227';
+      d.style.borderColor='#c9a227';
+      d.style.boxShadow='0 0 8px rgba(201,162,39,0.5)';
+    } else {
+      d.style.background='transparent';
+      d.style.borderColor='#333';
+      d.style.boxShadow='none';
+    }
+  }
+}
+
+// Check if already authenticated
+(function(){
+  var ts = localStorage.getItem(_key);
+  if(ts && (Date.now() - parseInt(ts)) < 30*24*60*60*1000){
+    document.getElementById('PIN_GATE').style.display='none';
+  }
+})();
+</script>
+
+</body>
+</html>
