@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="upbsa-logo.jpg">
+<title>Admin — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#000;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--bg5:#2a2a2a;
+  --border:#1e1e1e;--border2:#2a2a2a;--border3:#333;
+  --gold:#c9a227;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f97316;--purple:#a855f7;
+  --text:#f0f0f0;--text2:#888;--text3:#444;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;overflow:hidden;max-width:480px;margin:0 auto;}
+
+/* ── PIN GATE ── */
+#pin-gate{
+  position:fixed;inset:0;z-index:9999;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;padding:40px 24px;
+}
+.pg-logo{width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid rgba(201,162,39,0.5);box-shadow:0 0 30px rgba(201,162,39,0.15);margin-bottom:14px;}
+.pg-name{font-size:1.2rem;font-weight:800;letter-spacing:4px;color:#c9a227;margin-bottom:4px;}
+.pg-sub{font-size:0.65rem;font-weight:600;letter-spacing:4px;color:#444;text-transform:uppercase;margin-bottom:28px;}
+.pg-dots{display:flex;gap:14px;margin-bottom:36px;}
+.pg-dot{width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all .15s;}
+.pg-dot.on{background:#c9a227;border-color:#c9a227;box-shadow:0 0 8px rgba(201,162,39,0.6);}
+.pg-dot.err{background:#ef4444;border-color:#ef4444;}
+.pg-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:300px;}
+.pg-btn{
+  height:68px;border-radius:14px;
+  background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.2);
+  color:#c9a227;font-size:1.5rem;font-weight:700;
+  cursor:pointer;font-family:'Inter',sans-serif;
+  -webkit-appearance:none;outline:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s;
+}
+.pg-btn:active,.pg-btn:hover{background:rgba(201,162,39,0.25);}
+.pg-btn.del{background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.2);color:#ef4444;}
+.pg-btn.del:active{background:rgba(239,68,68,0.2);}
+.pg-btn.blank{background:transparent;border:none;cursor:default;pointer-events:none;}
+
+/* ── TOP BAR ── */
+.top-bar{height:52px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;}
+.top-logo{display:flex;align-items:center;gap:8px;flex:1;}
+.top-logo img{width:30px;height:30px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(201,162,39,0.5);}
+.top-name{font-weight:800;font-size:0.88rem;letter-spacing:3px;color:#c9a227;}
+.top-dot{color:#333;}
+.top-clock{font-family:monospace;font-size:0.82rem;color:#444;letter-spacing:1px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5);}
+.conn-dot.off{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5);}
+
+/* ── SCROLL ── */
+.scroll{height:calc(100vh - 52px - 60px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ── BOTTOM TABS ── */
+.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:60px;background:var(--bg2);border-top:1px solid var(--border2);display:grid;grid-template-columns:repeat(5,1fr);z-index:50;}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:none;border:none;padding:6px 4px;}
+.tab-ic{font-size:1.25rem;}
+.tab-lb{font-size:0.52rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#444;}
+.tab.on .tab-lb{color:#c9a227;}
+
+/* ── PAGE ── */
+.page{display:none;padding:14px;}
+.page.on{display:block;}
+.sh{font-size:0.58rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#444;margin-bottom:8px;margin-top:14px;display:flex;align-items:center;gap:8px;}
+.sh::after{content:'';flex:1;height:1px;background:#1e1e1e;}
+.sh:first-child{margin-top:0;}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.st{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px;}
+.st-n{font-size:2rem;font-weight:900;line-height:1;margin-bottom:3px;}
+.st-n.g{color:#22c55e;}.st-n.gd{color:#c9a227;}.st-n.b{color:#3b82f6;}.st-n.o{color:#f97316;}
+.st-l{font-size:0.6rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#444;}
+
+/* ── ALERT ── */
+.alert{background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);border-radius:9px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.alert-dot{width:6px;height:6px;border-radius:50%;background:#ef4444;animation:pulse 1s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.alert-txt{font-size:0.78rem;color:#ef4444;}
+
+/* ── QUICK BTNS ── */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.qbtn{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:16px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;text-decoration:none;cursor:pointer;transition:background .15s;}
+.qbtn:active{background:#1a1a1a;}
+.qbtn-ic{font-size:1.5rem;}
+.qbtn-lb{font-size:0.72rem;font-weight:600;color:#f0f0f0;text-align:center;}
+.qbtn-s{font-size:0.6rem;color:#444;text-align:center;}
+
+/* ── TABLE CARDS ── */
+.tbl-list{display:flex;flex-direction:column;gap:8px;}
+.tc{background:#111;border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;}
+.tc.live{border-color:rgba(34,197,94,0.25);}
+.tc.done{border-color:rgba(59,130,246,0.18);}
+.tc-hd{padding:9px 13px;background:#1a1a1a;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;gap:8px;}
+.tc-num{font-size:0.68rem;font-weight:800;letter-spacing:2px;color:#666;text-transform:uppercase;}
+.tc-mid{font-family:monospace;font-size:0.65rem;color:#c9a227;flex:1;}
+.tc-st{font-size:0.6rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.tc-st.live{color:#22c55e;display:flex;align-items:center;gap:3px;}
+.tc-st.live::before{content:'';width:5px;height:5px;border-radius:50%;background:#22c55e;animation:pulse 1.5s infinite;}
+.tc-st.idle{color:#444;}
+.tc-st.done{color:#3b82f6;}
+.tc-bd{padding:10px 13px;}
+.tc-ps{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;}
+.tc-p{display:flex;flex-direction:column;gap:1px;}
+.tc-pn{font-size:0.82rem;font-weight:700;color:#f0f0f0;}
+.tc-pn.at{color:#c9a227;}
+.tc-ps2{font-size:0.6rem;color:#444;}
+.tc-sc{font-size:1.3rem;font-weight:900;color:#c9a227;text-align:center;}
+.tc-sm{font-size:0.6rem;color:#444;text-align:center;}
+.tc-brk{background:#1a1a1a;border-radius:6px;padding:5px 9px;display:flex;justify-content:space-between;font-size:0.68rem;margin-bottom:8px;}
+.tc-acts{display:flex;gap:5px;flex-wrap:wrap;}
+.ta{flex:1;min-width:55px;padding:7px 5px;border-radius:7px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;transition:opacity .15s;}
+.ta:active{opacity:.7;}
+.ta-r{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.2);}
+.ta-s{background:rgba(34,197,94,0.08);color:#22c55e;border:1px solid rgba(34,197,94,0.18);}
+.ta-l{background:rgba(201,162,39,0.08);color:#c9a227;border:1px solid rgba(201,162,39,0.2);}
+.ta-e{background:rgba(239,68,68,0.07);color:#ef4444;border:1px solid rgba(239,68,68,0.18);}
+.tc-empty{padding:14px 13px;text-align:center;font-size:0.78rem;color:#444;}
+
+/* ── SCHEDULE ── */
+.mr{background:#111;border:1px solid #1e1e1e;border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;}
+.mr:active{background:#1a1a1a;}
+.mr.live{border-color:rgba(34,197,94,0.2);background:rgba(34,197,94,0.02);}
+.mr-id{font-family:monospace;font-size:0.7rem;color:#c9a227;font-weight:700;flex-shrink:0;min-width:80px;}
+.mr-ps{flex:1;min-width:0;}
+.mr-pn{font-size:0.8rem;font-weight:600;color:#f0f0f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mr-vs{color:#444;font-weight:400;margin:0 3px;font-size:0.7rem;}
+.mr-rnd{font-size:0.6rem;color:#444;margin-top:1px;}
+.mr-sc{font-size:0.95rem;font-weight:800;color:#c9a227;flex-shrink:0;}
+.mr-badge{font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;flex-shrink:0;}
+.mb-live{background:rgba(34,197,94,0.1);color:#22c55e;}
+.mb-next{background:rgba(201,162,39,0.08);color:#c9a227;}
+.mb-pd{background:rgba(255,255,255,0.04);color:#444;}
+.mb-dn{background:rgba(59,130,246,0.07);color:#3b82f6;}
+
+/* ── TOOLS ── */
+.tg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px;}
+.tt{background:#111;border:1px solid #1e1e1e;border-radius:11px;padding:14px 10px;display:flex;flex-direction:column;gap:5px;text-decoration:none;cursor:pointer;transition:background .15s;}
+.tt:active{background:#1a1a1a;}
+.tt-ic{font-size:1.3rem;}
+.tt-nm{font-size:0.78rem;font-weight:700;color:#f0f0f0;}
+.tt-s{font-size:0.6rem;color:#444;line-height:1.3;}
+.tt-b{font-size:0.52rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:1px 5px;border-radius:3px;}
+.tb-a{background:rgba(201,162,39,0.08);color:#c9a227;}
+.tb-o{background:rgba(59,130,246,0.08);color:#3b82f6;}
+.tb-l{background:rgba(34,197,94,0.08);color:#22c55e;}
+.tb-p{background:rgba(168,85,247,0.08);color:#a855f7;}
+
+/* ── SETTINGS ── */
+.sr{background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:13px;display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:6px;}
+.sr:active{background:#1a1a1a;}
+.sr-ic{font-size:1.1rem;width:28px;text-align:center;flex-shrink:0;}
+.sr-nm{font-size:0.83rem;font-weight:600;color:#f0f0f0;}
+.sr-sb{font-size:0.67rem;color:#444;margin-top:2px;}
+.sr-ar{color:#333;margin-left:auto;}
+
+/* ── LOAD MODAL ── */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-end;justify-content:center;}
+.modal.open{display:flex;}
+.modal-box{background:#1a1a1a;border-radius:18px 18px 0 0;padding:18px 16px 34px;width:100%;max-width:480px;border-top:1px solid #2a2a2a;}
+.modal-handle{width:34px;height:4px;background:#333;border-radius:2px;margin:0 auto 14px;}
+.modal-title{font-size:0.9rem;font-weight:800;color:#c9a227;margin-bottom:5px;}
+.modal-sub{font-size:0.75rem;color:#888;margin-bottom:14px;line-height:1.5;}
+.tbl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;}
+.to{padding:12px;border-radius:9px;border:1px solid #2a2a2a;background:#222;color:#f0f0f0;cursor:pointer;font-size:0.85rem;font-weight:700;text-align:center;transition:all .15s;font-family:'Inter',sans-serif;}
+.to:active,.to:hover{border-color:#c9a227;color:#c9a227;}
+.to.sel{border-color:#c9a227;background:rgba(201,162,39,0.1);color:#c9a227;}
+.to.occ{border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.5);}
+.mbtns{display:flex;gap:8px;}
+.mconf{flex:1;padding:11px;background:rgba(201,162,39,0.1);border:1.5px solid #c9a227;border-radius:9px;color:#c9a227;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+.mcanc{padding:11px 14px;background:none;border:1px solid #2a2a2a;border-radius:9px;color:#888;font-size:0.82rem;cursor:pointer;font-family:'Inter',sans-serif;}
+</style>
+</head>
+<body>
+
+<!-- ═══ PIN GATE ═══ -->
+<div id="pin-gate">
+  <img class="pg-logo" src="upbsa-logo.jpg" alt="UPBSA">
+  <div class="pg-name">UPBSA<span style="color:#333">.TV</span></div>
+  <div class="pg-sub">Admin Access</div>
+  <div class="pg-dots">
+    <div class="pg-dot" id="d0"></div>
+    <div class="pg-dot" id="d1"></div>
+    <div class="pg-dot" id="d2"></div>
+    <div class="pg-dot" id="d3"></div>
+  </div>
+  <div class="pg-pad">
+    <button class="pg-btn" onclick="pk('1')">1</button>
+    <button class="pg-btn" onclick="pk('2')">2</button>
+    <button class="pg-btn" onclick="pk('3')">3</button>
+    <button class="pg-btn" onclick="pk('4')">4</button>
+    <button class="pg-btn" onclick="pk('5')">5</button>
+    <button class="pg-btn" onclick="pk('6')">6</button>
+    <button class="pg-btn" onclick="pk('7')">7</button>
+    <button class="pg-btn" onclick="pk('8')">8</button>
+    <button class="pg-btn" onclick="pk('9')">9</button>
+    <button class="pg-btn blank" disabled></button>
+    <button class="pg-btn" onclick="pk('0')">0</button>
+    <button class="pg-btn del" onclick="pdel()">⌫</button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app-shell" style="display:none;">
+
+  <div class="top-bar">
+    <div class="top-logo">
+      <img src="upbsa-logo.jpg" alt="UPBSA">
+      <div class="top-name">UPBSA<span class="top-dot">.TV</span></div>
+    </div>
+    <div class="conn-dot" id="cdot"></div>
+    <div class="top-clock" id="clk">00:00</div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- HOME -->
+    <div class="page on" id="pg-home">
+      <div id="alerts"></div>
+      <div class="stats">
+        <div class="st"><div class="st-n g" id="s-live">0</div><div class="st-l">Live Now</div></div>
+        <div class="st"><div class="st-n gd" id="s-pend">0</div><div class="st-l">Pending</div></div>
+        <div class="st"><div class="st-n b" id="s-done">0</div><div class="st-l">Completed</div></div>
+        <div class="st"><div class="st-n o" id="s-brk">–</div><div class="st-l">Top Break</div></div>
+      </div>
+      <div class="sh">Quick Actions</div>
+      <div class="qgrid">
+        <a href="referee-hub.html" class="qbtn"><div class="qbtn-ic">🎯</div><div class="qbtn-lb">Referee Hub</div><div class="qbtn-s">Open scoring</div></a>
+        <div class="qbtn" onclick="goTab('tables')"><div class="qbtn-ic">🎱</div><div class="qbtn-lb">Tables</div><div class="qbtn-s">Manage tables</div></div>
+        <div class="qbtn" onclick="goTab('sched')"><div class="qbtn-ic">📋</div><div class="qbtn-lb">Schedule</div><div class="qbtn-s">Load matches</div></div>
+        <a href="bracket.html" target="_blank" class="qbtn"><div class="qbtn-ic">📡</div><div class="qbtn-lb">Live Bracket</div><div class="qbtn-s">Public view ↗</div></a>
+      </div>
+      <div class="sh">Live Tables</div>
+      <div id="home-tbl"></div>
+    </div>
+
+    <!-- TABLES -->
+    <div class="page" id="pg-tables">
+      <div class="sh" style="margin-top:0">All Tables</div>
+      <div class="tbl-list" id="tbl-list"></div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="page" id="pg-sched">
+      <div id="sc-live-w" style="display:none;"><div class="sh live" style="color:#22c55e;margin-top:0">● Live Now</div><div id="sc-live"></div></div>
+      <div id="sc-next-w" style="display:none;"><div class="sh" style="color:#c9a227;margin-top:0">Next Up</div><div id="sc-next"></div></div>
+      <div id="sc-pend-w" style="display:none;"><div class="sh" style="margin-top:0">Pending</div><div id="sc-pend"></div></div>
+      <div id="sc-done-w" style="display:none;"><div class="sh" style="margin-top:0">Completed</div><div id="sc-done"></div></div>
+      <div id="sc-empty" style="display:none;text-align:center;padding:28px;color:#444;font-size:0.8rem;">No matches yet.</div>
+    </div>
+
+    <!-- TOOLS -->
+    <div class="page" id="pg-tools">
+      <div class="sh" style="margin-top:0">Admin</div>
+      <div class="tg">
+        <a href="dashboard.html" class="tt"><div class="tt-ic">⚡</div><div class="tt-nm">Dashboard</div><div class="tt-s">Full control</div><span class="tt-b tb-a">Admin</span></a>
+        <a href="tournament.html" class="tt"><div class="tt-ic">🏆</div><div class="tt-nm">Tournaments</div><div class="tt-s">Draws & schedule</div><span class="tt-b tb-a">Admin</span></a>
+        <a href="players.html" class="tt"><div class="tt-ic">👤</div><div class="tt-nm">Players</div><div class="tt-s">Registry</div><span class="tt-b tb-a">Admin</span></a>
+        <a href="schedule.html" class="tt"><div class="tt-ic">📋</div><div class="tt-nm">Schedule</div><div class="tt-s">Full timeline</div><span class="tt-b tb-a">Admin</span></a>
+        <a href="diagnostic.html" class="tt"><div class="tt-ic">🔧</div><div class="tt-nm">Diagnostic</div><div class="tt-s">System health</div><span class="tt-b tb-a">Admin</span></a>
+      </div>
+      <div class="sh">Broadcast</div>
+      <div class="tg">
+        <a href="overlay.html?table=1" class="tt"><div class="tt-ic">📺</div><div class="tt-nm">OBS Overlay</div><div class="tt-s">Table 1</div><span class="tt-b tb-o">OBS</span></a>
+        <a href="scoreboard.html" class="tt"><div class="tt-ic">🖥️</div><div class="tt-nm">Scoreboard</div><div class="tt-s">Broadcast</div><span class="tt-b tb-l">Live</span></a>
+        <a href="builder.html" class="tt"><div class="tt-ic">🎨</div><div class="tt-nm">Builder</div><div class="tt-s">Designer</div><span class="tt-b tb-o">OBS</span></a>
+        <a href="stats-control.html" class="tt"><div class="tt-ic">📊</div><div class="tt-nm">Stats</div><div class="tt-s">Overlay stats</div><span class="tt-b tb-o">OBS</span></a>
+        <a href="intro.html?edit=1" class="tt"><div class="tt-ic">🎬</div><div class="tt-nm">Intro</div><div class="tt-s">Pre-match</div><span class="tt-b tb-o">OBS</span></a>
+        <a href="design.html" class="tt"><div class="tt-ic">🖌️</div><div class="tt-nm">Theme</div><div class="tt-s">Quick adjust</div><span class="tt-b tb-o">OBS</span></a>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="pg-settings">
+      <div class="sh" style="margin-top:0">System</div>
+      <div class="sr" onclick="location.href='diagnostic.html'"><div class="sr-ic">🔧</div><div><div class="sr-nm">Diagnostic</div><div class="sr-sb">Firebase health, raw data</div></div><div class="sr-ar">›</div></div>
+      <div class="sr" onclick="doReset()"><div class="sr-ic">🔄</div><div><div class="sr-nm">Tournament Reset</div><div class="sr-sb">Clear all matches for new event</div></div><div class="sr-ar">›</div></div>
+      <div class="sr" onclick="location.href='dashboard.html'"><div class="sr-ic">⚡</div><div><div class="sr-nm">Full Dashboard</div><div class="sr-sb">Desktop control centre</div></div><div class="sr-ar">›</div></div>
+      <div class="sr" id="sr-ctr"><div class="sr-ic">🔢</div><div><div class="sr-nm">Match Counter</div><div class="sr-sb" id="ctr-sub">Loading...</div></div></div>
+      <div class="sr" id="sr-conn"><div class="sr-ic">🌐</div><div><div class="sr-nm">Connection</div><div class="sr-sb" id="conn-sub">Checking...</div></div></div>
+      <div class="sh">Session</div>
+      <div class="sr" onclick="doLogout()"><div class="sr-ic">🚪</div><div><div class="sr-nm">Lock Admin Panel</div><div class="sr-sb">Clear session, show PIN again</div></div><div class="sr-ar">›</div></div>
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab on" id="tab-home" onclick="goTab('home')"><div class="tab-ic">🏠</div><div class="tab-lb">Home</div></button>
+    <button class="tab" id="tab-tables" onclick="goTab('tables')"><div class="tab-ic">🎱</div><div class="tab-lb">Tables</div></button>
+    <button class="tab" id="tab-sched" onclick="goTab('sched')"><div class="tab-ic">📋</div><div class="tab-lb">Schedule</div></button>
+    <button class="tab" id="tab-tools" onclick="goTab('tools')"><div class="tab-ic">🛠️</div><div class="tab-lb">Tools</div></button>
+    <button class="tab" id="tab-settings" onclick="goTab('settings')"><div class="tab-ic">⚙️</div><div class="tab-lb">Settings</div></button>
+  </div>
+
+</div><!-- /app-shell -->
+
+<!-- LOAD MODAL -->
+<div class="modal" id="lmodal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Load Match</div>
+    <div class="modal-sub" id="lmod-sub">–</div>
+    <div class="tbl-grid" id="lmod-grid"></div>
+    <div class="mbtns">
+      <button class="mconf" onclick="confirmLoad()">Load onto Table</button>
+      <button class="mcanc" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ═══ PIN ═══
+var PIN = '2026';
+var AKEY = 'upbsa_adm';
+var buf = '';
+
+function pk(k){
+  if(buf.length>=4) return;
+  buf+=k; dots();
+  if(buf.length===4) setTimeout(chk,120);
+}
+function pdel(){ buf=buf.slice(0,-1); dots(); }
+function dots(){
+  for(var i=0;i<4;i++){
+    var d=document.getElementById('d'+i);
+    if(!d) return;
+    d.className='pg-dot'+(i<buf.length?' on':'');
+  }
+}
+function chk(){
+  if(buf===PIN){
+    localStorage.setItem(AKEY,Date.now()+'');
+    document.getElementById('pin-gate').style.display='none';
+    document.getElementById('app-shell').style.display='block';
+  } else {
+    for(var i=0;i<4;i++){ var d=document.getElementById('d'+i); if(d) d.className='pg-dot err'; }
+    if(navigator.vibrate) navigator.vibrate([80,40,80]);
+    setTimeout(function(){ buf=''; dots(); },600);
+  }
+}
+function doLogout(){
+  localStorage.removeItem(AKEY);
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('pin-gate').style.display='flex';
+  buf=''; dots();
+}
+// Auto-unlock if session valid (30 days)
+(function(){
+  var ts=localStorage.getItem(AKEY);
+  if(ts&&(Date.now()-parseInt(ts))<30*24*60*60*1000){
+    document.getElementById('pin-gate').style.display='none';
+    document.getElementById('app-shell').style.display='block';
+  }
+})();
+
+// ═══ FIREBASE ═══
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db=firebase.database();
+var LM={}, REG={}, loadM=null, loadT=null;
+
+for(var t=1;t<=16;t++){(function(n){db.ref('matches/table-'+n).on('value',function(s){LM[n]=s.val();ra();});})(t);}
+db.ref('match_registry').on('value',function(s){REG=s.val()||{};ra();});
+db.ref('meta/matchCounter').on('value',function(s){var el=document.getElementById('ctr-sub');if(el)el.textContent='Next: UPBSA-'+String((s.val()||0)+1).padStart(4,'0');});
+db.ref('.info/connected').on('value',function(s){
+  var ok=s.val();
+  var d=document.getElementById('cdot'); if(d) d.className='conn-dot'+(ok?'':' off');
+  var cs=document.getElementById('conn-sub'); if(cs) cs.textContent=ok?'Connected to Firebase':'Disconnected';
+});
+
+// ═══ CLOCK ═══
+setInterval(function(){
+  var el=document.getElementById('clk'); if(!el)return;
+  var n=new Date();
+  el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0');
+},1000);
+
+// ═══ TABS ═══
+function goTab(name){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});
+  var pg=document.getElementById('pg-'+name); if(pg) pg.classList.add('on');
+  var tb=document.getElementById('tab-'+name); if(tb) tb.classList.add('on');
+  document.querySelector('.scroll').scrollTop=0;
+}
+
+// ═══ RENDER ═══
+function ra(){ rStats(); rAlerts(); rHomeTbl(); rTables(); rSched(); }
+
+function rStats(){
+  var live=Object.values(LM).filter(function(m){return m&&m.status==='active';}).length;
+  var pend=Object.values(REG).filter(function(m){return m.status==='pending';}).length;
+  var done=Object.values(REG).filter(function(m){return m.status==='finished';}).length;
+  var brk=0; Object.values(LM).forEach(function(m){if(m&&m.status==='active')brk=Math.max(brk,m.currentBreak||0);});
+  var g=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  g('s-live',live);g('s-pend',pend);g('s-done',done);g('s-brk',brk||'–');
+}
+
+function rAlerts(){
+  var area=document.getElementById('alerts'); if(!area)return;
+  var html='';
+  Object.entries(LM).forEach(function(e){
+    var n=e[0],m=e[1];
+    if(m&&m.status==='finished'&&m.matchWinner) html+='<div class="alert"><div class="alert-dot"></div><div class="alert-txt">Table '+n+': Match finished — ready to clear</div></div>';
+    if(m&&m.status==='active'&&(m.currentBreak||0)>=100){
+      var bw=m.breakPlayer===1?m.player1.name:m.player2.name;
+      html+='<div class="alert"><div class="alert-dot"></div><div class="alert-txt">Table '+n+': Century! '+esc(bw)+' — '+m.currentBreak+'</div></div>';
+    }
+  });
+  area.innerHTML=html;
+}
+
+function rHomeTbl(){
+  var area=document.getElementById('home-tbl'); if(!area)return;
+  var live=[];
+  for(var i=1;i<=6;i++){var m=LM[i];if(m&&m.status==='active')live.push({n:i,m:m});}
+  if(!live.length){area.innerHTML='<div style="text-align:center;padding:20px;color:#444;font-size:0.8rem;">No live matches</div>';return;}
+  area.innerHTML=live.map(function(t){return tCard(t.n,t.m,true);}).join('');
+}
+
+function rTables(){
+  var list=document.getElementById('tbl-list'); if(!list)return;
+  var html='';
+  for(var i=1;i<=6;i++) html+=tCard(i,LM[i],false);
+  list.innerHTML=html;
+}
+
+function tCard(n,m,mini){
+  var isL=m&&m.status==='active', isDn=m&&m.status==='finished';
+  var stCls=isL?'live':isDn?'done':'idle';
+  var stTxt=isL?'LIVE':isDn?'DONE':'FREE';
+  var html='<div class="tc'+(isL?' live':isDn?' done':'')+'">';
+  html+='<div class="tc-hd"><div class="tc-num">Table '+n+'</div><div class="tc-mid">'+(m&&m.matchId?m.matchId:'')+'</div><div class="tc-st '+stCls+'">'+stTxt+(isL?' F'+m.currentFrame+'/'+m.bestOf:'')+'</div></div>';
+  if(isL){
+    html+='<div class="tc-bd">';
+    html+='<div class="tc-ps"><div class="tc-p"><div class="tc-pn'+(m.turn===1?' at':'')+'">'+esc(m.player1.name)+'</div><div class="tc-ps2">'+esc(m.player1.state||'')+'</div></div>';
+    html+='<div><div class="tc-sc">'+m.player1.frames+' – '+m.player2.frames+'</div><div class="tc-sm">'+m.player1.score+' – '+m.player2.score+' pts</div></div>';
+    html+='<div class="tc-p" style="text-align:right"><div class="tc-pn'+(m.turn===2?' at':'')+'">'+esc(m.player2.name)+'</div><div class="tc-ps2">'+esc(m.player2.state||'')+'</div></div></div>';
+    if((m.currentBreak||0)>0) html+='<div class="tc-brk"><span style="color:#444">Break · '+esc(m.breakPlayer===1?m.player1.name:m.player2.name)+'</span><span style="color:#c9a227;font-weight:700">'+m.currentBreak+'</span></div>';
+    if(!mini) html+='<div class="tc-acts"><a href="referee.html?table='+n+'" class="ta ta-r">Referee</a><a href="scoreboard.html?table='+n+'" class="ta ta-s">Scoreboard</a><button class="ta ta-e" onclick="endM('+n+')">End</button><button class="ta ta-e" onclick="clrT('+n+')">Clear</button></div>';
+    html+='</div>';
+  } else if(isDn){
+    var wn=m['player'+m.matchWinner]?m['player'+m.matchWinner].name:'–';
+    html+='<div class="tc-bd"><div style="font-size:0.8rem;margin-bottom:8px;"><span style="color:#c9a227;font-weight:700">'+esc(wn)+'</span> wins · '+m.player1.frames+' – '+m.player2.frames+'</div>';
+    html+='<div class="tc-acts"><button class="ta ta-l" onclick="openLoadFree('+n+')">Load Next</button><button class="ta ta-e" onclick="clrT('+n+')">Clear</button></div></div>';
+  } else {
+    html+='<div class="tc-empty"><button class="ta ta-l" style="flex:none;padding:8px 20px;" onclick="openLoadFree('+n+')">Load Match</button></div>';
+  }
+  return html+'</div>';
+}
+
+function rSched(){
+  var all=Object.values(REG).map(function(m){
+    var lm=flive(m.matchId);
+    var st=lm?(lm.status==='active'?'live':'done'):(m.status||'pending');
+    if(m.status==='finished') st='done';
+    return Object.assign({},m,{st:st,lm:lm,p1n:lm?lm.player1.name:m.p1||'TBD',p2n:lm?lm.player2.name:m.p2||'TBD',p1f:lm?lm.player1.frames:0,p2f:lm?lm.player2.frames:0});
+  });
+  all.sort(function(a,b){return ({live:0,pending:1,done:2}[a.st]||1)-({live:0,pending:1,done:2}[b.st]||1)||(a.matchId||'').localeCompare(b.matchId||'');});
+  var g={live:[],next:[],pend:[],done:[]};
+  all.forEach(function(m){
+    if(m.st==='live') g.live.push(m);
+    else if(m.st==='pending'&&m.tableNumber>0&&g.next.length<3) g.next.push(m);
+    else if(m.st==='pending') g.pend.push(m);
+    else g.done.push(m);
+  });
+  document.getElementById('sc-empty').style.display=all.length?'none':'block';
+  ['live','next','pend','done'].forEach(function(k){
+    var w=document.getElementById('sc-'+k+'-w'), l=document.getElementById('sc-'+k);
+    if(!w||!l) return;
+    w.style.display=g[k].length?'block':'none';
+    l.innerHTML=g[k].map(function(m){
+      var isL=m.st==='live',isDn=m.st==='done';
+      var badge=isL?'mb-live':k==='next'?'mb-next':isDn?'mb-dn':'mb-pd';
+      var bTxt=isL?'LIVE':k==='next'?'NEXT':isDn?'DONE':'PENDING';
+      return '<div class="mr'+(isL?' live':'')+'" onclick="'+(isDn?'':'openLoadById(\''+esc(m.matchId||'')+'\')') +'">'+
+        '<div class="mr-id">'+esc(m.matchId||'–')+'</div>'+
+        '<div class="mr-ps"><div class="mr-pn">'+esc(m.p1n)+'<span class="mr-vs">vs</span>'+esc(m.p2n)+'</div><div class="mr-rnd">'+esc(m.roundName||m.tournament||'')+'</div></div>'+
+        ((isL||isDn)?'<div class="mr-sc">'+m.p1f+' – '+m.p2f+'</div>':'')+
+        '<div class="mr-badge '+badge+'">'+bTxt+'</div></div>';
+    }).join('');
+  });
+}
+
+// ═══ ACTIONS ═══
+function endM(n){if(!confirm('End match on Table '+n+'?'))return;db.ref('matches/table-'+n+'/status').set('finished');}
+function clrT(n){
+  if(!confirm('Clear Table '+n+'?'))return;
+  var m=LM[n];
+  if(m){
+    db.ref('match_history').push({matchId:m.matchId||'',tableNumber:n,tournament:m.tournament||'',p1:m.player1.name,p1state:m.player1.state||'',p1frames:m.player1.frames,p2:m.player2.name,p2state:m.player2.state||'',p2frames:m.player2.frames,bestOf:m.bestOf,winner:m.matchWinner?m['player'+m.matchWinner].name:'',bestBreak1:m.bestBreak1||0,bestBreak2:m.bestBreak2||0,endTime:Date.now()});
+    if(m.matchId) db.ref('match_registry/'+m.matchId).update({status:'finished',p1frames:m.player1.frames,p2frames:m.player2.frames,endTime:Date.now()});
+  }
+  db.ref('matches/table-'+n).remove();
+}
+function doReset(){
+  if(!confirm('FULL RESET — clear all matches?'))return;
+  var c=prompt('Type RESET:','');
+  if(c&&c.trim().toUpperCase()==='RESET'){db.ref('matches').remove();db.ref('match_registry').remove();db.ref('match_history').remove();alert('Done.');}
+}
+function openLoadFree(n){
+  loadT=n;loadM=null;
+  document.getElementById('lmod-sub').textContent='Select a pending match for Table '+n;
+  bGrid(n); document.getElementById('lmodal').classList.add('open');
+}
+function openLoadById(id){
+  var m=REG[id];if(!m)return;
+  loadM=m;loadT=null;
+  document.getElementById('lmod-sub').textContent=(m.p1||'TBD')+' vs '+(m.p2||'TBD')+' · BO'+(m.bestOf||'?');
+  bGrid(null); document.getElementById('lmodal').classList.add('open');
+}
+function bGrid(def){
+  var g=document.getElementById('lmod-grid');g.innerHTML='';
+  for(var i=1;i<=6;i++){(function(n){
+    var occ=LM[n]&&LM[n].status==='active';
+    var b=document.createElement('button');
+    b.className='to'+(occ?' occ':'')+(n===def?' sel':'');
+    b.innerHTML='T'+n+(occ?'<br><small>Live</small>':'');
+    if(n===def)loadT=n;
+    b.onclick=function(){
+      if(occ&&!confirm('T'+n+' is live. Replace?'))return;
+      loadT=n;document.querySelectorAll('.to').forEach(function(x){x.classList.remove('sel');});b.classList.add('sel');
+    };
+    g.appendChild(b);
+  })(i);}
+}
+function closeModal(){document.getElementById('lmodal').classList.remove('open');loadM=null;loadT=null;}
+function confirmLoad(){
+  if(!loadT){alert('Select a table.');return;}
+  if(!loadM){closeModal();goTab('sched');return;}
+  var m=loadM,now=Date.now(),bf=m.firstBreak||1;
+  db.ref('matches/table-'+loadT).set({matchId:m.matchId,sport:m.sport||'snooker',tableNumber:loadT,tournament:m.tournament||'Match',bestOf:m.bestOf||5,currentFrame:1,status:'active',matchWinner:null,turn:bf,breakPlayer:bf,frameBreaker:bf,currentBreak:0,breakBalls:[],redsRemaining:15,lastFoul:null,bestBreak1:0,bestBreak2:0,frameStartTime:now,matchStartTime:now,shotClockEnabled:false,shotClockDuration:60,shotClockStarted:now,player1:{name:m.p1||'P1',frames:0,score:0,state:m.p1state||''},player2:{name:m.p2||'P2',frames:0,score:0,state:m.p2state||''}});
+  db.ref('match_registry/'+m.matchId).update({status:'active',tableNumber:loadT,startTime:now});
+  closeModal();
+}
+function flive(mid){if(!mid)return null;return Object.values(LM).find(function(m){return m&&m.matchId===mid;})||null;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
