@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#060d08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="upbsa-logo.jpg">
+<title>Referee — UPBSA.TV</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#060d08;--bg2:#0a1610;--bg3:#0f1f14;--bg4:#122a1c;
+  --gold:#c9a227;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--purple:#9b59b6;
+  --text:#e8f4e0;--sub:rgba(232,244,224,0.4);--dim:rgba(232,244,224,0.15);
+}
+html{height:100%;background:var(--bg);}
+body{
+  height:100%;background:var(--bg);color:var(--text);
+  font-family:'Helvetica Neue',Arial,sans-serif;
+  display:flex;flex-direction:column;
+  max-width:480px;margin:0 auto;
+  overflow:hidden; /* NO SCROLL */
+}
+
+/* ── SCREENS ── */
+#scr-select, #scr-nomatch, #scr-matchover{
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;height:100%;gap:14px;padding:28px;text-align:center;
+}
+#scr-main{display:none;flex-direction:column;height:100%;overflow:hidden;}
+
+/* ── SELECT SCREEN ── */
+.sel-logo{font-size:1.1rem;font-weight:800;color:var(--gold);letter-spacing:3px;}
+.sel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:280px;}
+.sel-btn{padding:14px;background:var(--bg2);border:1px solid rgba(201,162,39,0.25);border-radius:10px;color:var(--gold);font-size:0.9rem;font-weight:700;text-decoration:none;text-align:center;}
+
+/* ── MATCH OVER ── */
+.mo-badge{font-size:0.65rem;font-weight:700;letter-spacing:3px;color:var(--gold);background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.2);padding:4px 14px;border-radius:20px;text-transform:uppercase;}
+.mo-winner{font-size:2rem;font-weight:900;color:var(--gold);letter-spacing:1px;margin:8px 0 4px;}
+.mo-score{font-size:0.9rem;color:var(--sub);}
+.mo-btn-primary{width:100%;max-width:300px;padding:14px;border-radius:10px;background:rgba(201,162,39,0.1);color:var(--gold);border:1.5px solid var(--gold);font-size:0.88rem;font-weight:800;letter-spacing:2px;cursor:pointer;}
+.mo-btn-secondary{width:100%;max-width:300px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:var(--sub);font-size:0.8rem;font-weight:700;cursor:pointer;}
+
+/* ── MAIN LAYOUT ── */
+/* Header row */
+.hdr{
+  background:var(--bg2);border-bottom:2px solid var(--gold);
+  padding:8px 12px;display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.hdr-badge{
+  font-size:0.7rem;font-weight:700;letter-spacing:1px;color:var(--gold);
+  background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.25);
+  padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;
+  white-space:nowrap;
+}
+.conn-dot{width:7px;height:7px;border-radius:50%;}
+.conn-dot.online{background:var(--green);box-shadow:0 0 5px rgba(46,204,113,0.6);}
+.conn-dot.offline{background:var(--red);box-shadow:0 0 5px rgba(231,76,60,0.6);}
+.hdr-mid{flex:1;text-align:center;font-size:0.7rem;color:var(--sub);cursor:pointer;}
+.hdr-info{font-size:0.65rem;color:var(--dim);white-space:nowrap;}
+
+/* Ref bar */
+.ref-bar{
+  background:#040b06;border-bottom:1px solid rgba(255,255,255,0.05);
+  padding:4px 12px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.ref-lbl{font-size:0.62rem;color:var(--sub);}
+.ref-name{font-weight:700;color:var(--text);}
+.ref-change{font-size:0.6rem;color:var(--blue);background:none;border:1px solid rgba(41,128,185,0.25);border-radius:3px;padding:1px 7px;cursor:pointer;}
+
+/* Score section */
+.score-sec{
+  background:var(--bg2);padding:8px 10px;
+  display:grid;grid-template-columns:1fr auto 1fr;gap:6px;
+  flex-shrink:0;
+}
+.pc{background:var(--bg3);border:1.5px solid transparent;border-radius:9px;padding:7px 8px;display:flex;flex-direction:column;gap:2px;position:relative;}
+.pc.at{border-color:var(--gold);background:rgba(201,162,39,0.04);}
+.pc.at::after{content:'AT TABLE';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);font-size:0.4rem;font-weight:700;letter-spacing:2px;color:var(--gold);background:var(--bg3);padding:0 3px;}
+.pc-name{font-size:0.72rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+.pc.at .pc-name{color:var(--gold);}
+.pc-state{font-size:0.55rem;color:var(--sub);letter-spacing:1px;text-transform:uppercase;}
+.pc-frames{font-size:1.6rem;font-weight:900;color:var(--gold);line-height:1;text-align:center;}
+.pc-pts{font-size:0.75rem;color:var(--sub);text-align:center;}
+.vs-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.vs-sep{font-size:0.7rem;color:var(--dim);}
+.vs-brk{font-size:1.4rem;font-weight:900;color:white;line-height:1;text-align:center;}
+.vs-brk-lbl{font-size:0.45rem;color:var(--sub);letter-spacing:1px;text-transform:uppercase;text-align:center;}
+
+/* Info strip */
+.info-strip{
+  background:#040b06;padding:4px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.info-item{font-size:0.65rem;color:var(--sub);}
+.info-item span{color:var(--text);font-weight:600;}
+.info-lead{font-size:0.65rem;font-weight:700;}
+.info-lead.p1{color:var(--gold);}
+.info-lead.p2{color:var(--green);}
+.info-lead.tied{color:var(--sub);}
+
+/* End visit — prominent */
+.end-visit-btn{
+  margin:8px 10px 6px;
+  padding:12px;border-radius:10px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.1);
+  color:rgba(232,244,224,0.5);
+  font-size:0.85rem;font-weight:700;letter-spacing:2px;
+  cursor:pointer;flex-shrink:0;transition:all .1s;
+  text-align:center;
+}
+.end-visit-btn:active{background:rgba(255,255,255,0.07);color:var(--text);}
+
+/* Ball grid — all 7 + foul in 4x2 */
+.ball-sec{padding:0 8px;flex-shrink:0;}
+.ball-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.ball-btn{
+  padding:0;border-radius:10px;border:none;
+  cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  aspect-ratio:1;transition:transform .1s;
+  -webkit-appearance:none;outline:none;
+}
+.ball-btn:active{transform:scale(.92);}
+.ball-circle{
+  width:42px;height:42px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.75rem;font-weight:800;color:white;
+  box-shadow:inset 0 2px 4px rgba(255,255,255,0.25),0 3px 8px rgba(0,0,0,0.5);
+  flex-shrink:0;
+}
+.ball-pts{font-size:0.58rem;font-weight:700;color:var(--sub);letter-spacing:1px;}
+
+/* Ball colors */
+.b-white{background:var(--bg3);border:1.5px solid rgba(232,244,224,0.1);}
+.b-red{background:linear-gradient(135deg,#c0392b,#7b241c);}
+.b-yellow{background:linear-gradient(135deg,#f1c40f,#b7950b);}
+.b-green{background:linear-gradient(135deg,#27ae60,#145a32);}
+.b-brown{background:linear-gradient(135deg,#a04000,#6e2c00);}
+.b-blue{background:linear-gradient(135deg,#2980b9,#1a5276);}
+.b-pink{background:linear-gradient(135deg,#e91e8c,#880e4f);}
+.b-black{background:linear-gradient(135deg,#1a1a1a,#000);}
+.b-foul{background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);}
+
+/* END VISIT ball button (in grid) */
+.b-end{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);}
+
+/* Bottom controls */
+.bottom-ctrl{
+  margin-top:auto;background:var(--bg2);
+  border-top:1px solid rgba(255,255,255,0.05);
+  padding:6px 10px;display:flex;align-items:center;
+  gap:6px;flex-shrink:0;
+  padding-bottom:max(6px,env(safe-area-inset-bottom));
+}
+.bc-timers{display:flex;gap:10px;flex:1;}
+.bc-timer{display:flex;flex-direction:column;gap:1px;}
+.bc-timer-val{font-size:0.75rem;font-weight:700;font-family:monospace;color:var(--text);letter-spacing:1px;}
+.bc-timer-lbl{font-size:0.48rem;color:var(--sub);letter-spacing:1px;text-transform:uppercase;}
+.bc-btns{display:flex;gap:5px;}
+.bc-btn{
+  padding:7px 10px;border-radius:7px;font-size:0.68rem;font-weight:700;
+  cursor:pointer;white-space:nowrap;letter-spacing:0.5px;border:none;
+  -webkit-appearance:none;transition:opacity .15s;
+}
+.bc-btn:active{opacity:.7;}
+.sc-enable{background:rgba(46,204,113,0.1);color:var(--green);border:1px solid rgba(46,204,113,0.25);}
+.sc-enable.active{background:rgba(231,76,60,0.1);color:var(--red);border-color:rgba(231,76,60,0.3);}
+.sc-time{background:rgba(155,89,182,0.1);color:var(--purple);border:1px solid rgba(155,89,182,0.25);}
+.sc-reset{background:rgba(201,162,39,0.08);color:var(--gold);border:1px solid rgba(201,162,39,0.2);}
+
+/* Foul overlay */
+#foul-overlay{
+  display:none;position:absolute;bottom:0;left:0;right:0;
+  background:rgba(0,0,0,0.85);padding:14px;
+  border-top:1px solid rgba(231,76,60,0.3);
+  z-index:50;
+}
+#foul-overlay.show{display:block;}
+.foul-lbl{font-size:0.6rem;color:rgba(231,76,60,0.7);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.foul-btns{display:flex;gap:6px;align-items:center;}
+.foul-val{flex:1;padding:10px;border-radius:8px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);color:var(--red);font-size:1rem;font-weight:800;cursor:pointer;text-align:center;}
+.foul-val:active{background:rgba(231,76,60,0.2);}
+.foul-cancel{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:var(--sub);font-size:0.8rem;cursor:pointer;}
+
+/* Edit panel */
+#edit-overlay{
+  display:none;position:absolute;bottom:0;left:0;right:0;
+  background:rgba(6,13,8,0.97);padding:14px;
+  border-top:1px solid rgba(41,128,185,0.25);z-index:50;
+}
+#edit-overlay.show{display:block;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.edit-lbl{font-size:0.6rem;color:var(--sub);margin-bottom:3px;letter-spacing:1px;}
+.edit-in{width:100%;padding:8px 9px;background:#0d2018;border:1px solid rgba(255,255,255,.08);border-radius:6px;color:var(--text);font-size:0.85rem;}
+.edit-in:focus{outline:none;border-color:var(--gold);}
+.edit-row{display:flex;gap:8px;margin-top:8px;}
+.edit-save{flex:1;padding:8px;background:rgba(41,128,185,.12);border:1px solid rgba(41,128,185,.35);border-radius:6px;color:var(--blue);font-size:0.8rem;font-weight:700;cursor:pointer;}
+.edit-cancel{padding:8px 12px;background:none;border:1px solid rgba(255,255,255,.08);border-radius:6px;color:var(--sub);font-size:0.78rem;cursor:pointer;}
+
+/* Ref modal */
+#ref-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center;padding:24px;}
+#ref-modal.open{display:flex;}
+.ref-box{background:#0a1a10;border:1px solid rgba(201,162,39,.3);border-radius:12px;padding:22px;width:100%;max-width:300px;}
+.ref-box h3{color:var(--gold);font-size:.85rem;letter-spacing:2px;margin-bottom:10px;}
+.ref-in{width:100%;padding:9px 11px;background:#122a1c;border:1px solid rgba(255,255,255,.08);border-radius:7px;color:var(--text);font-size:.9rem;margin-bottom:10px;}
+.ref-in:focus{outline:none;border-color:var(--gold);}
+.ref-save{width:100%;padding:10px;background:rgba(201,162,39,.1);border:1.5px solid var(--gold);border-radius:7px;color:var(--gold);font-size:.82rem;font-weight:800;letter-spacing:2px;cursor:pointer;}
+
+/* SC time picker */
+#sc-picker{display:none;position:absolute;bottom:52px;right:10px;background:#0a1a10;border:1px solid rgba(155,89,182,.3);border-radius:10px;padding:10px;z-index:60;display:none;}
+#sc-picker.show{display:block;}
+.sc-opt{padding:8px 16px;font-size:0.8rem;color:var(--purple);cursor:pointer;border-radius:6px;}
+.sc-opt:hover{background:rgba(155,89,182,.1);}
+</style>
+</head>
+<body>
+
+<!-- ── SELECT TABLE ── -->
+<div id="scr-select" style="display:flex">
+  <img src="upbsa-logo.jpg" style="width:60px;height:60px;border-radius:50%;border:2px solid rgba(201,162,39,0.4);">
+  <div class="sel-logo">UPBSA.TV</div>
+  <div style="font-size:0.78rem;color:var(--sub)">Select your table</div>
+  <div class="sel-grid">
+    <a href="?table=1" class="sel-btn">T1</a><a href="?table=2" class="sel-btn">T2</a>
+    <a href="?table=3" class="sel-btn">T3</a><a href="?table=4" class="sel-btn">T4</a>
+    <a href="?table=5" class="sel-btn">T5</a><a href="?table=6" class="sel-btn">T6</a>
+  </div>
+  <a href="referee-hub.html" style="font-size:.7rem;color:var(--sub);text-decoration:none;">← Referee Hub</a>
+</div>
+
+<!-- ── NO MATCH ── -->
+<div id="scr-nomatch">
+  <img src="upbsa-logo.jpg" style="width:50px;height:50px;border-radius:50%;opacity:.5;">
+  <h2 id="nm-title" style="color:var(--gold);font-size:1rem;">No match on Table –</h2>
+  <p style="font-size:0.78rem;color:var(--sub);line-height:1.6;">Waiting for match to be loaded from dashboard.</p>
+  <a href="referee-hub.html" style="font-size:.7rem;color:var(--sub);text-decoration:none;margin-top:8px;">← Referee Hub</a>
+</div>
+
+<!-- ── MATCH OVER ── -->
+<div id="scr-matchover">
+  <div class="mo-badge">Match Complete</div>
+  <div style="font-size:2.5rem;">🏆</div>
+  <div class="mo-winner" id="mo-winner">–</div>
+  <div class="mo-score" id="mo-score">–</div>
+  <div style="height:1px;width:100%;max-width:280px;background:rgba(255,255,255,0.06);margin:8px 0;"></div>
+  <div style="font-size:0.65rem;color:var(--sub);letter-spacing:1px;" id="mo-mid">–</div>
+  <button class="mo-btn-primary" onclick="startNewOnSameTable()">Start New Match — Table <span id="mo-tbl">–</span></button>
+  <button class="mo-btn-secondary" onclick="window.location.href='referee-hub.html'">← Back to Referee Hub</button>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="scr-main" style="position:relative;">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-badge">
+      <div class="conn-dot online" id="conn-dot"></div>
+      <span id="t-badge">Table –</span>
+    </div>
+    <div class="hdr-mid" id="t-mid" onclick="copyMid()">–</div>
+    <div class="hdr-info" id="t-info">F–/–</div>
+  </div>
+
+  <!-- Ref bar -->
+  <div class="ref-bar">
+    <div class="ref-lbl">Ref: <span class="ref-name" id="ref-name">–</span></div>
+    <button class="ref-change" onclick="openRefModal()">Change</button>
+  </div>
+
+  <!-- Score -->
+  <div class="score-sec">
+    <div class="pc" id="pc1">
+      <div class="pc-name" id="pn1" onclick="openEditPanel()">P1</div>
+      <div class="pc-state" id="pst1"></div>
+      <div class="pc-frames" id="pf1">0</div>
+      <div class="pc-pts" id="pp1">0 pts</div>
+    </div>
+    <div class="vs-col">
+      <div class="vs-sep">—</div>
+      <div class="vs-brk" id="vs-brk">0</div>
+      <div class="vs-brk-lbl">Break</div>
+    </div>
+    <div class="pc" id="pc2">
+      <div class="pc-name" id="pn2" onclick="openEditPanel()">P2</div>
+      <div class="pc-state" id="pst2"></div>
+      <div class="pc-frames" id="pf2">0</div>
+      <div class="pc-pts" id="pp2">0 pts</div>
+    </div>
+  </div>
+
+  <!-- Info strip -->
+  <div class="info-strip">
+    <div class="info-item"><span id="reds-left">15</span> reds</div>
+    <div class="info-item"><span id="pts-rem">147</span> pts left</div>
+    <div class="info-lead tied" id="lead-lbl">Tied</div>
+  </div>
+
+  <!-- End visit button -->
+  <button class="end-visit-btn" onclick="endVisit()">END VISIT — Switch Turn</button>
+
+  <!-- Ball grid: 4 columns × 2 rows = 8 slots (7 balls + foul) -->
+  <div class="ball-sec">
+    <div class="ball-grid">
+      <!-- Row 1: Red Yel Grn Brn -->
+      <button class="ball-btn" onclick="potBall('red',1)">
+        <div class="ball-circle b-red">R</div>
+        <div class="ball-pts">1 PT</div>
+      </button>
+      <button class="ball-btn" onclick="potBall('yellow',2)">
+        <div class="ball-circle b-yellow" style="color:#333">Y</div>
+        <div class="ball-pts">2 PTS</div>
+      </button>
+      <button class="ball-btn" onclick="potBall('green',3)">
+        <div class="ball-circle b-green">G</div>
+        <div class="ball-pts">3 PTS</div>
+      </button>
+      <button class="ball-btn" onclick="potBall('brown',4)">
+        <div class="ball-circle b-brown">Bn</div>
+        <div class="ball-pts">4 PTS</div>
+      </button>
+      <!-- Row 2: Blu Pnk Blk Foul -->
+      <button class="ball-btn" onclick="potBall('blue',5)">
+        <div class="ball-circle b-blue">B</div>
+        <div class="ball-pts">5 PTS</div>
+      </button>
+      <button class="ball-btn" onclick="potBall('pink',6)">
+        <div class="ball-circle b-pink">P</div>
+        <div class="ball-pts">6 PTS</div>
+      </button>
+      <button class="ball-btn" onclick="potBall('black',7)">
+        <div class="ball-circle b-black">Bk</div>
+        <div class="ball-pts">7 PTS</div>
+      </button>
+      <button class="ball-btn" onclick="toggleFoul()">
+        <div class="ball-circle b-foul" style="color:var(--red);font-size:0.7rem;font-weight:800;">FOUL</div>
+        <div class="ball-pts" style="color:rgba(231,76,60,0.6);">PEN</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom controls: timers + SC -->
+  <div class="bottom-ctrl">
+    <div class="bc-timers">
+      <div class="bc-timer">
+        <div class="bc-timer-val" id="frame-time">00:00</div>
+        <div class="bc-timer-lbl">Frame</div>
+      </div>
+      <div class="bc-timer" id="sc-timer-block" style="display:none">
+        <div class="bc-timer-val" id="sc-val" style="color:var(--green);">60</div>
+        <div class="bc-timer-lbl">Shot Clock</div>
+      </div>
+    </div>
+    <div class="bc-btns">
+      <button class="bc-btn sc-enable" id="sc-enable-btn" onclick="toggleSC()">Enable SC</button>
+      <button class="bc-btn sc-time" onclick="toggleSCPicker()">60s</button>
+      <button class="bc-btn sc-reset" onclick="resetSC()">↺</button>
+    </div>
+  </div>
+
+  <!-- Foul overlay -->
+  <div id="foul-overlay">
+    <div class="foul-lbl">Award foul points to opponent</div>
+    <div class="foul-btns">
+      <button class="foul-val" onclick="foul(4)">+4</button>
+      <button class="foul-val" onclick="foul(5)">+5</button>
+      <button class="foul-val" onclick="foul(6)">+6</button>
+      <button class="foul-val" onclick="foul(7)">+7</button>
+      <button class="foul-cancel" onclick="toggleFoul()">✕</button>
+    </div>
+  </div>
+
+  <!-- SC duration picker -->
+  <div id="sc-picker">
+    <div class="sc-opt" onclick="setSCDur(30)">30 sec</div>
+    <div class="sc-opt" onclick="setSCDur(45)">45 sec</div>
+    <div class="sc-opt" onclick="setSCDur(60)">60 sec</div>
+    <div class="sc-opt" onclick="setSCDur(75)">75 sec</div>
+  </div>
+
+  <!-- Edit overlay -->
+  <div id="edit-overlay">
+    <div class="edit-grid">
+      <div><div class="edit-lbl">Player 1</div><input class="edit-in" id="ep1"></div>
+      <div><div class="edit-lbl">Player 2</div><input class="edit-in" id="ep2"></div>
+    </div>
+    <div class="edit-row">
+      <button class="edit-save" onclick="saveNames()">Save</button>
+      <button class="edit-cancel" onclick="closeEditPanel()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Ref modal -->
+  <div id="ref-modal">
+    <div class="ref-box">
+      <h3>Referee Name</h3>
+      <input class="ref-in" id="ref-in" type="text" placeholder="Your name">
+      <button class="ref-save" onclick="saveRef()">Confirm</button>
+    </div>
+  </div>
+
+</div><!-- /scr-main -->
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db=firebase.database();
+var params=new URLSearchParams(location.search);
+var tbl=params.get('table');
+var matchRef=null, S=null;
+var frameInt=null, scInt=null;
+var scEnabled=false, scDur=60, scDurSel=60;
+var prevMatchId=null;
+
+// ── OFFLINE QUEUE ──
+var QUEUE_KEY='upbsa_offline_q_'+(tbl||'0');
+var _isOnline=navigator.onLine;
+
+function _updateOnlineUI(on){
+  _isOnline=on;
+  var d=document.getElementById('conn-dot');
+  if(d) d.className='conn-dot '+(on?'online':'offline');
+  if(on) _flushQueue();
+}
+window.addEventListener('online',function(){_updateOnlineUI(true);});
+window.addEventListener('offline',function(){_updateOnlineUI(false);});
+
+function _getQ(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch(e){return[];}}
+function _saveQ(q){try{localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}catch(e){}}
+
+var _flushing=false;
+function _flushQueue(){
+  if(_flushing)return;
+  var q=_getQ(); if(!q.length)return;
+  _flushing=true;
+  function next(){
+    var q=_getQ(); if(!q.length){_flushing=false;return;}
+    var item=q[0];
+    db.ref(item.path).set(item.data).then(function(){
+      var q2=_getQ(); q2.shift(); _saveQ(q2); setTimeout(next,80);
+    }).catch(function(){_flushing=false;setTimeout(_flushQueue,3000);});
+  }
+  next();
+}
+
+function safeSet(ref,data){
+  if(_isOnline){
+    ref.set(data).catch(function(){_enqueueItem(ref,data);});
+  } else { _enqueueItem(ref,data); }
+}
+function _enqueueItem(ref,data){
+  var q=_getQ();
+  var path=ref.toString().replace(/https?:\/\/[^\/]+\//,'');
+  q.push({path:path,data:JSON.parse(JSON.stringify(data)),ts:Date.now()});
+  _saveQ(q);
+  if(navigator.vibrate)navigator.vibrate(30);
+}
+setTimeout(function(){if(_isOnline)_flushQueue();},800);
+
+// ── INIT ──
+if(!tbl){
+  document.getElementById('scr-select').style.display='flex';
+} else {
+  document.getElementById('t-badge').textContent='Table '+tbl;
+  document.getElementById('mo-tbl').textContent=tbl;
+  matchRef=db.ref('matches/table-'+tbl);
+  matchRef.on('value',function(snap){
+    S=snap.val();
+    if(!S||S.status!=='active'){
+      if(S&&S.matchWinner){
+        show('scr-matchover');
+        document.getElementById('mo-winner').textContent=S['player'+S.matchWinner]?S['player'+S.matchWinner].name:'–';
+        document.getElementById('mo-score').textContent=S.player1.name+' '+S.player1.frames+' – '+S.player2.frames+' '+S.player2.name;
+        document.getElementById('mo-mid').textContent=S.matchId||'';
+        stopTimers();
+      } else {
+        show('scr-nomatch');
+        document.getElementById('nm-title').textContent='No match on Table '+tbl;
+        stopTimers();
+      }
+    } else {
+      if(S.matchId&&S.matchId!==prevMatchId){prevMatchId=S.matchId;}
+      show('scr-main');
+      render();
+      startTimers();
+      if(!localStorage.getItem('refName')) setTimeout(openRefModal,600);
+      else if(!S.referee) matchRef.update({referee:localStorage.getItem('refName')});
+    }
+  });
+}
+
+function show(id){
+  ['scr-select','scr-nomatch','scr-matchover','scr-main'].forEach(function(s){
+    document.getElementById(s).style.display='none';
+  });
+  var el=document.getElementById(id);
+  if(el) el.style.display=id==='scr-main'?'flex':'flex';
+}
+
+// ── RENDER ──
+function render(){
+  if(!S)return;
+  // Header
+  document.getElementById('t-mid').textContent=S.matchId||'–';
+  document.getElementById('t-info').textContent='F'+S.currentFrame+'/'+S.bestOf+' BO'+S.bestOf;
+  document.getElementById('ref-name').textContent=S.referee||localStorage.getItem('refName')||'–';
+  // Player cards
+  document.getElementById('pn1').textContent=S.player1.name;
+  document.getElementById('pn2').textContent=S.player2.name;
+  document.getElementById('pst1').textContent=S.player1.state||'';
+  document.getElementById('pst2').textContent=S.player2.state||'';
+  document.getElementById('pf1').textContent=S.player1.frames;
+  document.getElementById('pf2').textContent=S.player2.frames;
+  document.getElementById('pp1').textContent=S.player1.score+' pts';
+  document.getElementById('pp2').textContent=S.player2.score+' pts';
+  document.getElementById('pc1').className='pc'+(S.turn===1?' at':'');
+  document.getElementById('pc2').className='pc'+(S.turn===2?' at':'');
+  // Break
+  document.getElementById('vs-brk').textContent=S.currentBreak||0;
+  // Info strip
+  var reds=Math.max(0,S.redsRemaining||15);
+  var ptsLeft=(reds*8)+27;
+  document.getElementById('reds-left').textContent=reds;
+  document.getElementById('pts-rem').textContent=ptsLeft;
+  var lead=document.getElementById('lead-lbl');
+  var diff=S.player1.score-S.player2.score;
+  if(diff===0){lead.className='info-lead tied';lead.textContent='Tied';}
+  else if(diff>0){lead.className='info-lead p1';lead.textContent=S.player1.name.split(' ')[0]+' +'+diff;}
+  else{lead.className='info-lead p2';lead.textContent=S.player2.name.split(' ')[0]+' +'+(Math.abs(diff));}
+  // SC state
+  scEnabled=S.shotClockEnabled||false;
+  scDur=S.shotClockDuration||60;
+  var scBtn=document.getElementById('sc-enable-btn');
+  if(scBtn){
+    scBtn.textContent=scEnabled?'SC ON':'Enable SC';
+    scBtn.className='bc-btn sc-enable'+(scEnabled?' active':'');
+  }
+  document.getElementById('sc-timer-block').style.display=scEnabled?'flex':'none';
+  // Edit panel values
+  document.getElementById('ep1').value=S.player1.name;
+  document.getElementById('ep2').value=S.player2.name;
+}
+
+// ── TIMERS ──
+function startTimers(){
+  if(!frameInt) frameInt=setInterval(updateFrameTime,1000);
+  if(!scInt) scInt=setInterval(updateSC,500);
+}
+function stopTimers(){clearInterval(frameInt);clearInterval(scInt);frameInt=null;scInt=null;}
+
+function updateFrameTime(){
+  if(!S||!S.frameStartTime)return;
+  var e=Math.floor((Date.now()-S.frameStartTime)/1000);
+  var el=document.getElementById('frame-time');
+  if(el) el.textContent=pad(Math.floor(e/60))+':'+pad(e%60);
+}
+
+function updateSC(){
+  if(!S||!scEnabled)return;
+  var elapsed=S.shotClockStarted?Math.floor((Date.now()-S.shotClockStarted)/1000):0;
+  var rem=Math.max(0,scDur-elapsed);
+  var el=document.getElementById('sc-val');
+  if(el){
+    el.textContent=rem;
+    el.style.color=rem<=10?'var(--red)':rem<=20?'#f39c12':'var(--green)';
+  }
+}
+function pad(n){return String(n).padStart(2,'0');}
+
+// ── POT BALL ──
+var BALL_COLORS={red:'#c0392b',yellow:'#f1c40f',green:'#27ae60',brown:'#7d5a3c',blue:'#2980b9',pink:'#e91e8c',black:'#111'};
+function potBall(color,pts){
+  if(!S||!matchRef)return;
+  var s=JSON.parse(JSON.stringify(S));
+  var pl='player'+s.turn;
+  s[pl].score=(s[pl].score||0)+pts;
+  s.currentBreak=(s.currentBreak||0)+pts;
+  // Track best break
+  var bbKey='bestBreak'+s.turn;
+  if(s.currentBreak>(s[bbKey]||0)) s[bbKey]=s.currentBreak;
+  // Red consumed
+  if(color==='red') s.redsRemaining=Math.max(0,(s.redsRemaining||15)-1);
+  // Add to breakBalls
+  s.breakBalls=s.breakBalls||[];
+  s.breakBalls.push({color:color,value:pts,ts:Date.now()});
+  // Reset shot clock
+  if(scEnabled) s.shotClockStarted=Date.now();
+  // Check win
+  var needed=Math.ceil(s.bestOf/2);
+  if(s.currentFrame>s.bestOf||(s.player1.frames>=needed||s.player2.frames>=needed)){
+    s.matchWinner=s.turn;s.status='finished';
+  }
+  safeSet(matchRef,s);
+  if(navigator.vibrate)navigator.vibrate(40);
+}
+
+// ── END VISIT ──
+function endVisit(){
+  if(!S||!matchRef)return;
+  var s=JSON.parse(JSON.stringify(S));
+  // Check if frame is won (when reds=0 and colours played)
+  s.turn=s.turn===1?2:1;
+  s.currentBreak=0;s.breakBalls=[];
+  if(scEnabled) s.shotClockStarted=Date.now();
+  safeSet(matchRef,s);
+  if(navigator.vibrate)navigator.vibrate([30,30,30]);
+}
+
+// ── FOUL ──
+function foul(pts){
+  if(!S||!matchRef)return;
+  var s=JSON.parse(JSON.stringify(S));
+  var opp='player'+(s.turn===1?2:1);
+  s[opp].score=(s[opp].score||0)+pts;
+  s.lastFoul={pts:pts,by:s.turn,ts:Date.now()};
+  s.turn=s.turn===1?2:1;
+  s.currentBreak=0;s.breakBalls=[];
+  if(scEnabled) s.shotClockStarted=Date.now();
+  document.getElementById('foul-overlay').classList.remove('show');
+  safeSet(matchRef,s);
+  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+}
+function toggleFoul(){
+  var f=document.getElementById('foul-overlay');
+  f.classList.toggle('show');
+  document.getElementById('edit-overlay').classList.remove('show');
+}
+
+// ── SHOT CLOCK ──
+function toggleSC(){
+  if(!matchRef)return;
+  scEnabled=!scEnabled;
+  matchRef.update({shotClockEnabled:scEnabled,shotClockStarted:Date.now(),shotClockDuration:scDurSel});
+}
+function resetSC(){if(matchRef) matchRef.update({shotClockStarted:Date.now()});}
+function toggleSCPicker(){var p=document.getElementById('sc-picker');p.style.display=p.style.display==='block'?'none':'block';}
+function setSCDur(s){
+  scDurSel=s;
+  document.querySelector('.sc-time').textContent=s+'s';
+  document.getElementById('sc-picker').style.display='none';
+  if(matchRef) matchRef.update({shotClockDuration:s,shotClockStarted:Date.now()});
+}
+
+// ── NAMES ──
+function openEditPanel(){
+  document.getElementById('edit-overlay').classList.add('show');
+  document.getElementById('foul-overlay').classList.remove('show');
+}
+function closeEditPanel(){document.getElementById('edit-overlay').classList.remove('show');}
+function saveNames(){
+  var n1=document.getElementById('ep1').value.trim();
+  var n2=document.getElementById('ep2').value.trim();
+  if(!n1||!n2){alert('Both names required.');return;}
+  matchRef.update({'player1/name':n1,'player2/name':n2}).then(function(){closeEditPanel();});
+}
+
+// ── FRAME WON ──
+function frameWon(winner){
+  if(!S||!matchRef)return;
+  var s=JSON.parse(JSON.stringify(S));
+  s['player'+winner].frames=(s['player'+winner].frames||0)+1;
+  var needed=Math.ceil(s.bestOf/2);
+  if(s['player'+winner].frames>=needed){
+    s.matchWinner=winner;s.status='finished';
+  } else {
+    s.currentFrame=(s.currentFrame||1)+1;
+    s.player1.score=0;s.player2.score=0;
+    s.currentBreak=0;s.breakBalls=[];s.redsRemaining=15;
+    s.turn=s.frameBreaker===1?2:1;
+    s.frameBreaker=s.turn;
+    s.frameStartTime=Date.now();
+    if(scEnabled) s.shotClockStarted=Date.now();
+  }
+  safeSet(matchRef,s);
+}
+
+// ── MATCH OVER / NEW MATCH ──
+function startNewOnSameTable(){
+  if(matchRef) matchRef.remove();
+  show('scr-nomatch');
+  document.getElementById('nm-title').textContent='No match on Table '+tbl;
+}
+
+// ── REF ──
+function openRefModal(){document.getElementById('ref-modal').classList.add('open');}
+function saveRef(){
+  var name=document.getElementById('ref-in').value.trim();
+  if(!name){alert('Enter your name.');return;}
+  localStorage.setItem('refName',name);
+  document.getElementById('ref-name').textContent=name;
+  if(matchRef) matchRef.update({referee:name});
+  document.getElementById('ref-modal').classList.remove('open');
+}
+
+// ── COPY MID ──
+function copyMid(){
+  if(!S||!S.matchId)return;
+  navigator.clipboard&&navigator.clipboard.writeText(S.matchId).then(function(){
+    var el=document.getElementById('t-mid');
+    if(el){var o=el.textContent;el.textContent='Copied!';setTimeout(function(){el.textContent=o;},1200);}
+  });
+}
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(function(){}); }
+</script>
+</body>
+</html>
