@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#060d08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="upbsa-logo.jpg">
+<title>OBS Design — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#060d08;--bg2:#0a1610;--bg3:#0f1f14;--bg4:#122a1c;
+  --gold:#c9a227;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;
+  --text:#e8f4e0;--sub:rgba(232,244,224,0.45);--dim:rgba(232,244,224,0.12);
+  --r:8px;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100%;overflow:hidden;}
+body{display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:var(--bg2);border-bottom:2px solid var(--gold);
+  padding:0 20px;display:flex;align-items:center;gap:12px;
+  height:52px;flex-shrink:0;
+}
+.topbar-logo{font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:4px;color:var(--gold);}
+.topbar-logo small{font-size:0.55rem;color:var(--sub);letter-spacing:2px;font-family:'Inter',sans-serif;margin-left:6px;}
+.topbar-links{display:flex;gap:8px;margin-left:auto;}
+.tl{font-size:0.65rem;color:var(--sub);text-decoration:none;padding:4px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:4px;letter-spacing:1px;transition:all .15s;}
+.tl:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;background:var(--bg2);border-bottom:1px solid var(--dim);
+  flex-shrink:0;
+}
+.tab{
+  flex:1;padding:10px 8px;font-size:0.68rem;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--sub);
+  cursor:pointer;text-align:center;border-bottom:2px solid transparent;
+  transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;
+}
+.tab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.tab:hover:not(.on){color:var(--text);}
+
+/* ── MAIN LAYOUT ── */
+.main{flex:1;display:flex;overflow:hidden;}
+
+/* ── LEFT PANEL ── */
+.left{
+  width:340px;flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--dim);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.left-scroll{flex:1;overflow-y:auto;padding-bottom:80px;}
+.left-scroll::-webkit-scrollbar{width:4px;}
+.left-scroll::-webkit-scrollbar-track{background:transparent;}
+.left-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+
+/* Sections */
+.sec{border-bottom:1px solid var(--dim);}
+.sec-hd{padding:11px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.sec-hd:hover{background:rgba(255,255,255,0.02);}
+.sec-title{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+.sec-arr{font-size:0.65rem;color:var(--sub);transition:transform .2s;}
+.sec-arr.open{transform:rotate(90deg);}
+.sec-body{padding:10px 16px;display:none;}
+.sec-body.open{display:block;}
+
+/* Controls */
+.ctrl{margin-bottom:10px;}
+.ctrl-lbl{font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--sub);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.ctrl-lbl span{color:var(--gold);font-size:0.72rem;font-weight:700;}
+input[type=color]{width:38px;height:26px;border:1px solid rgba(255,255,255,0.12);border-radius:4px;cursor:pointer;background:none;padding:1px;vertical-align:middle;}
+input[type=range]{width:100%;accent-color:var(--gold);height:3px;cursor:pointer;}
+input[type=text],input[type=number],select{width:100%;padding:7px 9px;background:var(--bg3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text);font-size:0.82rem;font-family:'Inter',sans-serif;}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--gold);}
+select option{background:var(--bg3);}
+.color-row{display:flex;align-items:center;gap:7px;}
+.color-row input[type=color]{flex-shrink:0;}
+.color-row input[type=text]{flex:1;}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;}
+.tog-lbl{font-size:0.78rem;color:var(--sub);}
+.tog{position:relative;width:34px;height:19px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:#1e3a28;border-radius:20px;transition:.2s;border:1px solid rgba(255,255,255,0.1);}
+.tog-sl::before{content:'';position:absolute;height:13px;width:13px;left:2px;bottom:2px;background:rgba(232,244,224,0.35);border-radius:50%;transition:.2s;}
+.tog input:checked+.tog-sl{background:#1a5c2a;border-color:var(--green);}
+.tog input:checked+.tog-sl::before{transform:translateX(15px);background:var(--green);}
+
+/* ── PRESETS PAGE ── */
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px;}
+.preset-card{
+  background:var(--bg3);border:1.5px solid rgba(255,255,255,0.07);
+  border-radius:10px;padding:14px;cursor:pointer;
+  transition:all .15s;text-align:center;display:flex;flex-direction:column;gap:6px;
+}
+.preset-card:hover,.preset-card.on{border-color:var(--gold);background:rgba(201,162,39,0.06);}
+.preset-card:active{transform:scale(.97);}
+.preset-preview{height:28px;border-radius:5px;margin-bottom:2px;overflow:hidden;display:flex;align-items:flex-end;}
+.preset-bar{height:20px;width:100%;border-radius:3px;display:flex;align-items:center;justify-content:space-between;padding:0 6px;}
+.preset-name{font-size:0.72rem;font-weight:700;color:var(--text);letter-spacing:1px;}
+.preset-sub{font-size:0.58rem;color:var(--sub);}
+
+/* ── BUILDER TAB ── */
+.builder-wrap{flex:1;display:flex;overflow:hidden;}
+.builder-left{
+  width:260px;flex-shrink:0;background:var(--bg2);
+  border-right:1px solid var(--dim);overflow-y:auto;
+}
+.builder-left::-webkit-scrollbar{width:3px;}
+.builder-left::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);}
+.layer-tabs{display:flex;border-bottom:1px solid var(--dim);}
+.layer-tab{flex:1;padding:9px;font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sub);cursor:pointer;text-align:center;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;transition:all .15s;}
+.layer-tab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.el-library{padding:10px;}
+.el-title{font-size:0.55rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin:8px 0 5px;}
+.el-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.el-chip{
+  padding:6px 8px;background:var(--bg3);border:1px solid rgba(255,255,255,0.07);
+  border-radius:6px;font-size:0.65rem;color:var(--text);cursor:grab;
+  text-align:center;transition:all .15s;user-select:none;letter-spacing:0.5px;
+}
+.el-chip:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,0.06);}
+.el-chip:active{cursor:grabbing;transform:scale(.95);}
+
+/* Canvas area */
+.canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#111;}
+.canvas-header{background:var(--bg2);border-bottom:1px solid var(--dim);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.canvas-title{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sub);}
+.canvas-ctrl{display:flex;gap:6px;margin-left:auto;}
+.cc-btn{padding:5px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--sub);font-size:0.65rem;cursor:pointer;letter-spacing:1px;transition:all .15s;}
+.cc-btn:hover{border-color:var(--gold);color:var(--gold);}
+.cc-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,0.08);}
+.canvas-scroll{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px;background:radial-gradient(ellipse at center,#0f2d1a,#060f0a);}
+.canvas-frame{position:relative;flex-shrink:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:80px 45px;border:1px solid rgba(255,255,255,0.07);overflow:hidden;}
+.canvas-layer{position:absolute;left:0;right:0;transition:height .2s;}
+.canvas-el{
+  position:absolute;cursor:move;user-select:none;
+  border:1px dashed rgba(255,255,255,0.15);
+  transition:border-color .1s;
+}
+.canvas-el:hover,.canvas-el.sel{border-color:var(--gold);border-style:solid;}
+.canvas-el.sel{border-color:#5dade2;}
+.resize-h{position:absolute;width:8px;height:8px;background:#5dade2;border:1px solid #fff;border-radius:2px;z-index:10;}
+.drop-target{border:2px dashed rgba(201,162,39,0.4)!important;background:rgba(201,162,39,0.04)!important;}
+
+/* Properties panel */
+.props-panel{
+  width:220px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--dim);
+  overflow-y:auto;
+}
+.props-panel::-webkit-scrollbar{width:3px;}
+.props-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);}
+.pp-hd{padding:10px 14px;border-bottom:1px solid var(--dim);}
+.pp-title{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+.pp-body{padding:10px 14px;}
+.pp-ctrl{margin-bottom:9px;}
+.pp-lbl{font-size:0.58rem;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.pp-in{width:100%;padding:5px 7px;background:var(--bg3);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--text);font-size:0.78rem;font-family:'Inter',sans-serif;}
+.pp-in:focus{outline:none;border-color:var(--gold);}
+.pp-row{display:flex;gap:6px;}
+.pp-row .pp-in{flex:1;}
+.pp-del{width:100%;padding:7px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);border-radius:5px;color:var(--red);font-size:0.75rem;font-weight:700;cursor:pointer;margin-top:6px;letter-spacing:1px;}
+.pp-del:hover{background:rgba(231,76,60,0.15);}
+
+/* ── THEMES PAGE ── */
+.themes-list{padding:14px;display:flex;flex-direction:column;gap:8px;}
+.theme-card{
+  background:var(--bg3);border:1px solid rgba(255,255,255,0.07);
+  border-radius:10px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.theme-card.active{border-color:var(--gold);}
+.tc-info{flex:1;}
+.tc-name{font-size:0.85rem;font-weight:700;color:var(--text);}
+.tc-sub{font-size:0.62rem;color:var(--sub);margin-top:2px;}
+.tc-apply{font-size:0.65rem;color:var(--blue);cursor:pointer;padding:3px 8px;border:1px solid rgba(41,128,185,0.3);border-radius:4px;background:rgba(41,128,185,0.08);white-space:nowrap;}
+.tc-del{font-size:0.65rem;color:var(--red);cursor:pointer;padding:3px 8px;border:1px solid rgba(231,76,60,0.25);border-radius:4px;background:rgba(231,76,60,0.06);white-space:nowrap;}
+
+/* ── STICKY SAVE BAR ── */
+.save-bar{
+  position:fixed;bottom:0;left:0;width:340px;
+  padding:10px 14px;background:var(--bg);border-top:2px solid var(--gold);
+  z-index:100;display:flex;gap:7px;
+}
+.sb-apply{flex:2;padding:10px;background:rgba(201,162,39,0.1);border:1.5px solid var(--gold);border-radius:var(--r);color:var(--gold);font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:1px;}
+.sb-apply:hover{background:rgba(201,162,39,0.2);}
+.sb-save{flex:1;padding:10px;background:rgba(41,128,185,0.1);border:1px solid rgba(41,128,185,0.35);border-radius:var(--r);color:var(--blue);font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:1px;}
+.save-bar-builder{width:100%;left:0;border-radius:0;display:flex;gap:7px;}
+
+/* Preview window (right side on non-builder tabs) */
+.preview-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0d0d0d;}
+.pv-hd{background:var(--bg2);border-bottom:1px solid var(--dim);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.pv-title{font-size:0.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sub);}
+.pv-data{display:flex;gap:5px;margin-left:auto;}
+.pv-btn{padding:4px 9px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:var(--sub);font-size:0.63rem;cursor:pointer;letter-spacing:1px;}
+.pv-btn.on{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,0.06);}
+.preview-bg{flex:1;display:flex;align-items:flex-end;justify-content:center;padding:20px;background:radial-gradient(ellipse at center,#0f2d1a,#060f0a);overflow:hidden;}
+.pv-frame{
+  width:960px;height:540px;background:transparent;
+  position:relative;flex-shrink:0;
+  background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:80px 45px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;
+}
+.pv-scale{position:absolute;bottom:0;left:0;right:0;transform-origin:bottom left;transform:scale(.5);width:1920px;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c3f1c;border:1px solid var(--gold);color:var(--gold);padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:700;letter-spacing:1px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:999;}
+#toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">UPBSA<span style="color:var(--sub)">.TV</span> <small>OBS DESIGN</small></div>
+  <div class="topbar-links">
+    <a href="overlay.html?table=1" target="_blank" class="tl">Preview OBS ↗</a>
+    <a href="dashboard.html" class="tl">Dashboard</a>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab on" id="tab-presets" onclick="showTab('presets')">Presets</button>
+  <button class="tab" id="tab-customize" onclick="showTab('customize')">Customize</button>
+  <button class="tab" id="tab-builder" onclick="showTab('builder')">Builder</button>
+  <button class="tab" id="tab-themes" onclick="showTab('themes')">Saved Themes</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ════ PRESETS TAB ════ -->
+  <div id="pg-presets" style="display:flex;width:100%;overflow:hidden;">
+    <div class="left">
+      <div class="preset-grid">
+        <div class="preset-card on" id="pc-wst" onclick="applyPreset('wst',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#1a0a0a,#0d0505);border-top:3px solid #c9a227;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#c9a227;">WST</span></div></div>
+          <div class="preset-name">WST Classic</div>
+          <div class="preset-sub">Dark red + gold</div>
+        </div>
+        <div class="preset-card" id="pc-dark" onclick="applyPreset('dark',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#0a0a1a,#050510);border-top:3px solid #5dade2;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#5dade2;">PRO</span></div></div>
+          <div class="preset-name">Dark Pro</div>
+          <div class="preset-sub">Navy + blue</div>
+        </div>
+        <div class="preset-card" id="pc-green" onclick="applyPreset('green',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#0a1a0a,#051005);border-top:3px solid #2ecc71;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#2ecc71;">SNK</span></div></div>
+          <div class="preset-name">Snooker Green</div>
+          <div class="preset-sub">Classic baize</div>
+        </div>
+        <div class="preset-card" id="pc-royal" onclick="applyPreset('royal',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#0a0a2a,#05051a);border-top:3px solid #9b59b6;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#9b59b6;">RYL</span></div></div>
+          <div class="preset-name">Royal Blue</div>
+          <div class="preset-sub">Deep purple</div>
+        </div>
+        <div class="preset-card" id="pc-red" onclick="applyPreset('red',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#1a0505,#0d0202);border-top:3px solid #e74c3c;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#e74c3c;">RED</span></div></div>
+          <div class="preset-name">Fire Red</div>
+          <div class="preset-sub">Bold red accent</div>
+        </div>
+        <div class="preset-card" id="pc-minimal" onclick="applyPreset('minimal',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:rgba(0,0,0,0.95);border-top:1px solid rgba(255,255,255,0.3);"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:rgba(255,255,255,0.5);">MIN</span></div></div>
+          <div class="preset-name">Minimal</div>
+          <div class="preset-sub">Clean, no color</div>
+        </div>
+        <div class="preset-card" id="pc-gold" onclick="applyPreset('gold',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:linear-gradient(180deg,#1a1400,#0d0a00);border-top:3px solid #f0c040;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#f0c040;">GOLD</span></div></div>
+          <div class="preset-name">Full Gold</div>
+          <div class="preset-sub">Rich gold theme</div>
+        </div>
+        <div class="preset-card" id="pc-white" onclick="applyPreset('white',this)">
+          <div class="preset-preview"><div class="preset-bar" style="background:rgba(255,255,255,0.9);border-top:3px solid #333;"><span style="font-family:Bebas Neue,cursive;font-size:11px;color:#333;">DAY</span></div></div>
+          <div class="preset-name">Day / Light</div>
+          <div class="preset-sub">Light background</div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <button class="sb-apply" style="width:100%;" onclick="applyToOBS()">▶ Apply to OBS Live</button>
+      </div>
+    </div>
+    <!-- Preview -->
+    <div class="preview-area">
+      <div class="pv-hd">
+        <div class="pv-title">Preview</div>
+        <div class="pv-data">
+          <button class="pv-btn on" onclick="setDemo(true,this)">Demo</button>
+          <button class="pv-btn" onclick="setDemo(false,this)">Live Table 1</button>
+        </div>
+      </div>
+      <div class="preview-bg">
+        <div class="pv-frame">
+          <div class="pv-scale" id="pv-scale">
+            <!-- Mini OBS preview re-uses same HTML as overlay -->
+            <div id="pv-overlay" style="position:absolute;bottom:0;left:0;right:0;">
+              <div id="pv-break" style="display:flex;align-items:center;gap:14px;padding:8px 28px;background:rgba(6,14,7,0.96);border-top:2px solid #c9a227;">
+                <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
+                  <div id="pv-bwho" style="font-family:Barlow Condensed,sans-serif;font-size:15px;font-weight:600;color:#c9a227;letter-spacing:2px;text-transform:uppercase;">PLAYER</div>
+                  <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;">Break</div>
+                </div>
+                <div style="font-family:Barlow Condensed,sans-serif;font-size:44px;font-weight:900;color:#f0c040;line-height:1;">47</div>
+                <div style="display:flex;gap:5px;" id="pv-balls"></div>
+              </div>
+              <div id="pv-bar" style="display:flex;align-items:stretch;height:88px;background:linear-gradient(180deg,#1a0a0a,#0d0505);border-top:3px solid #c9a227;padding:0 28px;gap:0;position:relative;">
+                <!-- P1 -->
+                <div id="pv-p1side" style="flex:1;display:flex;align-items:center;gap:0;padding-left:10px;">
+                  <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;margin-right:12px;">
+                    <div id="pv-p1name" style="font-family:Barlow Condensed,sans-serif;font-size:30px;font-weight:800;color:#c9a227;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;">PLAYER ONE</div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <div id="pv-p1st" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:1px;padding:2px 8px;border:1px solid rgba(255,255,255,.15);border-radius:2px;">STATE</div>
+                      <div id="pv-p1dots" style="display:flex;gap:4px;"></div>
+                    </div>
+                  </div>
+                  <div style="width:72px;height:72px;background:linear-gradient(160deg,#f0f0f0,#d0d0d0,#b0b0b0);border:1px solid #999;clip-path:polygon(10% 0%,100% 0%,90% 100%,0% 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 4px;flex-shrink:0;">
+                    <div id="pv-p1pts" style="font-family:Barlow Condensed,sans-serif;font-size:36px;font-weight:900;color:#111;line-height:1;">0</div>
+                    <div style="font-size:8px;font-weight:700;color:rgba(0,0,0,.4);letter-spacing:1px;text-transform:uppercase;">Points</div>
+                  </div>
+                </div>
+                <!-- Center -->
+                <div id="pv-center" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(180deg,#1e0808,#120505);border-left:1px solid rgba(201,162,39,.15);border-right:1px solid rgba(201,162,39,.15);padding:0 4px;gap:0;">
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:60px;height:70px;">
+                    <div id="pv-fw1" style="font-family:Barlow Condensed,sans-serif;font-size:42px;font-weight:900;color:#fff;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;margin-top:1px;">Frames</div>
+                  </div>
+                  <div style="width:1px;height:50px;background:rgba(255,255,255,.1);"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 12px;">
+                    <div id="pv-bo" style="font-family:Barlow Condensed,sans-serif;font-size:20px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px;line-height:1;">(5)</div>
+                    <div id="pv-fr" style="font-size:10px;font-weight:600;color:rgba(255,255,255,.28);letter-spacing:2px;text-transform:uppercase;margin-top:3px;white-space:nowrap;">Frame 1</div>
+                  </div>
+                  <div style="width:1px;height:50px;background:rgba(255,255,255,.1);"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:60px;height:70px;">
+                    <div id="pv-fw2" style="font-family:Barlow Condensed,sans-serif;font-size:42px;font-weight:900;color:#fff;line-height:1;">0</div>
+                    <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;margin-top:1px;">Frames</div>
+                  </div>
+                </div>
+                <!-- P2 -->
+                <div id="pv-p2side" style="flex:1;display:flex;align-items:center;justify-content:flex-end;flex-direction:row-reverse;gap:0;padding-right:10px;">
+                  <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:6px;margin-left:12px;">
+                    <div id="pv-p2name" style="font-family:Barlow Condensed,sans-serif;font-size:30px;font-weight:800;color:#fff;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;">PLAYER TWO</div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-direction:row-reverse;">
+                      <div id="pv-p2st" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:1px;padding:2px 8px;border:1px solid rgba(255,255,255,.15);border-radius:2px;">STATE</div>
+                      <div id="pv-p2dots" style="display:flex;gap:4px;"></div>
+                    </div>
+                  </div>
+                  <div style="width:72px;height:72px;background:linear-gradient(160deg,#f0f0f0,#d0d0d0,#b0b0b0);border:1px solid #999;clip-path:polygon(10% 0%,100% 0%,90% 100%,0% 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 4px;flex-shrink:0;">
+                    <div id="pv-p2pts" style="font-family:Barlow Condensed,sans-serif;font-size:36px;font-weight:900;color:#111;line-height:1;">0</div>
+                    <div style="font-size:8px;font-weight:700;color:rgba(0,0,0,.4);letter-spacing:1px;text-transform:uppercase;">Points</div>
+                  </div>
+                </div>
+              </div>
+              <div id="pv-ticker" style="height:26px;background:rgba(0,0,0,.92);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;overflow:hidden;">
+                <div id="pv-tick-lbl" style="height:100%;width:76px;background:#c9a227;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700;color:#0d0d0d;letter-spacing:2px;">LIVE</div>
+                <div id="pv-tick-txt" style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1px;white-space:nowrap;padding-left:16px;">CueSports India · UPBSA.TV</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CUSTOMIZE TAB ════ -->
+  <div id="pg-customize" style="display:none;width:100%;overflow:hidden;flex-direction:row;">
+    <div class="left">
+      <div class="left-scroll">
+        <!-- Colors -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Colors</div><div class="sec-arr open">›</div></div>
+          <div class="sec-body open">
+            <div class="ctrl"><div class="ctrl-lbl">Accent / Border</div><div class="color-row"><input type="color" id="c-accent" oninput="syncC('c-accent','t-accent')"><input type="text" id="t-accent" value="#c9a227" oninput="syncT('t-accent','c-accent')"></div></div>
+            <div class="ctrl"><div class="ctrl-lbl">Bar Background</div><input type="text" id="t-bg1" value="rgba(4,10,5,0.97)" oninput="liveUpdate()"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Break Panel Bg</div><input type="text" id="t-bg2" value="rgba(6,14,7,0.94)" oninput="liveUpdate()"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Active Player Name</div><div class="color-row"><input type="color" id="c-nameA" oninput="syncC('c-nameA','t-nameA')"><input type="text" id="t-nameA" value="#f0c040" oninput="syncT('t-nameA','c-nameA')"></div></div>
+            <div class="ctrl"><div class="ctrl-lbl">Inactive Player Name</div><div class="color-row"><input type="color" id="c-name" oninput="syncC('c-name','t-name')"><input type="text" id="t-name" value="#ffffff" oninput="syncT('t-name','c-name')"></div></div>
+            <div class="ctrl"><div class="ctrl-lbl">Center Box Top</div><div class="color-row"><input type="color" id="c-cTop" oninput="syncC('c-cTop','t-cTop')"><input type="text" id="t-cTop" value="#f03030" oninput="syncT('t-cTop','c-cTop')"></div></div>
+            <div class="ctrl"><div class="ctrl-lbl">Center Box Bottom</div><div class="color-row"><input type="color" id="c-cBot" oninput="syncC('c-cBot','t-cBot')"><input type="text" id="t-cBot" value="#a01010" oninput="syncT('t-cBot','c-cBot')"></div></div>
+          </div>
+        </div>
+        <!-- Sizes -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Sizes</div><div class="sec-arr">›</div></div>
+          <div class="sec-body">
+            <div class="ctrl"><div class="ctrl-lbl">Bar Height <span id="v-barH">88</span>px</div><input type="range" id="r-barH" min="60" max="120" value="88" oninput="g('v-barH').textContent=this.value;liveUpdate()"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Name Size <span id="v-nameS">30</span>px</div><input type="range" id="r-nameS" min="14" max="48" value="30" oninput="g('v-nameS').textContent=this.value;liveUpdate()"></div>
+          </div>
+        </div>
+        <!-- Typography -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Typography</div><div class="sec-arr">›</div></div>
+          <div class="sec-body">
+            <div class="ctrl"><div class="ctrl-lbl">Font</div>
+              <select id="s-font" onchange="liveUpdate()">
+                <option>Barlow Condensed</option><option>Bebas Neue</option>
+                <option>Roboto Condensed</option><option>Oswald</option><option>Teko</option>
+              </select>
+            </div>
+            <div class="ctrl"><div class="ctrl-lbl">Top Border</div><input type="text" id="s-border" value="3px solid #c9a227" oninput="liveUpdate()"></div>
+          </div>
+        </div>
+        <!-- Show/Hide -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Show / Hide</div><div class="sec-arr">›</div></div>
+          <div class="sec-body">
+            <div class="tog-row"><div class="tog-lbl">Break Panel</div><label class="tog"><input type="checkbox" id="tog-break" checked onchange="liveUpdate()"><div class="tog-sl"></div></label></div>
+            <div class="tog-row"><div class="tog-lbl">Frame Dots</div><label class="tog"><input type="checkbox" id="tog-dots" checked onchange="liveUpdate()"><div class="tog-sl"></div></label></div>
+            <div class="tog-row"><div class="tog-lbl">State Badges</div><label class="tog"><input type="checkbox" id="tog-state" checked onchange="liveUpdate()"><div class="tog-sl"></div></label></div>
+            <div class="tog-row"><div class="tog-lbl">Reds Strip</div><label class="tog"><input type="checkbox" id="tog-reds" onchange="liveUpdate()"><div class="tog-sl"></div></label></div>
+            <div class="tog-row"><div class="tog-lbl">Ticker</div><label class="tog"><input type="checkbox" id="tog-ticker" checked onchange="liveUpdate()"><div class="tog-sl"></div></label></div>
+          </div>
+        </div>
+        <!-- Ticker text -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Ticker Text</div><div class="sec-arr">›</div></div>
+          <div class="sec-body">
+            <div class="ctrl"><div class="ctrl-lbl">Label</div><input type="text" id="t-tickerLbl" value="LIVE" oninput="liveUpdate()"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Scrolling Text</div><input type="text" id="t-tickerTxt" value="CueSports India · UPBSA.TV" oninput="liveUpdate()"></div>
+          </div>
+        </div>
+        <!-- Save -->
+        <div class="sec">
+          <div class="sec-hd" onclick="toggleSec(this)"><div class="sec-title">Save Theme</div><div class="sec-arr">›</div></div>
+          <div class="sec-body">
+            <div class="ctrl"><div class="ctrl-lbl">Theme Name</div><input type="text" id="t-saveName" placeholder="My Custom Theme"></div>
+            <button class="sb-save" style="width:100%;margin-top:5px;" onclick="saveTheme()">Save Theme</button>
+          </div>
+        </div>
+      </div>
+      <!-- Sticky bar -->
+      <div class="save-bar"><button class="sb-apply" onclick="applyToOBS()">▶ Apply to OBS Live</button><button class="sb-save" onclick="saveTheme()">Save</button></div>
+    </div>
+    <!-- Preview same as presets -->
+    <div class="preview-area">
+      <div class="pv-hd"><div class="pv-title">Live Preview</div><div class="pv-data"><button class="pv-btn on" onclick="setDemo(true,this)">Demo</button><button class="pv-btn" onclick="setDemo(false,this)">Live T1</button></div></div>
+      <div class="preview-bg">
+        <div class="pv-frame"><div class="pv-scale" id="pv-scale2"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ BUILDER TAB ════ -->
+  <div id="pg-builder" style="display:none;width:100%;overflow:hidden;">
+    <div class="builder-wrap">
+      <!-- Element library -->
+      <div class="builder-left">
+        <div class="layer-tabs">
+          <button class="layer-tab on" id="lt-score" onclick="switchLayer('score')">Score Bar</button>
+          <button class="layer-tab" id="lt-break" onclick="switchLayer('break')">Break Panel</button>
+        </div>
+        <div class="el-library">
+          <div class="el-title">Player Data</div>
+          <div class="el-grid">
+            <div class="el-chip" draggable="true" ondragstart="startDrag('player-name',1)">P1 Name</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('player-name',2)">P2 Name</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('score',1)">P1 Points</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('score',2)">P2 Points</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('frames',1)">P1 Frames</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('frames',2)">P2 Frames</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('state',1)">P1 State</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('state',2)">P2 State</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('frame-dots',1)">P1 Dots</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('frame-dots',2)">P2 Dots</div>
+          </div>
+          <div class="el-title">Match Info</div>
+          <div class="el-grid">
+            <div class="el-chip" draggable="true" ondragstart="startDrag('best-of',0)">Best Of</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('frame-num',0)">Frame No</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('tournament',0)">Tournament</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('shot-clock',0)">Shot Clock</div>
+          </div>
+          <div class="el-title">Break</div>
+          <div class="el-grid">
+            <div class="el-chip" draggable="true" ondragstart="startDrag('break-val',0)">Break #</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('break-who',0)">Who's Brk</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('ball-strip',0)">Ball Strip</div>
+          </div>
+          <div class="el-title">Shapes</div>
+          <div class="el-grid">
+            <div class="el-chip" draggable="true" ondragstart="startDrag('rect',0)">Rectangle</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('rect-angled',0)">Chevron</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('custom-text',0)">Text</div>
+            <div class="el-chip" draggable="true" ondragstart="startDrag('logo',0)">Logo</div>
+          </div>
+          <!-- Layer settings -->
+          <div style="margin-top:10px;border-top:1px solid var(--dim);padding-top:10px;">
+            <div class="el-title">Layer Settings</div>
+            <div class="ctrl"><div class="ctrl-lbl">Height (px)</div><input type="number" id="bl-h" value="88" min="30" max="200" oninput="updateLayerProp('height',+this.value)"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Background</div><input type="text" id="bl-bg" value="#04100a" oninput="updateLayerProp('bgColor',this.value)"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Opacity %</div><input type="number" id="bl-op" value="97" min="0" max="100" oninput="updateLayerProp('bgOpacity',+this.value)"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Border Color</div><input type="text" id="bl-bc" value="#c9a227" oninput="updateLayerProp('borderColor',this.value)"></div>
+            <div class="ctrl"><div class="ctrl-lbl">Border Width</div><input type="number" id="bl-bw" value="3" min="0" max="10" oninput="updateLayerProp('borderWidth',+this.value)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-area">
+        <div class="canvas-header">
+          <div class="canvas-title" id="cv-title">Score Bar — 1920px</div>
+          <div class="canvas-ctrl">
+            <button class="cc-btn" onclick="cvZoom(50)">50%</button>
+            <button class="cc-btn active" onclick="cvZoom(60)">60%</button>
+            <button class="cc-btn" onclick="cvZoom(75)">75%</button>
+            <button class="cc-btn" onclick="cvZoom(100)">100%</button>
+          </div>
+        </div>
+        <div class="canvas-scroll" id="cv-scroll"
+          ondragover="cvDragOver(event)" ondrop="cvDrop(event)" ondragleave="cvDragLeave(event)">
+          <div class="canvas-frame" id="cv-frame">
+            <div class="canvas-layer" id="cv-layer"></div>
+          </div>
+        </div>
+        <div style="position:fixed;bottom:0;left:260px;right:220px;padding:8px 12px;background:var(--bg);border-top:2px solid var(--gold);display:flex;gap:7px;z-index:90;">
+          <button class="sb-apply" style="flex:2;" onclick="applyBuilderToOBS()">▶ Apply to OBS</button>
+          <div style="flex:2;display:flex;gap:6px;">
+            <input type="text" id="b-saveName" placeholder="Theme name..." style="flex:1;font-size:0.8rem;">
+            <button class="sb-save" onclick="saveBuilderTheme()">Save</button>
+          </div>
+          <button class="cc-btn" onclick="clearCanvas()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Properties panel -->
+      <div class="props-panel">
+        <div class="pp-hd"><div class="pp-title" id="pp-title">Properties</div></div>
+        <div class="pp-body" id="pp-body">
+          <div style="font-size:0.72rem;color:var(--sub);text-align:center;margin-top:20px;">Select an element<br>to edit its properties</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ THEMES TAB ════ -->
+  <div id="pg-themes" style="display:none;width:100%;overflow-y:auto;flex-direction:column;">
+    <div style="padding:14px;border-bottom:1px solid var(--dim);">
+      <div style="font-size:0.62rem;color:var(--sub);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Active Theme</div>
+      <div id="active-theme-card" style="background:var(--bg3);border:1px solid var(--gold);border-radius:10px;padding:12px 14px;font-size:0.85rem;color:var(--gold);">Loading...</div>
+    </div>
+    <div class="themes-list" id="themes-list">
+      <div style="font-size:0.78rem;color:var(--sub);text-align:center;padding:20px;">Loading saved themes...</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db=firebase.database();
+
+function g(id){return document.getElementById(id);}
+function showToast(msg){var t=g('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);}
+
+// ── TABS ──
+function showTab(name){
+  ['presets','customize','builder','themes'].forEach(function(t){
+    g('pg-'+t).style.display='none';
+    g('tab-'+t).classList.remove('on');
+  });
+  var el=g('pg-'+name);
+  el.style.display=(name==='presets'||name==='customize')?'flex':name==='builder'?'flex':'flex';
+  el.style.flexDirection=name==='builder'?'row':'row';
+  g('tab-'+name).classList.add('on');
+  if(name==='themes') loadThemes();
+  if(name==='customize'){
+    // Mirror preview from presets
+    var ps=g('pv-scale'); var ps2=g('pv-scale2');
+    if(ps&&ps2) ps2.innerHTML=ps.innerHTML;
+  }
+}
+
+// ── SECTIONS ──
+function toggleSec(hd){
+  var body=hd.nextElementSibling;
+  var arr=hd.querySelector('.sec-arr');
+  var open=body.classList.toggle('open');
+  arr.classList.toggle('open',open);
+}
+
+// ── PRESETS ──
+var activePreset='wst';
+var PRESETS={
+  wst:{accent:'#c9a227',bg1:'linear-gradient(180deg,#1a0a0a,#0d0505)',bg2:'rgba(6,14,7,.96)',nameActive:'#f0c040',nameColor:'#fff',border:'3px solid #c9a227'},
+  dark:{accent:'#5dade2',bg1:'linear-gradient(180deg,#0a0a1a,#050510)',bg2:'rgba(6,7,14,.96)',nameActive:'#5dade2',nameColor:'#fff',border:'3px solid #5dade2'},
+  green:{accent:'#2ecc71',bg1:'linear-gradient(180deg,#0a1a0a,#051005)',bg2:'rgba(6,14,7,.96)',nameActive:'#2ecc71',nameColor:'#fff',border:'3px solid #2ecc71'},
+  royal:{accent:'#9b59b6',bg1:'linear-gradient(180deg,#0a0a2a,#05051a)',bg2:'rgba(7,6,14,.96)',nameActive:'#c39bd3',nameColor:'#fff',border:'3px solid #9b59b6'},
+  red:{accent:'#e74c3c',bg1:'linear-gradient(180deg,#1a0505,#0d0202)',bg2:'rgba(14,6,6,.96)',nameActive:'#e74c3c',nameColor:'#fff',border:'3px solid #e74c3c'},
+  minimal:{accent:'rgba(255,255,255,0.4)',bg1:'rgba(0,0,0,0.95)',bg2:'rgba(0,0,0,0.9)',nameActive:'#fff',nameColor:'rgba(255,255,255,.75)',border:'1px solid rgba(255,255,255,.25)'},
+  gold:{accent:'#f0c040',bg1:'linear-gradient(180deg,#1a1400,#0d0a00)',bg2:'rgba(14,12,0,.96)',nameActive:'#f0c040',nameColor:'#fff',border:'3px solid #f0c040'},
+  white:{accent:'#333',bg1:'rgba(245,245,245,0.97)',bg2:'rgba(220,220,220,.97)',nameActive:'#333',nameColor:'#111',border:'3px solid #333'}
+};
+
+function applyPreset(key,el){
+  document.querySelectorAll('.preset-card').forEach(function(c){c.classList.remove('on');});
+  if(el) el.classList.add('on');
+  var p=PRESETS[key]; if(!p)return;
+  activePreset=key;
+  updatePreview(p);
+}
+
+function updatePreview(t){
+  var bar=g('pv-bar'); if(!bar)return;
+  bar.style.background=t.bg1||'';
+  bar.style.borderTop=t.border||'3px solid #c9a227';
+  var bp=g('pv-break'); if(bp) bp.style.borderTopColor=t.accent||'#c9a227';
+  var tl=g('pv-tick-lbl'); if(tl) tl.style.background=t.accent||'#c9a227';
+  var n1=g('pv-p1name'); if(n1) n1.style.color=t.nameActive||'#f0c040';
+  var n2=g('pv-p2name'); if(n2) n2.style.color=t.nameColor||'#fff';
+  var bwho=g('pv-bwho'); if(bwho) bwho.style.color=t.accent||'#c9a227';
+  // Ticker label color contrast
+  var tlStyle=g('pv-tick-lbl');
+  if(tlStyle){
+    var isLight=t.accent&&(t.accent.includes('245')||t.accent.includes('255')||t.accent==='#f0c040'||t.accent==='rgba(255,255,255');
+    tlStyle.style.color=isLight?'#0d0d0d':'#fff';
+  }
+}
+
+// ── CUSTOMIZE ──
+function syncC(cid,tid){var c=g(cid);var t=g(tid);if(c&&t){t.value=c.value;liveUpdate();}}
+function syncT(tid,cid){var t=g(tid);var c=g(cid);if(t&&c&&t.value.startsWith('#')&&t.value.length===7){c.value=t.value;}liveUpdate();}
+
+function liveUpdate(){
+  var t=buildThemeObj();updatePreview(t);
+  // mirror to pg-customize preview
+  var ps=g('pv-scale'),ps2=g('pv-scale2');
+  if(ps&&ps2)ps2.innerHTML=ps.outerHTML;
+}
+
+function buildThemeObj(){
+  return{
+    accent:g('t-accent')?g('t-accent').value:'#c9a227',
+    bg1:g('t-bg1')?g('t-bg1').value:'rgba(4,10,5,0.97)',
+    bg2:g('t-bg2')?g('t-bg2').value:'rgba(6,14,7,0.94)',
+    nameActive:g('t-nameA')?g('t-nameA').value:'#f0c040',
+    nameColor:g('t-name')?g('t-name').value:'#fff',
+    border:g('s-border')?g('s-border').value:'3px solid #c9a227',
+    barH:g('r-barH')?+g('r-barH').value:88,
+    nameSize:g('r-nameS')?+g('r-nameS').value:30,
+    font:g('s-font')?g('s-font').value:'Barlow Condensed',
+    showBreak:g('tog-break')?g('tog-break').checked:true,
+    showDots:g('tog-dots')?g('tog-dots').checked:true,
+    showState:g('tog-state')?g('tog-state').checked:true,
+    showReds:g('tog-reds')?g('tog-reds').checked:false,
+    showTicker:g('tog-ticker')?g('tog-ticker').checked:true,
+    tickerLabel:g('t-tickerLbl')?g('t-tickerLbl').value:'LIVE',
+    tickerText:g('t-tickerTxt')?g('t-tickerTxt').value:'CueSports India'
+  };
+}
+
+function applyToOBS(){
+  var isPresetTab = document.getElementById('pg-presets').style.display !== 'none';
+  var theme;
+  if(isPresetTab){
+    // Apply the selected preset directly
+    theme = Object.assign({}, PRESETS[activePreset]||PRESETS.wst);
+    theme.name = activePreset;
+  } else {
+    // Apply the customized values
+    theme = buildThemeObj();
+  }
+  db.ref('design/activeTheme').set(theme).then(function(){
+    showToast('Applied to OBS ✓');
+  }).catch(function(e){
+    showToast('Error: '+e.message);
+  });
+}
+
+function saveTheme(){
+  var name=(g('t-saveName')||{value:''}).value.trim()||('Theme '+Date.now());
+  var t=buildThemeObj();t.name=name;
+  db.ref('design/themes/'+name.replace(/\s+/g,'_')).set(t).then(function(){
+    showToast('"'+name+'" saved ✓');
+    if(g('t-saveName')) g('t-saveName').value='';
+  });
+}
+
+// ── DEMO / LIVE data ──
+var useDemo=true;
+function setDemo(demo,el){
+  useDemo=demo;
+  document.querySelectorAll('.pv-btn').forEach(function(b){b.classList.remove('on');});
+  if(el) el.classList.add('on');
+  if(!demo){
+    db.ref('matches/table-1').on('value',function(s){
+      var m=s.val(); if(!m)return;
+      var n=function(id,v){var el=g(id);if(el)el.textContent=v;};
+      n('pv-p1name',(m.player1.name||'').toUpperCase()); n('pv-p2name',(m.player2.name||'').toUpperCase());
+      n('pv-fw1',m.player1.frames); n('pv-fw2',m.player2.frames);
+      n('pv-p1pts',m.player1.score); n('pv-p2pts',m.player2.score);
+      n('pv-bo','('+m.bestOf+')'); n('pv-fr','Frame '+m.currentFrame);
+      n('pv-p1st',m.player1.state||''); n('pv-p2st',m.player2.state||'');
+    });
+  }
+}
+
+// ── THEMES TAB ──
+var savedThemes={};
+db.ref('design/themes').on('value',function(s){savedThemes=s.val()||{};});
+db.ref('design/activeTheme').on('value',function(s){
+  var t=s.val();
+  var card=g('active-theme-card');
+  if(card) card.textContent=t?(t.name||'Custom theme applied'):'No theme applied';
+});
+
+function loadThemes(){
+  var list=g('themes-list'); if(!list)return;
+  var keys=Object.keys(savedThemes);
+  if(!keys.length){list.innerHTML='<div style="font-size:0.78rem;color:var(--sub);text-align:center;padding:20px;">No saved themes yet. Go to Customize to save one.</div>';return;}
+  list.innerHTML=keys.map(function(k){
+    var t=savedThemes[k];
+    return '<div class="theme-card">'+
+      '<div style="width:36px;height:36px;border-radius:6px;background:'+(t.bg1||'#111')+';border:2px solid '+(t.accent||'#fff')+';flex-shrink:0;"></div>'+
+      '<div class="tc-info"><div class="tc-name">'+(t.name||k)+'</div><div class="tc-sub">Accent: '+(t.accent||'–')+'</div></div>'+
+      '<div class="tc-apply" onclick="applyThemeByKey(\''+k+'\')">Apply</div>'+
+      '<div class="tc-del" onclick="deleteTheme(\''+k+'\')">Delete</div>'+
+    '</div>';
+  }).join('');
+}
+
+function applyThemeByKey(k){
+  var t=savedThemes[k]; if(!t)return;
+  db.ref('design/activeTheme').set(t).then(function(){showToast('"'+(t.name||k)+'" applied to OBS ✓');});
+}
+function deleteTheme(k){
+  if(!confirm('Delete theme "'+k+'"?'))return;
+  db.ref('design/themes/'+k).remove().then(function(){loadThemes();showToast('Deleted');});
+}
+
+// ════════════════════════════
+// BUILDER
+// ════════════════════════════
+var layers={
+  score:{height:88,bgColor:'#04100a',bgOpacity:97,borderColor:'#c9a227',borderWidth:3,elements:[]},
+  break:{height:50,bgColor:'#060e07',bgOpacity:96,borderColor:'#c9a227',borderWidth:2,elements:[]}
+};
+var activeLayer='score', selEl=null, dragType=null, dragPlayer=0, cvZoomPct=60;
+var isDraggingEl=false, dragStartX=0, dragStartY=0, dragElOrigX=0, dragElOrigY=0;
+
+function cvZoom(pct){
+  cvZoomPct=pct;
+  document.querySelectorAll('.cc-btn').forEach(function(b){b.classList.remove('active');});
+  event.target.classList.add('active');
+  renderCanvas();
+}
+function switchLayer(name){
+  activeLayer=name;
+  document.querySelectorAll('.layer-tab').forEach(function(t){t.classList.remove('on');});
+  g('lt-'+name).classList.add('on');
+  updateLayerControls();renderCanvas();
+  g('cv-title').textContent=(name==='score'?'Score Bar':'Break Panel')+' — 1920px';
+}
+function updateLayerControls(){
+  var L=layers[activeLayer];
+  var s=function(id,v){var el=g(id);if(el)el.value=v;};
+  s('bl-h',L.height);s('bl-bg',L.bgColor);s('bl-op',L.bgOpacity);s('bl-bc',L.borderColor);s('bl-bw',L.borderWidth);
+}
+function updateLayerProp(prop,val){layers[activeLayer][prop]=val;renderCanvas();}
+
+function renderCanvas(){
+  var frame=g('cv-frame'), layer=g('cv-layer'); if(!frame||!layer)return;
+  var scale=cvZoomPct/100, W=1920, L=layers[activeLayer];
+  frame.style.width=(W*scale)+'px'; frame.style.height=(L.height*scale)+'px';
+  layer.style.width=W+'px'; layer.style.height=L.height+'px';
+  layer.style.transform='scale('+scale+')'; layer.style.transformOrigin='top left';
+  layer.style.background=hexOp(L.bgColor,L.bgOpacity);
+  layer.style.borderTop=L.borderWidth+'px solid '+L.borderColor;
+  // Clear and rebuild elements
+  layer.innerHTML='';
+  L.elements.forEach(function(el){
+    var div=createElDiv(el,L.height);
+    layer.appendChild(div);
+  });
+}
+
+function createElDiv(el,layerH){
+  var div=document.createElement('div');
+  div.className='canvas-el'+(el.id===selEl?' sel':'');
+  div.dataset.id=el.id;
+  div.style.cssText='left:'+el.x+'px;top:'+el.y+'px;width:'+el.w+'px;height:'+el.h+'px;z-index:'+(el.zIndex||1)+';';
+  if(el.bgColor&&el.bgOpacity>0) div.style.background=hexOp(el.bgColor,el.bgOpacity);
+  if(el.borderWidth&&el.borderColor) div.style.border=el.borderWidth+'px solid '+el.borderColor;
+  if(el.borderRadius) div.style.borderRadius=el.borderRadius+'px';
+  if(el.type==='rect-angled') div.style.clipPath='polygon(8% 0%,100% 0%,92% 100%,0% 100%)';
+  // Content
+  var liveData=getLiveData();
+  var content=getContent(el,liveData);
+  if(content) div.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'+(el.fontFamily||'Barlow Condensed')+',sans-serif;font-size:'+(el.fontSize||16)+'px;font-weight:'+(el.fontWeight||600)+';color:'+(el.color||'#fff')+';text-transform:'+(el.textTransform||'uppercase')+';letter-spacing:'+(el.letterSpacing||1)+'px;white-space:nowrap;overflow:hidden;padding:0 4px;">'+content+'</div>';
+  // Resize handle
+  if(el.id===selEl){
+    var rh=document.createElement('div');
+    rh.className='resize-h';rh.style.cssText='bottom:-4px;right:-4px;cursor:se-resize;';
+    rh.addEventListener('mousedown',function(e){e.stopPropagation();startResize(el.id,e);});
+    div.appendChild(rh);
+  }
+  // Move
+  div.addEventListener('mousedown',function(e){if(e.target.classList.contains('resize-h'))return;e.stopPropagation();selectEl(el.id);startMoveEl(el.id,e);});
+  return div;
+}
+
+function getLiveData(){
+  return{
+    p1name:'PLAYER ONE',p2name:'PLAYER TWO',p1score:47,p2score:23,
+    p1frames:2,p2frames:1,bestOf:5,currentFrame:3,
+    tournament:'ALL INDIA',p1state:'MAHARASHTRA',p2state:'PUNJAB',
+    currentBreak:47,breakPlayer:1,breakBalls:[{color:'red',value:1},{color:'blue',value:5}]
+  };
+}
+
+function getContent(el,d){
+  switch(el.type){
+    case 'player-name': return el.player==1?d.p1name:d.p2name;
+    case 'score': return el.player==1?d.p1score:d.p2score;
+    case 'frames': return el.player==1?d.p1frames:d.p2frames;
+    case 'state': return el.player==1?d.p1state:d.p2state;
+    case 'best-of': return '('+d.bestOf+')';
+    case 'frame-num': return 'Frame '+d.currentFrame;
+    case 'tournament': return d.tournament;
+    case 'break-val': return d.currentBreak;
+    case 'break-who': return (d.breakPlayer==1?d.p1name:d.p2name)+' Break';
+    case 'shot-clock': return '45s';
+    case 'custom-text': return el.text||'Text';
+    case 'rect':case 'rect-angled':case 'line-h':case 'line-v': return '';
+    case 'logo': return '[ Logo ]';
+    case 'ball-strip': return '● ● ●';
+    case 'frame-dots': return '● ● ●';
+    default: return el.type;
+  }
+}
+
+function selectEl(id){
+  selEl=id;renderCanvas();showProps(id);
+}
+
+function showProps(id){
+  var L=layers[activeLayer];
+  var el=L.elements.find(function(e){return e.id===id;});
+  if(!el){g('pp-title').textContent='Properties';g('pp-body').innerHTML='<div style="font-size:.72rem;color:var(--sub);text-align:center;margin-top:20px;">Select an element</div>';return;}
+  g('pp-title').textContent=el.type.replace(/-/g,' ').replace(/\b\w/g,function(l){return l.toUpperCase();});
+  var html='';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Position X / Y</div><div class="pp-row"><input class="pp-in" type="number" value="'+el.x+'" oninput="updateElProp(\''+id+'\',\'x\',+this.value)"><input class="pp-in" type="number" value="'+el.y+'" oninput="updateElProp(\''+id+'\',\'y\',+this.value)"></div></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Width / Height</div><div class="pp-row"><input class="pp-in" type="number" value="'+el.w+'" oninput="updateElProp(\''+id+'\',\'w\',+this.value)"><input class="pp-in" type="number" value="'+el.h+'" oninput="updateElProp(\''+id+'\',\'h\',+this.value)"></div></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Font Size</div><input class="pp-in" type="number" value="'+(el.fontSize||16)+'" oninput="updateElProp(\''+id+'\',\'fontSize\',+this.value)"></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Font Weight</div><select class="pp-in" onchange="updateElProp(\''+id+'\',\'fontWeight\',+this.value)"><option value="400">Regular</option><option value="600">Semi Bold</option><option value="700">Bold</option><option value="800">Extra Bold</option><option value="900"'+(el.fontWeight==900?' selected':'')+'>Black</option></select></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Color</div><input class="pp-in" type="text" value="'+(el.color||'#fff')+'" oninput="updateElProp(\''+id+'\',\'color\',this.value)"></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Letter Spacing</div><input class="pp-in" type="number" value="'+(el.letterSpacing||1)+'" oninput="updateElProp(\''+id+'\',\'letterSpacing\',+this.value)"></div>';
+  if(el.type==='custom-text') html+='<div class="pp-ctrl"><div class="pp-lbl">Text Content</div><input class="pp-in" type="text" value="'+(el.text||'')+'" oninput="updateElProp(\''+id+'\',\'text\',this.value)"></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Background Color</div><input class="pp-in" type="text" value="'+(el.bgColor||'')+'" oninput="updateElProp(\''+id+'\',\'bgColor\',this.value)"></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">BG Opacity %</div><input class="pp-in" type="number" value="'+(el.bgOpacity||0)+'" min="0" max="100" oninput="updateElProp(\''+id+'\',\'bgOpacity\',+this.value)"></div>';
+  html+='<div class="pp-ctrl"><div class="pp-lbl">Z-Index</div><input class="pp-in" type="number" value="'+(el.zIndex||1)+'" oninput="updateElProp(\''+id+'\',\'zIndex\',+this.value)"></div>';
+  html+='<button class="pp-del" onclick="deleteEl(\''+id+'\')">Delete Element</button>';
+  g('pp-body').innerHTML=html;
+}
+
+function updateElProp(id,prop,val){
+  var L=layers[activeLayer];
+  var el=L.elements.find(function(e){return e.id===id;});
+  if(el) el[prop]=val;
+  renderCanvas();
+}
+
+function deleteEl(id){
+  var L=layers[activeLayer];
+  L.elements=L.elements.filter(function(e){return e.id!==id;});
+  selEl=null;renderCanvas();
+  g('pp-body').innerHTML='<div style="font-size:.72rem;color:var(--sub);text-align:center;margin-top:20px;">Select an element</div>';
+}
+
+// Drag from library
+function startDrag(type,player){
+  dragType=type;dragPlayer=player;
+}
+
+// Canvas drag events
+function cvDragOver(e){e.preventDefault();g('cv-frame').classList.add('drop-target');}
+function cvDragLeave(e){g('cv-frame').classList.remove('drop-target');}
+function cvDrop(e){
+  e.preventDefault();g('cv-frame').classList.remove('drop-target');
+  if(!dragType)return;
+  var frame=g('cv-frame');var rect=frame.getBoundingClientRect();
+  var scale=cvZoomPct/100;
+  var x=Math.round((e.clientX-rect.left)/scale);
+  var y=Math.round((e.clientY-rect.top)/scale);
+  var defaults={w:200,h:60};
+  if(dragType==='player-name') defaults={w:320,h:60};
+  if(dragType==='score'||dragType==='frames') defaults={w:80,h:60};
+  if(dragType==='state') defaults={w:120,h:40};
+  if(dragType==='frame-dots') defaults={w:100,h:30};
+  if(dragType==='ball-strip') defaults={w:220,h:50};
+  if(dragType==='rect'||dragType==='rect-angled') defaults={w:300,h:80};
+  var el={
+    id:'el_'+Date.now(),type:dragType,player:dragPlayer,
+    x:Math.max(0,x-defaults.w/2),y:Math.max(0,y-defaults.h/2),
+    w:defaults.w,h:defaults.h,
+    fontSize:dragType==='player-name'?28:dragType==='score'||dragType==='frames'?36:14,
+    fontWeight:800,fontFamily:'Barlow Condensed',
+    color:dragType==='player-name'?'#fff':dragType==='score'||dragType==='frames'?'#111':'#fff',
+    textTransform:'uppercase',letterSpacing:2,zIndex:1,
+    bgColor:dragType==='rect'||dragType==='rect-angled'?'#c9a227':'',bgOpacity:dragType==='rect'||dragType==='rect-angled'?100:0
+  };
+  layers[activeLayer].elements.push(el);
+  selEl=el.id;renderCanvas();showProps(el.id);
+  dragType=null;
+}
+
+// Move elements
+function startMoveEl(id,e){
+  var L=layers[activeLayer];
+  var el=L.elements.find(function(el){return el.id===id;});
+  if(!el)return;
+  var scale=cvZoomPct/100;
+  var startX=e.clientX,startY=e.clientY,origX=el.x,origY=el.y;
+  function onMove(ev){
+    el.x=Math.max(0,origX+(ev.clientX-startX)/scale);
+    el.y=Math.max(0,origY+(ev.clientY-startY)/scale);
+    renderCanvas();
+  }
+  function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+  document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+}
+
+// Resize
+function startResize(id,e){
+  var L=layers[activeLayer];
+  var el=L.elements.find(function(el){return el.id===id;});
+  if(!el)return;
+  var scale=cvZoomPct/100;
+  var startX=e.clientX,startY=e.clientY,origW=el.w,origH=el.h;
+  function onMove(ev){
+    el.w=Math.max(20,origW+(ev.clientX-startX)/scale);
+    el.h=Math.max(10,origH+(ev.clientY-startY)/scale);
+    renderCanvas();showProps(id);
+  }
+  function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+  document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+}
+
+// Click outside to deselect
+document.addEventListener('mousedown',function(e){
+  if(g('cv-layer')&&g('cv-layer').contains(e.target))return;
+  if(g('props-panel')&&g('props-panel').contains(e.target))return;
+  selEl=null;renderCanvas();
+});
+
+function clearCanvas(){if(confirm('Clear all elements?')){layers[activeLayer].elements=[];selEl=null;renderCanvas();}}
+
+function saveBuilderTheme(){
+  var name=(g('b-saveName')||{value:''}).value.trim();
+  if(!name){showToast('Enter a theme name');return;}
+  var t={type:'custom',name:name,layers:{score:JSON.parse(JSON.stringify(layers.score)),break:JSON.parse(JSON.stringify(layers.break))}};
+  db.ref('design/customThemes/'+name.replace(/\s+/g,'_')).set(t).then(function(){
+    db.ref('design/themes/'+name.replace(/\s+/g,'_')).set(t).then(function(){
+      showToast('"'+name+'" saved ✓');
+      if(g('b-saveName')) g('b-saveName').value='';
+    });
+  });
+}
+
+function applyBuilderToOBS(){
+  var t={type:'custom',name:'Builder',layers:{score:JSON.parse(JSON.stringify(layers.score)),break:JSON.parse(JSON.stringify(layers.break))}};
+  db.ref('design/activeTheme').set(t).then(function(){showToast('Applied to OBS ✓');});
+}
+
+function hexOp(hex,op){
+  if(!hex||!hex.startsWith('#'))return hex||'transparent';
+  var r=parseInt(hex.slice(1,3),16)||0,gv=parseInt(hex.slice(3,5),16)||0,b=parseInt(hex.slice(5,7),16)||0;
+  return 'rgba('+r+','+gv+','+b+','+((op||100)/100)+')';
+}
+
+// Init
+renderCanvas();
+updateLayerControls();
+// Init preview dots
+(function(){
+  var d='';for(var i=0;i<3;i++)d+='<div style="width:8px;height:8px;border-radius:50%;background:'+(i<2?'#c9a227':'rgba(255,255,255,.15)')+';"></div>';
+  var p1=g('pv-p1dots'),p2=g('pv-p2dots');if(p1)p1.innerHTML=d;if(p2)p2.innerHTML=d;
+})();
+
+// Handle hash navigation (from builder.html redirect)
+if(location.hash==='#builder') showTab('builder');
+</script>
+</body>
+</html>
