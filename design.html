@@ -301,8 +301,10 @@ select.prop-in option{background:var(--bg3);}
       <div class="el-group">
         <div class="el-group-title">Break Panel</div>
         <div class="el-chips">
-          <div class="chip" draggable="true" ondragstart="startChipDrag('break-val',0)"><span class="chip-ic">💯</span>Break Number</div>
+          <div class="chip" draggable="true" ondragstart="startChipDrag('break-val',0)"><span class="chip-ic">💯</span>Current Break</div>
           <div class="chip" draggable="true" ondragstart="startChipDrag('break-who',0)"><span class="chip-ic">🎯</span>Break Player</div>
+          <div class="chip" draggable="true" ondragstart="startChipDrag('break-p1',1)"><span class="chip-ic">🔴</span>P1 Break Score</div>
+          <div class="chip" draggable="true" ondragstart="startChipDrag('break-p2',2)"><span class="chip-ic">🔵</span>P2 Break Score</div>
           <div class="chip" draggable="true" ondragstart="startChipDrag('ball-strip',0)"><span class="chip-ic">🎱</span>Ball History</div>
         </div>
       </div>
@@ -417,6 +419,7 @@ var demo={
   p1score:47,p2score:23,p1frames:2,p2frames:1,
   bestOf:5,currentFrame:3,tournament:'ALL INDIA',
   currentBreak:47,breakPlayer:1,
+  p1currentBreak:47,p2currentBreak:0,
   breakBalls:[{color:'red',value:1},{color:'blue',value:5},{color:'red',value:1},{color:'pink',value:6}]
 };
 
@@ -712,6 +715,8 @@ function getContent(el){
     case 'frame-num': return 'Frame '+d.currentFrame;
     case 'tournament': return d.tournament;
     case 'break-val': return d.currentBreak;
+    case 'break-p1': return d.p1currentBreak||0;
+    case 'break-p2': return d.p2currentBreak||0;
     case 'break-who': return (d.breakPlayer==1?d.p1name.split(' ')[0]:d.p2name.split(' ')[0])+"'s Break";
     case 'shot-clock': return '45s';
     case 'custom-text': return el.text||'Custom Text';
@@ -888,6 +893,7 @@ function cvDrop(e){
   else if(chipType==='tournament'){defaults={w:300,h:30,fs:14,fw:700,col:'#c9a227'};}
   else if(chipType==='shot-clock'){defaults={w:80,h:44,fs:38,fw:800,col:'#fff'};}
   else if(chipType==='break-val'){defaults={w:180,h:50,fs:44,fw:900,col:'#fff'};}
+  else if(chipType==='break-p1'||chipType==='break-p2'){defaults={w:120,h:50,fs:40,fw:900,col:'#fff'};}
   else if(chipType==='break-who'){defaults={w:280,h:24,fs:13,fw:700,col:'#c9a227'};}
   else if(chipType==='ball-strip'){defaults={w:240,h:40,fs:0,fw:0,col:'#fff'};}
   else if(chipType==='rect'||chipType==='rect-angled'){defaults={w:300,h:80,fs:0,fw:0,col:'#c9a227',bgCol:'#c9a227',bgOp:100};}

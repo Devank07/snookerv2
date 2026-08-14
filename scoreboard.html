@@ -359,12 +359,20 @@ body{color:#fff;font-family:'Barlow',sans-serif;display:flex;flex-direction:colu
           <div class="sc-box" id="sc-box">60</div>
           <div class="sc-lbl">Shot Clock</div>
         </div>
-        <!-- Break -->
-        <div class="brk-wrap" id="brk-wrap">
-          <div class="brk-lbl">Current Break</div>
-          <div class="brk-num" id="brk-num">0</div>
-          <div class="brk-who" id="brk-who"></div>
+        <!-- P1 Break -->
+        <div class="brk-wrap" id="p1-brk-wrap" style="min-width:clamp(60px,8vw,110px);">
+          <div class="brk-lbl" id="p1-brk-name">P1 Break</div>
+          <div class="brk-num" id="p1-brk-num">0</div>
+        </div>
+        <!-- Ball history + active break -->
+        <div class="brk-wrap" id="brk-wrap" style="min-width:clamp(60px,7vw,100px);">
+          <div class="brk-lbl">Balls</div>
           <div class="brk-balls" id="brk-balls"></div>
+        </div>
+        <!-- P2 Break -->
+        <div class="brk-wrap" id="p2-brk-wrap" style="min-width:clamp(60px,8vw,110px);">
+          <div class="brk-lbl" id="p2-brk-name">P2 Break</div>
+          <div class="brk-num" id="p2-brk-num">0</div>
         </div>
       </div>
 
@@ -575,16 +583,22 @@ function render(s){
   g('s-bo').textContent='BEST OF '+s.bestOf;
   g('s-fn').textContent='FRAME '+s.currentFrame;
 
-  // Break
-  var brk=s.currentBreak||0,balls=s.breakBalls||[];
-  var bw=g('brk-wrap');
-  g('brk-num').textContent=brk;
-  g('brk-num').className='brk-num'+(brk>=100?' cent':'');
-  g('brk-who').textContent=brk>0?(s.breakPlayer===1?n1.l+"'s break":n2.l+"'s break"):'';
+  // Per-player breaks
+  var p1brk=(s.player1&&s.player1.currentBreak)||0;
+  var p2brk=(s.player2&&s.player2.currentBreak)||0;
+  var balls=s.breakBalls||[];
+  var w1=g('p1-brk-wrap'),w2=g('p2-brk-wrap');
+  var n1b=g('p1-brk-num'),n2b=g('p2-brk-num');
+  var ln1=g('p1-brk-name'),ln2=g('p2-brk-name');
+  if(n1b){ n1b.textContent=p1brk; n1b.className='brk-num'+(p1brk>=100?' cent':''); }
+  if(n2b){ n2b.textContent=p2brk; n2b.className='brk-num'+(p2brk>=100?' cent':''); }
+  if(ln1) ln1.textContent=n1.l||s.player1.name;
+  if(ln2) ln2.textContent=n2.l||s.player2.name;
+  if(w1) w1.style.opacity=s.turn===1&&p1brk>0?'1':'0.35';
+  if(w2) w2.style.opacity=s.turn===2&&p2brk>0?'1':'0.35';
   g('brk-balls').innerHTML=balls.slice(-6).map(function(b){
     return '<div class="bball bb-'+b.color+'"><span>'+b.value+'</span></div>';
   }).join('');
-  if(bw)bw.style.opacity=brk>0?'1':'0.3';
 
   // Stats bar
   var reds=Math.max(0,s.redsRemaining||15),ptsLeft=(reds*8)+27;

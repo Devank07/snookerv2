@@ -601,6 +601,8 @@ function buildEl(el,m,lH){
     case 'frame-num':div.innerHTML='<div style="'+ws+ts+'color:'+(el.color||'rgba(255,255,255,.4)')+'">Frame '+m.currentFrame+'</div>';break;
     case 'tournament':div.innerHTML='<div style="'+ws+ts+'color:'+(el.color||'#c9a227')+'">'+esc(m.tournament||'')+'</div>';break;
     case 'break-val':var bv=m.currentBreak||0;div.innerHTML='<div style="'+ws+ts+'color:'+(bv>=100?'#f0c040':(el.color||'#fff'))+'">'+bv+'</div>';break;
+    case 'break-p1':var bp1=(p1.currentBreak||0);div.innerHTML='<div style="'+ws+ts+'color:'+(bp1>=100?'#f0c040':(el.color||'#fff'))+'">'+bp1+'</div>';break;
+    case 'break-p2':var bp2=(p2.currentBreak||0);div.innerHTML='<div style="'+ws+ts+'color:'+(bp2>=100?'#f0c040':(el.color||'#fff'))+'">'+bp2+'</div>';break;
     case 'break-who':div.innerHTML='<div style="'+ws+ts+'color:'+(el.color||'#c9a227')+'">'+esc(m.breakPlayer===1?p1.name:p2.name)+'</div>';break;
     case 'state':div.innerHTML='<div style="'+ws+ts+'color:'+(el.color||'rgba(255,255,255,.4)')+'">'+esc((el.player==1?p1:p2).state||'')+'</div>';break;
     case 'custom-text':div.innerHTML='<div style="'+ws+ts+'color:'+(el.color||'#fff')+'">'+esc(el.text||'')+'</div>';break;

@@ -840,7 +840,8 @@ function pot(color, val) {
   var s = clone();
   var pl = 'player' + s.turn;
   s[pl].score = (s[pl].score || 0) + val;
-  s.currentBreak = (s.currentBreak || 0) + val;
+  s[pl].currentBreak = (s[pl].currentBreak || 0) + val;
+  s.currentBreak = s[pl].currentBreak;
   if (!s.breakPlayer) s.breakPlayer = s.turn;
   s.breakBalls = s.breakBalls || [];
   s.breakBalls.push({ color: color, value: val });
@@ -857,6 +858,7 @@ function endVisit() {
   // White ball / cue ball = 0 pts = end visit = switch turn
   if (!S) return;
   var s = clone();
+  s['player' + s.turn].currentBreak = 0; // reset leaving player's break
   s.turn = s.turn === 1 ? 2 : 1;
   s.currentBreak = 0;
   s.breakPlayer  = s.turn;
@@ -886,6 +888,7 @@ function foul(val) {
   var s = clone();
   var opp = 'player' + (s.turn === 1 ? 2 : 1);
   s[opp].score    = (s[opp].score || 0) + val;
+  s['player' + s.turn].currentBreak = 0; // reset fouling player's break
   s.currentBreak  = 0; s.breakBalls = [];
   s.breakPlayer   = s.turn === 1 ? 2 : 1;
   s.turn          = s.turn === 1 ? 2 : 1;
