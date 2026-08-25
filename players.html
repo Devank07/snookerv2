@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#c9a227">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="UPBSA.TV">
+  <link rel="apple-touch-icon" href="upbsa-logo.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Player Registry — CueSports India</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -183,9 +190,14 @@ footer{text-align:center;padding:40px 0 0;font-size:0.65rem;color:rgba(232,244,2
         <div class="field-row">
           <div class="field">
             <label>State / Association</label>
+            <div style="display:flex;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);margin-bottom:5px;">
+              <button type="button" onclick="plToggleLoc('state')" id="pl-tog-st" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:rgba(201,162,39,0.15);color:#c9a227;">State</button>
+              <button type="button" onclick="plToggleLoc('city')" id="pl-tog-ci" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.4);">City</button>
+            </div>
             <select id="add-state">
               <option value="">Select state...</option>
             </select>
+            <input type="text" id="add-city" placeholder="Type city..." style="display:none;width:100%;padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e8f4e0;font-size:0.9rem;">
           </div>
           <div class="field">
             <label>Phone Number</label>
@@ -423,7 +435,7 @@ var STATES = [
   'Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand',
   'Karnataka','Kerala','Ladakh','Lakshadweep','Madhya Pradesh','Maharashtra',
   'Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab',
-  'Rajasthan','Railways','Services','Sikkim','Tamil Nadu','Telangana','Tripura',
+  'PSPB','Rajasthan','Railways','RSPB','Services','Sikkim','Tamil Nadu','Telangana','Tripura',
   'Uttar Pradesh','Uttarakhand','West Bengal'
 ];
 
@@ -443,6 +455,8 @@ var STATE_MAP = {
   'pb':'Punjab','punjab':'Punjab',
   'br':'Bihar','bihar':'Bihar',
   'railways':'Railways','railway':'Railways',
+  'pspb':'PSPB','petroleum':'PSPB','petroleum sports':'PSPB',
+  'rspb':'RSPB','railway sports':'RSPB',
   'services':'Services','army':'Services','navy':'Services',
   'uk':'Uttarakhand','uttarakhand':'Uttarakhand',
   'or':'Odisha','odisha':'Odisha','orissa':'Odisha',
@@ -618,7 +632,7 @@ function goPage(n) { currentPage=n; renderTable(); }
 // ── ADD PLAYER ──
 function addPlayer() {
   var name = document.getElementById('add-name').value.trim();
-  var state = document.getElementById('add-state').value;
+  var state = plGetLocation();;
   var phone = document.getElementById('add-phone').value.trim();
   var sport = document.getElementById('add-sport').value;
   var category = document.getElementById('add-category').value;
@@ -861,5 +875,37 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function showLoading(t){ document.getElementById('loading-text').textContent=t||'Processing...'; document.getElementById('loading').classList.add('show'); }
 function hideLoading(){ document.getElementById('loading').classList.remove('show'); }
 </script>
+
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js')
+    .then(function(reg){ console.log('UPBSA.TV SW registered'); })
+    .catch(function(e){ console.log('SW error:', e); });
+}
+</script>
 </body>
 </html>
+function plToggleLoc(type){
+  var sel=document.getElementById('add-state');
+  var city=document.getElementById('add-city');
+  var togSt=document.getElementById('pl-tog-st');
+  var togCi=document.getElementById('pl-tog-ci');
+  if(type==='state'){
+    sel.style.display=''; city.style.display='none';
+    togSt.style.background='rgba(201,162,39,0.15)'; togSt.style.color='#c9a227';
+    togCi.style.background='transparent'; togCi.style.color='rgba(255,255,255,0.4)';
+  } else {
+    sel.style.display='none'; city.style.display='';
+    togCi.style.background='rgba(201,162,39,0.15)'; togCi.style.color='#c9a227';
+    togSt.style.background='transparent'; togSt.style.color='rgba(255,255,255,0.4)';
+    city.focus();
+  }
+}
+
+function plGetLocation(){
+  var city=document.getElementById('add-city');
+  if(city && city.style.display!=='none') return (city.value||'').trim();
+  return document.getElementById('add-state').value||'';
+}
+
+

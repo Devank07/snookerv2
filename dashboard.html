@@ -389,8 +389,24 @@ select.fi option{background:#1a1a1a;}
       <div><label class="fl">Player 2 Name</label><input class="fi" type="text" id="m-p2" placeholder="Player 2"></div>
     </div>
     <div class="frow">
-      <div><label class="fl">P1 State</label><select class="fi" id="m-s1"><option value="">– State –</option></select></div>
-      <div><label class="fl">P2 State</label><select class="fi" id="m-s2"><option value="">– State –</option></select></div>
+      <div>
+        <label class="fl">P1 Location</label>
+        <div style="display:flex;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);margin-bottom:4px;">
+          <button type="button" onclick="dashToggleLoc(1,'state')" id="d-p1-tog-st" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:rgba(201,162,39,0.15);color:#c9a227;">State</button>
+          <button type="button" onclick="dashToggleLoc(1,'city')"  id="d-p1-tog-ci" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:transparent;color:rgba(232,244,224,0.4);">City</button>
+        </div>
+        <select class="fi" id="m-s1"><option value="">– State –</option></select>
+        <input type="text" class="fi" id="m-c1" placeholder="Type city..." style="display:none;margin-top:0;">
+      </div>
+      <div>
+        <label class="fl">P2 Location</label>
+        <div style="display:flex;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);margin-bottom:4px;">
+          <button type="button" onclick="dashToggleLoc(2,'state')" id="d-p2-tog-st" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:rgba(201,162,39,0.15);color:#c9a227;">State</button>
+          <button type="button" onclick="dashToggleLoc(2,'city')"  id="d-p2-tog-ci" style="flex:1;padding:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;background:transparent;color:rgba(232,244,224,0.4);">City</button>
+        </div>
+        <select class="fi" id="m-s2"><option value="">– State –</option></select>
+        <input type="text" class="fi" id="m-c2" placeholder="Type city..." style="display:none;margin-top:0;">
+      </div>
     </div>
     <div class="frow">
       <div><label class="fl">Best Of</label>
