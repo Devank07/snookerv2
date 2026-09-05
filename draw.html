@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Live Draw — UPBSA.TV</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;--surface:#13131a;--surface2:#1a1a24;
+  --border:#ffffff12;--border2:#ffffff1e;
+  --gold:#c9a227;--green:#2ecc71;--red:#ef4444;--blue:#5dade2;
+  --text:#f0f0f8;--text2:#9999b0;--text3:#55556a;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:13px;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--surface);border-radius:2px;}
+
+/* HEADER */
+.header{
+  background:var(--surface);border-bottom:2px solid var(--gold);
+  padding:12px 20px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:50;
+}
+.logo{font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:4px;color:var(--gold);}
+.tourn-title{font-size:.9rem;font-weight:700;color:var(--text);}
+.tourn-meta{font-size:.62rem;color:var(--text3);margin-top:2px;}
+.live-badge{
+  margin-left:auto;background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);
+  color:var(--green);padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;
+  letter-spacing:1px;display:flex;align-items:center;gap:5px;
+}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* TABS */
+.tabs-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 20px;display:flex;gap:2px;overflow-x:auto;
+}
+.vtab{
+  padding:10px 16px;font-size:.72rem;font-weight:600;cursor:pointer;
+  color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap;
+  transition:all .15s;
+}
+.vtab.on{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* LIVE MATCHES STRIP */
+.live-strip{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;gap:10px;overflow-x:auto;
+}
+.live-card{
+  background:var(--surface2);border:1px solid var(--gold);border-radius:8px;
+  padding:8px 12px;min-width:220px;flex-shrink:0;
+}
+.lc-round{font-size:.55rem;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:5px;}
+.lc-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;}
+.lc-name{font-size:.75rem;font-weight:700;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lc-score{font-size:1.1rem;font-weight:900;color:var(--gold);font-family:'Bebas Neue',cursive;min-width:20px;text-align:center;}
+.lc-table{font-size:.55rem;color:var(--text3);margin-top:3px;}
+
+/* MAIN */
+.main{padding:20px;}
+
+/* BRACKET */
+.bracket-wrap{overflow-x:auto;padding-bottom:20px;}
+.bracket{display:flex;align-items:flex-start;gap:0;}
+.b-round{display:flex;flex-direction:column;min-width:210px;}
+.b-round-title{
+  font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--gold);padding:0 10px 12px;text-align:center;
+}
+.b-matches{display:flex;flex-direction:column;flex:1;}
+
+/* Bracket match card */
+.bm{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;margin:4px 8px;overflow:hidden;
+  transition:border-color .2s;
+}
+.bm.live{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);}
+.bm.done{border-color:rgba(46,204,113,.25);}
+.bm-player{
+  padding:7px 10px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.bm-player:last-of-type{border-bottom:none;}
+.bm-player.winner{background:rgba(46,204,113,.05);}
+.bm-name{font-size:.75rem;font-weight:600;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bm-name.winner{color:var(--green);font-weight:800;}
+.bm-name.bye{color:var(--text3);}
+.bm-name.tbd{color:var(--text3);font-style:italic;}
+.bm-score{font-size:1rem;font-weight:900;color:var(--text2);font-family:'Bebas Neue',cursive;min-width:20px;text-align:right;}
+.bm-score.winner{color:var(--green);}
+.bm-status{
+  padding:3px 8px;font-size:.55rem;font-weight:700;letter-spacing:1px;
+  background:var(--bg);border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:5px;color:var(--text3);
+}
+
+/* Connector lines */
+.b-connector{
+  display:flex;flex-direction:column;justify-content:center;
+  width:20px;flex-shrink:0;
+}
+
+/* GROUP / STANDINGS SECTION */
+.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+.group-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+}
+.gc-head{
+  padding:8px 14px;background:rgba(201,162,39,.06);border-bottom:1px solid var(--border);
+  font-size:.62rem;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;
+}
+.st-table{width:100%;border-collapse:collapse;}
+.st-table th{padding:6px 10px;text-align:left;font-size:.55rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);}
+.st-table td{padding:7px 10px;font-size:.72rem;border-bottom:1px solid var(--border);}
+.st-table tr:last-child td{border-bottom:none;}
+.st-pos{color:var(--text3);font-size:.65rem;}
+.gc-matches{border-top:1px solid var(--border);padding:8px;}
+.gm{
+  padding:6px 8px;margin-bottom:4px;
+  background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.gm.live{border-color:var(--gold);}
+.gm.done{border-color:rgba(46,204,113,.2);}
+.gm-players{font-size:.72rem;}
+.gm-badge{font-size:.55rem;font-weight:700;padding:2px 6px;border-radius:3px;}
+.gm-badge.live{background:rgba(201,162,39,.1);color:var(--gold);}
+.gm-badge.done{background:rgba(46,204,113,.08);color:var(--green);}
+.gm-badge.pending{color:var(--text3);}
+
+/* No tournament */
+.no-tourn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:60vh;gap:12px;text-align:center;
+}
+
+/* Responsive */
+@media(max-width:600px){
+  .b-round{min-width:170px;}
+  .groups-grid{grid-template-columns:1fr;}
+  .live-card{min-width:190px;}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- NO TOURNAMENT -->
+  <div id="view-none" class="no-tourn">
+    <div style="font-size:3rem;">🏆</div>
+    <div style="font-size:1.2rem;font-weight:700;color:var(--gold);">No Live Tournament</div>
+    <div style="color:var(--text2);font-size:.82rem;">Check back when a tournament is published.</div>
+    <div style="font-size:.65rem;color:var(--text3);margin-top:4px;">UPBSA.TV Live Draw System</div>
+  </div>
+
+  <!-- TOURNAMENT VIEW -->
+  <div id="view-tourn" style="display:none;">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">UPBSA.TV</div>
+      <div>
+        <div class="tourn-title" id="v-name">Tournament</div>
+        <div class="tourn-meta" id="v-meta"></div>
+      </div>
+      <div class="live-badge" id="live-badge" style="display:none;">
+        <div class="live-dot"></div> LIVE
+      </div>
+      <div style="margin-left:auto;" id="live-badge-right"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-bar">
+      <div class="vtab on" id="vt-draw" onclick="vShowTab('draw')">🏆 Draw</div>
+      <div class="vtab" id="vt-matches" onclick="vShowTab('matches')">⚡ Live Matches</div>
+      <div class="vtab" id="vt-standings" onclick="vShowTab('standings')">📊 Standings</div>
+    </div>
+
+    <!-- Live matches strip (always visible) -->
+    <div class="live-strip" id="live-strip" style="display:none;"></div>
+
+    <!-- Draw panel -->
+    <div class="main" id="panel-draw">
+      <div id="draw-content"></div>
+    </div>
+
+    <!-- Live Matches panel -->
+    <div class="main" id="panel-matches" style="display:none;">
+      <div id="matches-content"></div>
+    </div>
+
+    <!-- Standings panel -->
+    <div class="main" id="panel-standings" style="display:none;">
+      <div id="standings-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db=firebase.database();
+
+var tournament=null;
+var liveMatches={};
+var activeTab='draw';
+
+function g(id){return document.getElementById(id);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function fmt(f){var m={knockout:'Single Knockout','double-knockout':'Double Knockout','round-robin':'Round Robin','pools-knockout':'Pools + Knockout',league:'League'};return m[f]||f;}
+
+// Watch live tournament pointer
+db.ref('live/tournament').on('value',function(s){
+  var id=s.val();
+  if(!id){g('view-none').style.display='flex';g('view-tourn').style.display='none';tournament=null;return;}
+  db.ref('tournaments/'+id).on('value',function(ts){
+    tournament=ts.val();
+    if(!tournament){g('view-none').style.display='flex';g('view-tourn').style.display='none';return;}
+    g('view-none').style.display='none';
+    g('view-tourn').style.display='block';
+    g('v-name').textContent=tournament.name;
+    g('v-meta').textContent=tournament.sport+' · '+fmt(tournament.format)+' · '+tournament.numPlayers+' players'+(tournament.venue?' · '+tournament.venue:'');
+    renderAll();
+  });
+});
+
+// Watch all tables for live scores
+for(var t=1;t<=6;t++){
+  (function(tbl){
+    db.ref('matches/table-'+tbl).on('value',function(s){
+      var m=s.val();
+      if(m) liveMatches['table-'+tbl]=m;
+      else delete liveMatches['table-'+tbl];
+      renderAll();
+    });
+  })(t);
+}
+
+function findLive(matchId){
+  for(var k in liveMatches){
+    if(liveMatches[k]&&liveMatches[k].matchId===matchId) return liveMatches[k];
+  }
+  return null;
+}
+
+function renderAll(){
+  if(!tournament) return;
+  renderLiveStrip();
+  if(activeTab==='draw') renderDraw();
+  else if(activeTab==='matches') renderMatches();
+  else if(activeTab==='standings') renderStandings();
+}
+
+function vShowTab(name){
+  activeTab=name;
+  ['draw','matches','standings'].forEach(function(n){
+    g('panel-'+n).style.display=n===name?'block':'none';
+    g('vt-'+n).classList.toggle('on',n===name);
+  });
+  renderAll();
+}
+
+// ── LIVE STRIP ──
+function renderLiveStrip(){
+  var strip=g('live-strip');
+  var live=getLiveMatchItems();
+  if(!live.length){strip.style.display='none';g('live-badge').style.display='none';return;}
+  strip.style.display='flex';
+  g('live-badge').style.display='flex';
+  strip.innerHTML='';
+  live.forEach(function(item){
+    var m=item.match, lm=item.live;
+    var d=document.createElement('div');
+    d.className='live-card';
+    d.innerHTML=
+      '<div class="lc-round">'+esc(item.context)+' · Live</div>'+
+      '<div class="lc-row">'+
+        '<div class="lc-name" style="color:'+(lm.matchWinner===1?'var(--green)':'var(--text)')+'">'+esc(lm.player1.name)+'</div>'+
+        '<div class="lc-score" style="color:'+(lm.matchWinner===1?'var(--green)':'var(--gold)')+'">'+lm.player1.frames+'</div>'+
+      '</div>'+
+      '<div class="lc-row">'+
+        '<div class="lc-name" style="color:'+(lm.matchWinner===2?'var(--green)':'var(--text)')+'">'+esc(lm.player2.name)+'</div>'+
+        '<div class="lc-score" style="color:'+(lm.matchWinner===2?'var(--green)':'var(--gold)')+'">'+lm.player2.frames+'</div>'+
+      '</div>'+
+      '<div class="lc-table">Table '+lm.tableNumber+' · BO'+lm.bestOf+'</div>';
+    strip.appendChild(d);
+  });
+}
+
+function getLiveMatchItems(){
+  if(!tournament) return [];
+  var items=[];
+  (tournament.rounds||[]).forEach(function(r){
+    r.matches.forEach(function(m){
+      if(!m.matchId) return;
+      var lm=findLive(m.matchId);
+      if(lm&&lm.status==='active') items.push({match:m,live:lm,context:r.label});
+    });
+  });
+  (tournament.groups||[]).forEach(function(grp){
+    (grp.matches||[]).forEach(function(m){
+      if(!m.matchId) return;
+      var lm=findLive(m.matchId);
+      if(lm&&lm.status==='active') items.push({match:m,live:lm,context:grp.name});
+    });
+  });
+  return items;
+}
+
+// ── DRAW ──
+function renderDraw(){
+  var dc=g('draw-content'); dc.innerHTML='';
+  if(!tournament) return;
+  var fmt=tournament.format;
+  if(fmt==='knockout'||fmt==='double-knockout'){
+    renderBracket(dc);
+  } else if(fmt==='round-robin'||fmt==='league'){
+    renderGroups(dc);
+  } else if(fmt==='pools-knockout'){
+    renderGroups(dc);
+    var ko=document.createElement('div');
+    ko.style.marginTop='24px';
+    ko.innerHTML='<div style="font-size:.62rem;font-weight:700;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">Knockout Phase</div>';
+    renderBracket(ko);
+    dc.appendChild(ko);
+  }
+}
+
+function renderBracket(container){
+  var rounds=tournament.rounds||[];
+  if(!rounds.length){
+    container.innerHTML+='<div style="color:var(--text3);padding:40px;text-align:center;">Bracket not generated yet.</div>';
+    return;
+  }
+
+  var wrap=document.createElement('div');
+  wrap.className='bracket-wrap';
+  var bracket=document.createElement('div');
+  bracket.className='bracket';
+  wrap.appendChild(bracket);
+  container.appendChild(wrap);
+
+  rounds.forEach(function(r,ri){
+    var col=document.createElement('div');
+    col.className='b-round';
+
+    var title=document.createElement('div');
+    title.className='b-round-title';
+    title.textContent=r.label;
+    col.appendChild(title);
+
+    var matchesWrap=document.createElement('div');
+    matchesWrap.className='b-matches';
+
+    // Calculate spacing for bracket tree look
+    var totalRounds=rounds.length;
+    var matchSpaceFactor=Math.pow(2,ri);
+
+    r.matches.forEach(function(m,mi){
+      // Add spacer before each match (for bracket tree alignment)
+      if(mi>0){
+        var spacer=document.createElement('div');
+        spacer.style.height=(matchSpaceFactor*14)+'px';
+        matchesWrap.appendChild(spacer);
+      } else if(ri>0){
+        var topSpacer=document.createElement('div');
+        topSpacer.style.height=((matchSpaceFactor-1)*7)+'px';
+        matchesWrap.appendChild(topSpacer);
+      }
+
+      var lm=m.matchId?findLive(m.matchId):null;
+      var s1=lm?lm.player1.frames:m.score1||0;
+      var s2=lm?lm.player2.frames:m.score2||0;
+      var status=lm?lm.status:m.status||'pending';
+      var winner=lm&&lm.matchWinner?(lm.matchWinner===1?lm.player1.name:lm.player2.name):m.winner||'';
+
+      var card=document.createElement('div');
+      card.className='bm'+(status==='active'?' live':status==='finished'?' done':'');
+
+      var bye1=m.p1==='BYE', bye2=m.p2==='BYE';
+      var tbd1=!m.p1||m.p1==='TBD', tbd2=!m.p2||m.p2==='TBD';
+
+      function playerRow(name,state,score,isWinner,isBye,isTbd){
+        var nc=isBye?'bye':isTbd?'tbd':isWinner?'winner':'';
+        return '<div class="bm-player'+(isWinner?' winner':'')+'">'+
+          '<div>'+
+            '<div class="bm-name '+nc+'">'+(isBye?'BYE':isTbd?'TBD':esc(name))+'</div>'+
+            (!isBye&&!isTbd&&state?'<div style="font-size:.55rem;color:var(--text3);">'+esc(state)+'</div>':'')+
+          '</div>'+
+          (!isBye?'<div class="bm-score'+(isWinner?' winner':'')+'">'+score+'</div>':'')+
+        '</div>';
+      }
+
+      card.innerHTML=
+        playerRow(m.p1,m.p1state,s1,winner===m.p1,bye1,tbd1)+
+        playerRow(m.p2,m.p2state,s2,winner===m.p2,bye2,tbd2)+
+        '<div class="bm-status">'+
+          (status==='active'?'<div style="width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 1s infinite;flex-shrink:0;"></div><span style="color:var(--gold);">LIVE · Table '+(lm?lm.tableNumber:'?')+'</span>':
+           status==='finished'?'<span style="color:var(--green);">✓ Complete</span>':
+           '<span>Pending</span>')+
+        '</div>';
+
+      matchesWrap.appendChild(card);
+    });
+
+    col.appendChild(matchesWrap);
+    bracket.appendChild(col);
+  });
+}
+
+function renderGroups(container){
+  var groups=tournament.groups||[];
+  if(!groups.length){
+    container.innerHTML+='<div style="color:var(--text3);padding:40px;text-align:center;">Draw not generated yet.</div>';
+    return;
+  }
+
+  var grid=document.createElement('div');
+  grid.className='groups-grid';
+  container.appendChild(grid);
+
+  groups.forEach(function(grp){
+    var card=document.createElement('div');
+    card.className='group-card';
+
+    // Header
+    var head=document.createElement('div');
+    head.className='gc-head';
+    head.textContent=grp.name;
+    card.appendChild(head);
+
+    // Standings table
+    var sorted=(grp.standings||[]).slice().sort(function(a,b){
+      if(b.p!==a.p) return b.p-a.p;
+      return (b.sf-b.sa)-(a.sf-a.sa);
+    });
+
+    var table=document.createElement('table');
+    table.className='st-table';
+    table.innerHTML='<thead><tr>'+
+      '<th style="width:24px;">#</th><th>Player</th>'+
+      '<th style="text-align:center;width:30px;">P</th>'+
+      '<th style="text-align:center;width:30px;color:var(--green);">W</th>'+
+      '<th style="text-align:center;width:30px;color:var(--red);">L</th>'+
+      '<th style="text-align:center;width:36px;color:var(--gold);">Pts</th>'+
+      '</tr></thead>';
+    var tbody=document.createElement('tbody');
+    sorted.forEach(function(s,idx){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="st-pos">'+(idx+1)+'</td>'+
+        '<td><div style="font-weight:700;">'+esc(s.name)+'</div>'+
+        (s.state?'<div style="font-size:.6rem;color:var(--text3);">'+esc(s.state)+'</div>':'')+
+        '</td>'+
+        '<td style="text-align:center;">'+(s.w+s.l)+'</td>'+
+        '<td style="text-align:center;color:var(--green);">'+s.w+'</td>'+
+        '<td style="text-align:center;color:var(--red);">'+s.l+'</td>'+
+        '<td style="text-align:center;font-weight:900;color:var(--gold);">'+s.p+'</td>';
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    card.appendChild(table);
+
+    // Matches
+    var matchesDiv=document.createElement('div');
+    matchesDiv.className='gc-matches';
+    (grp.matches||[]).forEach(function(m){
+      var lm=m.matchId?findLive(m.matchId):null;
+      var status=lm?lm.status:m.status||'pending';
+      var s1=lm?lm.player1.frames:m.score1||0;
+      var s2=lm?lm.player2.frames:m.score2||0;
+      var winner=lm&&lm.matchWinner?(lm.matchWinner===1?lm.player1.name:lm.player2.name):m.winner||'';
+
+      var md=document.createElement('div');
+      md.className='gm'+(status==='active'?' live':status==='finished'?' done':'');
+      md.innerHTML=
+        '<div class="gm-players">'+
+          '<span style="font-weight:'+(winner===m.p1?800:600)+';color:'+(winner===m.p1?'var(--green)':'var(--text)')+';">'+esc(m.p1)+'</span>'+
+          (status==='finished'?
+            '<span style="color:var(--text3);padding:0 5px;font-size:.65rem;">'+s1+' – '+s2+'</span>':
+            '<span style="color:var(--text3);padding:0 5px;">vs</span>')+
+          '<span style="font-weight:'+(winner===m.p2?800:600)+';color:'+(winner===m.p2?'var(--green)':'var(--text)')+';">'+esc(m.p2)+'</span>'+
+        '</div>'+
+        '<div class="gm-badge '+(status==='active'?'live':status==='finished'?'done':'pending')+'">'+
+          (status==='active'?'LIVE T'+(lm?lm.tableNumber:'?'):status==='finished'?'DONE':'–')+
+        '</div>';
+      matchesDiv.appendChild(md);
+    });
+    card.appendChild(matchesDiv);
+    grid.appendChild(card);
+  });
+}
+
+// ── MATCHES TAB ──
+function renderMatches(){
+  var mc=g('matches-content'); mc.innerHTML='';
+  if(!tournament) return;
+
+  var items=[];
+  (tournament.rounds||[]).forEach(function(r){
+    r.matches.forEach(function(m){
+      if(m.p1&&m.p1!=='BYE'&&m.p2&&m.p2!=='BYE') items.push({m:m,ctx:r.label});
+    });
+  });
+  (tournament.groups||[]).forEach(function(grp){
+    (grp.matches||[]).forEach(function(m){ items.push({m:m,ctx:grp.name}); });
+  });
+
+  var live=items.filter(function(i){var lm=i.m.matchId?findLive(i.m.matchId):null;return lm&&lm.status==='active';});
+  var done=items.filter(function(i){var st=i.m.status;return st==='finished';});
+  var pending=items.filter(function(i){var lm=i.m.matchId?findLive(i.m.matchId):null;var st=i.m.status;return !lm&&st!=='finished';});
+
+  function section(title,color,list){
+    if(!list.length) return;
+    mc.innerHTML+='<div style="font-size:.62rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:'+color+';margin-bottom:8px;margin-top:16px;">'+title+'</div>';
+    var g2=document.createElement('div');
+    g2.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-bottom:4px;';
+    list.forEach(function(item){
+      var m=item.m, lm=m.matchId?findLive(m.matchId):null;
+      var s1=lm?lm.player1.frames:m.score1||0;
+      var s2=lm?lm.player2.frames:m.score2||0;
+      var winner=lm&&lm.matchWinner?(lm.matchWinner===1?lm.player1.name:lm.player2.name):m.winner||'';
+      var d=document.createElement('div');
+      d.style.cssText='background:var(--surface2);border:1px solid '+(lm&&lm.status==='active'?'var(--gold)':m.status==='finished'?'rgba(46,204,113,.25)':'var(--border)')+';border-radius:8px;padding:10px 12px;';
+      d.innerHTML=
+        '<div style="font-size:.55rem;color:var(--text3);margin-bottom:6px;">'+esc(item.ctx)+(lm?' · Table '+lm.tableNumber:'')+'</div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'+
+          '<div style="font-weight:'+(winner===m.p1?800:600)+';color:'+(winner===m.p1?'var(--green)':'var(--text)')+';font-size:.8rem;">'+esc(m.p1||'TBD')+'</div>'+
+          '<div style="font-size:1.2rem;font-weight:900;font-family:\'Bebas Neue\',cursive;color:'+(winner===m.p1?'var(--green)':'var(--gold)')+';">'+s1+'</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;">'+
+          '<div style="font-weight:'+(winner===m.p2?800:600)+';color:'+(winner===m.p2?'var(--green)':'var(--text)')+';font-size:.8rem;">'+esc(m.p2||'TBD')+'</div>'+
+          '<div style="font-size:1.2rem;font-weight:900;font-family:\'Bebas Neue\',cursive;color:'+(winner===m.p2?'var(--green)':'var(--gold)')+';">'+s2+'</div>'+
+        '</div>';
+      g2.appendChild(d);
+    });
+    mc.appendChild(g2);
+  }
+
+  section('● Live Now','var(--gold)',live);
+  section('○ Upcoming','var(--text3)',pending);
+  section('✓ Completed','var(--green)',done);
+
+  if(!items.length) mc.innerHTML='<div style="color:var(--text3);padding:40px;text-align:center;">No matches yet.</div>';
+}
+
+// ── STANDINGS TAB ──
+function renderStandings(){
+  var sc=g('standings-content'); sc.innerHTML='';
+  if(!tournament) return;
+  var groups=tournament.groups||[];
+  if(!groups.length){
+    sc.innerHTML='<div style="color:var(--text3);padding:40px;text-align:center;">Standings available for Round Robin, Pools and League formats.</div>';
+    return;
+  }
+  // Re-use groups renderer
+  renderGroups(sc);
+}
+</script>
+</body>
+</html>

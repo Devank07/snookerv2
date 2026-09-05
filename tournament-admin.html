@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Tournament Admin — UPBSA.TV</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;--surface:#13131a;--surface2:#1a1a24;--surface3:#202030;
+  --border:#ffffff12;--border2:#ffffff1e;--gold:#c9a227;--gold-dim:rgba(201,162,39,.1);
+  --green:#2ecc71;--red:#ef4444;--blue:#5dade2;--text:#f0f0f8;--text2:#9999b0;--text3:#55556a;
+  --r:6px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:13px;}
+button,input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px;}
+
+/* ── TOPBAR ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  height:48px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+}
+.tb-logo{font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:4px;color:var(--gold);}
+.tb-divider{width:1px;height:20px;background:var(--border2);flex-shrink:0;}
+.tb-btn{
+  padding:6px 12px;border-radius:var(--r);background:var(--surface2);
+  border:1px solid var(--border);color:var(--text2);font-size:.72rem;font-weight:600;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.tb-btn:hover{border-color:var(--border2);color:var(--text);}
+.tb-btn.primary{background:var(--gold-dim);border-color:rgba(201,162,39,.4);color:var(--gold);}
+.tb-btn.danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
+.tb-select{
+  padding:5px 8px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--text2);font-size:.72rem;cursor:pointer;
+}
+#tb-tourn-name{
+  font-size:.8rem;font-weight:700;color:var(--gold);
+  max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;padding-top:48px;}
+.sidebar{
+  width:280px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+.main{flex:1;overflow-y:auto;}
+
+/* ── SIDEBAR SECTIONS ── */
+.ss{border-bottom:1px solid var(--border);}
+.ss-hd{
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+}
+.ss-hd:hover{background:rgba(255,255,255,.02);}
+.ss-title{font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);}
+.ss-arr{font-size:.65rem;color:var(--text3);transition:transform .2s;}
+.ss-arr.open{transform:rotate(90deg);}
+.ss-body{display:none;padding:10px 14px;}
+.ss-body.open{display:block;}
+
+/* Tournament list */
+.tourn-item{
+  padding:8px 10px;border-radius:var(--r);margin-bottom:4px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface2);
+  display:flex;flex-direction:column;gap:2px;transition:all .15s;
+}
+.tourn-item:hover{border-color:var(--border2);}
+.tourn-item.active{border-color:rgba(201,162,39,.4);background:var(--gold-dim);}
+.ti-name{font-size:.78rem;font-weight:700;color:var(--text);}
+.ti-meta{font-size:.62rem;color:var(--text3);}
+
+/* Form fields */
+.fl{font-size:.62rem;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;display:block;}
+.fi{
+  width:100%;padding:7px 9px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--text);font-size:.82rem;margin-bottom:8px;
+}
+.fi:focus{outline:none;border-color:rgba(201,162,39,.5);}
+.fi option{background:var(--surface);}
+.btn{
+  width:100%;padding:8px;border-radius:var(--r);font-size:.75rem;font-weight:700;
+  cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);
+  transition:all .15s;margin-top:4px;
+}
+.btn:hover{border-color:var(--border2);color:var(--text);}
+.btn.gold{background:var(--gold-dim);border-color:rgba(201,162,39,.4);color:var(--gold);}
+.btn.red{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
+
+/* ── MAIN AREA ── */
+.main-inner{padding:20px;max-width:1400px;}
+
+/* Section headers */
+.sect-title{
+  font-size:.62rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+  color:var(--text3);padding-bottom:10px;margin-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+
+/* Player grid */
+.player-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;
+  margin-bottom:16px;
+}
+.player-slot{
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:8px 10px;display:flex;align-items:center;gap:8px;
+}
+.slot-num{
+  width:26px;height:26px;border-radius:4px;background:var(--surface3);
+  font-size:.72rem;font-weight:700;color:var(--text2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.slot-num.seeded{background:rgba(201,162,39,.15);color:var(--gold);}
+.slot-inputs{flex:1;display:flex;flex-direction:column;gap:4px;}
+.slot-name{
+  width:100%;padding:5px 7px;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;color:var(--text);font-size:.78rem;
+}
+.slot-name:focus{outline:none;border-color:rgba(201,162,39,.4);}
+.slot-state{
+  width:100%;padding:3px 7px;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;color:var(--text2);font-size:.65rem;
+}
+.slot-state:focus{outline:none;border-color:rgba(201,162,39,.3);}
+.slot-drag{
+  width:16px;color:var(--text3);cursor:grab;font-size:.8rem;
+  display:flex;align-items:center;
+}
+
+/* Pools editor */
+.pools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+.pool-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;
+}
+.pool-header{
+  padding:8px 12px;background:var(--surface3);border-bottom:1px solid var(--border);
+  font-size:.72rem;font-weight:700;color:var(--gold);letter-spacing:1px;
+}
+.pool-body{padding:8px;}
+.pool-slot{
+  padding:5px 8px;border:1px solid var(--border);border-radius:4px;
+  margin-bottom:4px;background:var(--bg);
+  font-size:.72rem;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+}
+.pool-slot.empty{color:var(--text3);border-style:dashed;}
+
+/* Match cards */
+.match-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;}
+.match-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+}
+.mc-header{
+  padding:6px 12px;background:var(--surface3);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.mc-title{font-size:.62rem;font-weight:700;letter-spacing:1px;color:var(--text2);}
+.mc-table{font-size:.62rem;color:var(--gold);}
+.mc-body{padding:10px 12px;}
+.mc-player{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;
+}
+.mc-player:first-child{border-bottom:1px solid var(--border);}
+.mc-name{font-size:.82rem;font-weight:700;color:var(--text);}
+.mc-score{
+  font-size:1.2rem;font-weight:900;color:var(--gold);
+  font-family:'Bebas Neue',cursive;min-width:24px;text-align:center;
+}
+.mc-winner{color:var(--green);}
+.mc-footer{
+  padding:6px 12px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;
+}
+.mc-status{font-size:.6rem;color:var(--text3);}
+.mc-assign{
+  padding:3px 8px;border-radius:4px;font-size:.6rem;font-weight:700;
+  cursor:pointer;border:1px solid var(--border);background:var(--surface3);color:var(--text2);
+}
+.mc-assign:hover{border-color:var(--gold);color:var(--gold);}
+
+/* Bracket preview box */
+.bracket-preview{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:16px;min-height:200px;
+  display:flex;align-items:center;justify-content:center;
+}
+.bracket-hint{color:var(--text3);font-size:.75rem;text-align:center;}
+
+/* Standings table */
+.standings-table{width:100%;border-collapse:collapse;}
+.standings-table th{
+  padding:7px 10px;text-align:left;font-size:.6rem;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;color:var(--text3);
+  border-bottom:1px solid var(--border);
+}
+.standings-table td{
+  padding:8px 10px;font-size:.75rem;border-bottom:1px solid var(--border);
+}
+.standings-table tr:last-child td{border-bottom:none;}
+.standings-table tr.me{background:var(--gold-dim);}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r);padding:3px;margin-bottom:16px;width:fit-content;}
+.tab{
+  padding:5px 14px;border-radius:4px;font-size:.7rem;font-weight:600;
+  cursor:pointer;color:var(--text2);transition:all .15s;
+}
+.tab.on{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(201,162,39,.3);}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(6px);
+  background:var(--surface);border:1px solid var(--gold);color:var(--gold);
+  padding:8px 20px;border-radius:30px;font-size:.75rem;font-weight:600;
+  opacity:0;transition:all .3s;pointer-events:none;z-index:999;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-logo">UPBSA.TV</div>
+  <div class="tb-divider"></div>
+  <span style="font-size:.65rem;color:var(--text3);letter-spacing:2px;text-transform:uppercase;">Tournament Admin</span>
+  <div class="tb-divider"></div>
+  <span id="tb-tourn-name" style="color:var(--text3);">No tournament selected</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+    <a href="draw.html" target="_blank" class="tb-btn">Live Draw ↗</a>
+    <a href="dashboard.html" class="tb-btn">Dashboard</a>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Tournaments list -->
+    <div class="ss">
+      <div class="ss-hd" onclick="toggleSS(this)">
+        <div class="ss-title">Tournaments</div>
+        <div class="ss-arr open">›</div>
+      </div>
+      <div class="ss-body open">
+        <div id="tourn-list">
+          <div style="color:var(--text3);font-size:.7rem;text-align:center;padding:8px;">No tournaments yet.</div>
+        </div>
+        <button class="btn gold" onclick="openCreateModal()" style="margin-top:8px;">+ New Tournament</button>
+      </div>
+    </div>
+
+    <!-- Current tournament info -->
+    <div class="ss" id="ss-info" style="display:none;">
+      <div class="ss-hd" onclick="toggleSS(this)">
+        <div class="ss-title">Info</div>
+        <div class="ss-arr open">›</div>
+      </div>
+      <div class="ss-body open" id="sb-info-body"></div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="ss" id="ss-actions" style="display:none;">
+      <div class="ss-hd" onclick="toggleSS(this)">
+        <div class="ss-title">Actions</div>
+        <div class="ss-arr open">›</div>
+      </div>
+      <div class="ss-body open">
+        <button class="btn gold" onclick="showTab('players')">✏ Edit Players</button>
+        <button class="btn" onclick="showTab('draw')">🏆 View Draw</button>
+        <button class="btn" onclick="showTab('matches')">⚽ Matches</button>
+        <button class="btn" onclick="showTab('standings')">📊 Standings</button>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <button class="btn" onclick="publishDraw()">📢 Publish Draw</button>
+          <button class="btn red" onclick="deleteTournament()" style="margin-top:4px;">🗑 Delete Tournament</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-inner">
+
+      <!-- No tournament selected -->
+      <div id="view-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px;text-align:center;">
+        <div style="font-size:3rem;">🏆</div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--gold);">No Tournament Selected</div>
+        <div style="color:var(--text2);font-size:.82rem;">Create a new tournament or select one from the sidebar.</div>
+        <button class="btn gold" style="width:200px;padding:10px;" onclick="openCreateModal()">+ Create Tournament</button>
+      </div>
+
+      <!-- Tournament view -->
+      <div id="view-tournament" style="display:none;">
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab on" id="tab-players" onclick="showTab('players')">Players</div>
+          <div class="tab" id="tab-draw" onclick="showTab('draw')">Draw</div>
+          <div class="tab" id="tab-matches" onclick="showTab('matches')">Matches</div>
+          <div class="tab" id="tab-standings" onclick="showTab('standings')">Standings</div>
+        </div>
+
+        <!-- PLAYERS TAB -->
+        <div id="panel-players">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="sect-title" style="margin:0;border:none;padding:0;">Player Slots</div>
+            <div style="display:flex;gap:6px;">
+              <button class="tb-btn" onclick="clearAllPlayers()">Clear All</button>
+              <button class="tb-btn primary" onclick="savePlayers()">Save Players</button>
+              <button class="tb-btn primary" onclick="generateDraw()">Generate Draw →</button>
+            </div>
+          </div>
+          <div id="player-grid" class="player-grid"></div>
+        </div>
+
+        <!-- DRAW TAB -->
+        <div id="panel-draw" style="display:none;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="sect-title" style="margin:0;border:none;padding:0;">Draw</div>
+            <div style="display:flex;gap:6px;">
+              <button class="tb-btn primary" onclick="publishDraw()">📢 Publish to Viewers</button>
+            </div>
+          </div>
+          <div id="draw-view"></div>
+        </div>
+
+        <!-- MATCHES TAB -->
+        <div id="panel-matches" style="display:none;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="sect-title" style="margin:0;border:none;padding:0;">Matches</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span style="font-size:.7rem;color:var(--text3);">Table:</span>
+              <select class="tb-select" id="assign-table-sel">
+                <option value="1">T1</option><option value="2">T2</option>
+                <option value="3">T3</option><option value="4">T4</option>
+                <option value="5">T5</option><option value="6">T6</option>
+              </select>
+            </div>
+          </div>
+          <div id="matches-view" class="match-grid"></div>
+        </div>
+
+        <!-- STANDINGS TAB -->
+        <div id="panel-standings" style="display:none;">
+          <div class="sect-title">Standings</div>
+          <div id="standings-view"></div>
+        </div>
+
+      </div><!-- /view-tournament -->
+    </div>
+  </div><!-- /main -->
+
+</div><!-- /app -->
+
+<!-- CREATE TOURNAMENT MODAL -->
+<div id="modal-create" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:24px;width:420px;max-height:90vh;overflow-y:auto;">
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">New Tournament</div>
+
+    <label class="fl">Tournament Name</label>
+    <input class="fi" id="c-name" placeholder="e.g. All India Open 2026">
+
+    <label class="fl">Sport</label>
+    <select class="fi" id="c-sport">
+      <option>Snooker</option><option>Billiards</option><option>Pool</option><option>Heyball</option>
+    </select>
+
+    <label class="fl">Format</label>
+    <select class="fi" id="c-format" onchange="onFormatChange()">
+      <option value="knockout">Single Knockout</option>
+      <option value="double-knockout">Double Knockout</option>
+      <option value="round-robin">Round Robin</option>
+      <option value="pools-knockout">Pools + Knockout</option>
+      <option value="league">League</option>
+    </select>
+
+    <div id="c-pools-row" style="display:none;">
+      <label class="fl">Number of Pools</label>
+      <select class="fi" id="c-pools">
+        <option value="2">2 Pools</option><option value="4">4 Pools</option>
+        <option value="6">6 Pools</option><option value="8">8 Pools</option>
+      </select>
+      <label class="fl">Players Advancing per Pool</label>
+      <select class="fi" id="c-advance">
+        <option value="1">Top 1</option><option value="2">Top 2</option><option value="3">Top 3</option>
+      </select>
+    </div>
+
+    <label class="fl">Number of Players</label>
+    <select class="fi" id="c-players">
+      <option value="16">16</option><option value="24">24</option><option value="32">32</option>
+      <option value="48">48</option><option value="64">64</option><option value="96">96</option>
+    </select>
+
+    <label class="fl">Default Best Of</label>
+    <select class="fi" id="c-bestof">
+      <option value="3">Best of 3</option><option value="5">Best of 5</option>
+      <option value="7">Best of 7</option><option value="9">Best of 9</option>
+      <option value="11">Best of 11</option><option value="17">Best of 17</option>
+      <option value="25">Best of 25</option>
+    </select>
+
+    <label class="fl">Venue (optional)</label>
+    <input class="fi" id="c-venue" placeholder="e.g. Delhi Sports Complex">
+
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn" onclick="closeCreateModal()" style="flex:1;">Cancel</button>
+      <button class="btn gold" onclick="createTournament()" style="flex:1;">Create →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN TABLE MODAL -->
+<div id="modal-assign" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;width:340px;">
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;">Assign to Table</div>
+    <div id="assign-match-info" style="font-size:.82rem;color:var(--text);margin-bottom:12px;padding:8px;background:var(--surface2);border-radius:var(--r);"></div>
+    <label class="fl">Select Table</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+      <button class="btn" id="at1" onclick="selectTable(1)">Table 1</button>
+      <button class="btn" id="at2" onclick="selectTable(2)">Table 2</button>
+      <button class="btn" id="at3" onclick="selectTable(3)">Table 3</button>
+      <button class="btn" id="at4" onclick="selectTable(4)">Table 4</button>
+      <button class="btn" id="at5" onclick="selectTable(5)">Table 5</button>
+      <button class="btn" id="at6" onclick="selectTable(6)">Table 6</button>
+    </div>
+    <label class="fl">Best Of (this match)</label>
+    <select class="fi" id="assign-bo">
+      <option value="3">Best of 3</option><option value="5">Best of 5</option>
+      <option value="7">Best of 7</option><option value="9">Best of 9</option>
+      <option value="11">Best of 11</option><option value="17">Best of 17</option>
+    </select>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn" onclick="closeAssignModal()" style="flex:1;">Cancel</button>
+      <button class="btn gold" onclick="confirmAssign()" style="flex:1;">Start Match →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+
+// ── State ──
+var tournaments = {};
+var activeTournId = null;
+var activeTab = 'players';
+var assignMatchId = null;
+var assignTable = 1;
+var allMatches = {}; // Firebase match data keyed by table
+
+// Listen to all table matches for live scores
+for(var t=1;t<=6;t++){
+  (function(tbl){
+    db.ref('matches/table-'+tbl).on('value',function(s){
+      var m = s.val();
+      if(m) allMatches['table-'+tbl] = m;
+      else delete allMatches['table-'+tbl];
+      renderMatchesTab();
+      checkMatchCompletion();
+    });
+  })(t);
+}
+
+// Listen to tournaments
+db.ref('tournaments').on('value',function(s){
+  tournaments = s.val()||{};
+  renderTournList();
+  if(activeTournId && tournaments[activeTournId]) renderAll();
+});
+
+// ── Utils ──
+function g(id){return document.getElementById(id);}
+function showToast(msg){
+  var t=g('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2000);
+}
+function genId(){return 'T'+Date.now().toString(36).toUpperCase();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function toggleSS(hd){
+  var b=hd.nextElementSibling, a=hd.querySelector('.ss-arr');
+  if(!b) return;
+  b.classList.toggle('open'); if(a) a.classList.toggle('open');
+}
+
+// ── Create Tournament ──
+function openCreateModal(){g('modal-create').style.display='flex';}
+function closeCreateModal(){g('modal-create').style.display='none';}
+function onFormatChange(){
+  var f=g('c-format').value;
+  g('c-pools-row').style.display = (f==='pools-knockout')?'block':'none';
+}
+
+function createTournament(){
+  var name=(g('c-name').value||'').trim();
+  if(!name){showToast('Enter tournament name');return;}
+  var format=g('c-format').value;
+  var numPlayers=parseInt(g('c-players').value);
+  var id=genId();
+  var tourn={
+    id:id, name:name, sport:g('c-sport').value, format:format,
+    bestOf:parseInt(g('c-bestof').value), venue:g('c-venue').value||'',
+    numPlayers:numPlayers, status:'setup', createdAt:Date.now(),
+    pools:format==='pools-knockout'?parseInt(g('c-pools').value):0,
+    advancePerPool:format==='pools-knockout'?parseInt(g('c-advance').value):0,
+    players:[], rounds:[], groups:[], published:false
+  };
+  // Create empty player slots
+  for(var i=0;i<numPlayers;i++) tourn.players.push({slot:i+1,name:'',state:'',seed:i<4});
+  db.ref('tournaments/'+id).set(tourn).then(function(){
+    closeCreateModal();
+    selectTournament(id);
+    showToast(name+' created!');
+  });
+}
+
+// ── Select Tournament ──
+function selectTournament(id){
+  activeTournId = id;
+  g('view-empty').style.display='none';
+  g('view-tournament').style.display='block';
+  g('ss-info').style.display='block';
+  g('ss-actions').style.display='block';
+  var t=tournaments[id];
+  if(t) g('tb-tourn-name').textContent=t.name;
+  renderTournList();
+  renderAll();
+}
+
+function renderTournList(){
+  var list=g('tourn-list');
+  var keys=Object.keys(tournaments);
+  if(!keys.length){
+    list.innerHTML='<div style="color:var(--text3);font-size:.7rem;text-align:center;padding:8px;">No tournaments yet.</div>';
+    return;
+  }
+  list.innerHTML='';
+  keys.sort(function(a,b){return (tournaments[b].createdAt||0)-(tournaments[a].createdAt||0);});
+  keys.forEach(function(id){
+    var t=tournaments[id];
+    var d=document.createElement('div');
+    d.className='tourn-item'+(id===activeTournId?' active':'');
+    d.innerHTML='<div class="ti-name">'+esc(t.name)+'</div><div class="ti-meta">'+t.sport+' · '+formatLabel(t.format)+' · '+t.numPlayers+' players</div>';
+    d.addEventListener('click',function(){selectTournament(id);});
+    list.appendChild(d);
+  });
+}
+
+function formatLabel(f){
+  var m={knockout:'Knockout','double-knockout':'Double KO','round-robin':'Round Robin','pools-knockout':'Pools+KO',league:'League'};
+  return m[f]||f;
+}
+
+function renderAll(){
+  var t=tournaments[activeTournId]; if(!t) return;
+  renderInfoBox(t);
+  if(activeTab==='players') renderPlayersTab(t);
+  else if(activeTab==='draw') renderDrawTab(t);
+  else if(activeTab==='matches') renderMatchesTab();
+  else if(activeTab==='standings') renderStandingsTab(t);
+}
+
+// ── Sidebar info ──
+function renderInfoBox(t){
+  g('sb-info-body').innerHTML=
+    '<div style="font-size:.72rem;color:var(--text);margin-bottom:6px;font-weight:700;">'+esc(t.name)+'</div>'+
+    '<div style="font-size:.65rem;color:var(--text3);line-height:1.8;">'+
+    t.sport+' · '+formatLabel(t.format)+'<br>'+
+    t.numPlayers+' players · BO'+t.bestOf+
+    (t.venue?'<br>'+esc(t.venue):'')+
+    '<br><span style="color:'+(t.published?'var(--green)':'var(--text3)')+'">'+
+    (t.published?'● Published':'○ Not published')+'</span>'+
+    '</div>';
+}
+
+// ── TABS ──
+function showTab(name){
+  activeTab=name;
+  ['players','draw','matches','standings'].forEach(function(n){
+    g('panel-'+n).style.display=n===name?'block':'none';
+    g('tab-'+n).classList.toggle('on',n===name);
+  });
+  renderAll();
+}
+
+// ── PLAYERS TAB ──
+function renderPlayersTab(t){
+  var grid=g('player-grid'); grid.innerHTML='';
+  (t.players||[]).forEach(function(p,i){
+    var d=document.createElement('div');
+    d.className='player-slot';
+    d.innerHTML=
+      '<div class="slot-num'+(p.seed?' seeded':'')+'">'+(i+1)+'</div>'+
+      '<div class="slot-inputs">'+
+        '<input class="slot-name" placeholder="Player name" value="'+esc(p.name||'')+'" id="pn-'+i+'" oninput="onPlayerInput('+i+')">'+
+        '<input class="slot-state" placeholder="State / City" value="'+esc(p.state||'')+'" id="ps-'+i+'">'+
+      '</div>'+
+      '<div class="slot-drag">⠿</div>';
+    grid.appendChild(d);
+  });
+}
+
+function onPlayerInput(i){
+  var n=(g('pn-'+i)||{}).value||'';
+  // Real-time auto-save individual player name
+}
+
+function savePlayers(){
+  var t=JSON.parse(JSON.stringify(tournaments[activeTournId]));
+  t.players.forEach(function(p,i){
+    p.name=(g('pn-'+i)||{}).value||'';
+    p.state=(g('ps-'+i)||{}).value||'';
+  });
+  db.ref('tournaments/'+activeTournId).set(t).then(function(){ showToast('Players saved ✓'); });
+}
+
+function clearAllPlayers(){
+  if(!confirm('Clear all player names?')) return;
+  var t=JSON.parse(JSON.stringify(tournaments[activeTournId]));
+  t.players.forEach(function(p){ p.name=''; p.state=''; });
+  db.ref('tournaments/'+activeTournId).set(t).then(function(){ showToast('Cleared'); });
+}
+
+// ── GENERATE DRAW ──
+function generateDraw(){
+  savePlayers();
+  setTimeout(function(){
+    var t=tournaments[activeTournId];
+    if(!t) return;
+    var named=t.players.filter(function(p){ return p.name.trim(); });
+    if(named.length<2){ showToast('Add at least 2 players'); return; }
+
+    var format=t.format;
+    if(format==='knockout'||format==='double-knockout'){
+      generateKnockout(t);
+    } else if(format==='round-robin'){
+      generateRoundRobin(t,[named]);
+    } else if(format==='pools-knockout'){
+      generatePools(t);
+    } else if(format==='league'){
+      generateLeague(t);
+    }
+  }, 500);
+}
+
+function shuffle(arr){
+  var a=arr.slice();
+  for(var i=a.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*( i+1));
+    var x=a[i]; a[i]=a[j]; a[j]=x;
+  }
+  return a;
+}
+
+function generateKnockout(t){
+  var players=t.players.filter(function(p){return p.name.trim();});
+  var seeds=players.filter(function(p){return p.seed;});
+  var unseeded=shuffle(players.filter(function(p){return !p.seed;}));
+  var ordered=seeds.concat(unseeded);
+
+  // Pad to next power of 2
+  var sz=Math.pow(2,Math.ceil(Math.log2(ordered.length)));
+  while(ordered.length<sz) ordered.push({name:'BYE',state:'',seed:false});
+
+  // Build rounds
+  var rounds=[];
+  var r1matches=[];
+  for(var i=0;i<sz;i+=2){
+    r1matches.push({
+      id:'M'+(rounds.length*100+r1matches.length+1),
+      p1:ordered[i].name, p1state:ordered[i].state||'',
+      p2:ordered[i+1].name, p2state:ordered[i+1].state||'',
+      winner:'', score1:0, score2:0, status:'pending',
+      tableNum:null, matchId:null,
+      nextMatch:'', nextSlot:''
+    });
+  }
+  rounds.push({round:1,label:getRoundLabel(sz/2,sz),matches:r1matches});
+
+  // Generate subsequent rounds
+  var prev=r1matches;
+  var rnd=2;
+  while(prev.length>1){
+    var cur=[];
+    for(var j=0;j<prev.length;j+=2){
+      cur.push({
+        id:'M'+(rnd*100+cur.length+1),
+        p1:'TBD',p1state:'',p2:'TBD',p2state:'',
+        winner:'',score1:0,score2:0,status:'pending',
+        tableNum:null,matchId:null,
+        feeds:[prev[j].id,prev[j+1].id],
+        nextMatch:'',nextSlot:''
+      });
+    }
+    rounds.push({round:rnd,label:getRoundLabel(cur.length,sz),matches:cur});
+    prev=cur; rnd++;
+  }
+
+  // Link nextMatch references
+  rounds.forEach(function(r,ri){
+    if(ri>=rounds.length-1) return;
+    r.matches.forEach(function(m,mi){
+      var nextIdx=Math.floor(mi/2);
+      m.nextMatch=rounds[ri+1].matches[nextIdx].id;
+      m.nextSlot=mi%2===0?'p1':'p2';
+    });
+  });
+
+  var update={rounds:rounds,groups:[],status:'active'};
+  db.ref('tournaments/'+activeTournId).update(update).then(function(){
+    showTab('draw');
+    showToast('Knockout draw generated ✓');
+  });
+}
+
+function getRoundLabel(matchCount, totalSlots){
+  if(matchCount===1) return 'Final';
+  if(matchCount===2) return 'Semi-Finals';
+  if(matchCount===4) return 'Quarter-Finals';
+  if(matchCount===8) return 'Round of 16';
+  if(matchCount===16) return 'Round of 32';
+  return 'Round '+Math.log2(totalSlots/matchCount);
+}
+
+function generatePools(t){
+  var players=t.players.filter(function(p){return p.name.trim();});
+  var seeds=players.filter(function(p){return p.seed;});
+  var unseeded=shuffle(players.filter(function(p){return !p.seed;}));
+  var all=seeds.concat(unseeded);
+  var numPools=t.pools||4;
+  var groups=[];
+  for(var i=0;i<numPools;i++) groups.push({name:'Pool '+(i+1),players:[],matches:[],standings:[]});
+
+  // Distribute players across pools (snake seeding)
+  all.forEach(function(p,idx){
+    var poolIdx=idx%numPools;
+    if(Math.floor(idx/numPools)%2!==0) poolIdx=numPools-1-poolIdx;
+    groups[poolIdx].players.push({name:p.name,state:p.state||''});
+  });
+
+  // Generate round robin matches within each pool
+  groups.forEach(function(g2,gi){
+    var pp=g2.players; var mid=0;
+    for(var a=0;a<pp.length-1;a++){
+      for(var b=a+1;b<pp.length;b++){
+        mid++;
+        g2.matches.push({
+          id:'P'+(gi+1)+'M'+mid,
+          p1:pp[a].name,p1state:pp[a].state,
+          p2:pp[b].name,p2state:pp[b].state,
+          winner:'',score1:0,score2:0,status:'pending',
+          tableNum:null,matchId:null
+        });
+      }
+    }
+    g2.standings=pp.map(function(p){return {name:p.name,state:p.state,p:0,w:0,l:0,d:0,sf:0,sa:0};});
+  });
+
+  db.ref('tournaments/'+activeTournId).update({groups:groups,rounds:[],status:'active'}).then(function(){
+    showTab('draw');
+    showToast('Pools draw generated ✓');
+  });
+}
+
+function generateRoundRobin(t,groupsIn){
+  var players=groupsIn?groupsIn[0]:(t.players.filter(function(p){return p.name.trim();}));
+  var groups=[{name:'Round Robin',players:players,matches:[],standings:[]}];
+  var g2=groups[0]; var pp=players; var mid=0;
+  for(var a=0;a<pp.length-1;a++){
+    for(var b=a+1;b<pp.length;b++){
+      mid++;
+      g2.matches.push({
+        id:'RRM'+mid,
+        p1:pp[a].name,p1state:pp[a].state,
+        p2:pp[b].name,p2state:pp[b].state,
+        winner:'',score1:0,score2:0,status:'pending',
+        tableNum:null,matchId:null
+      });
+    }
+  }
+  g2.standings=pp.map(function(p){return {name:p.name,state:p.state,p:0,w:0,l:0,d:0,sf:0,sa:0};});
+  db.ref('tournaments/'+activeTournId).update({groups:groups,rounds:[],status:'active'}).then(function(){
+    showTab('draw');
+    showToast('Round Robin draw generated ✓');
+  });
+}
+
+function generateLeague(t){
+  generateRoundRobin(t);
+}
+
+// ── DRAW TAB ──
+function renderDrawTab(t){
+  var dv=g('draw-view'); dv.innerHTML='';
+  if(!t) return;
+
+  if(t.format==='knockout'||t.format==='double-knockout'){
+    renderBracketView(t,dv);
+  } else if(t.format==='round-robin'||t.format==='league'){
+    renderGroupView(t,dv);
+  } else if(t.format==='pools-knockout'){
+    renderGroupView(t,dv);
+    if(t.rounds&&t.rounds.length) renderBracketView(t,dv,true);
+  } else {
+    dv.innerHTML='<div class="bracket-preview"><div class="bracket-hint">Generate a draw first.</div></div>';
+  }
+}
+
+function renderBracketView(t,dv,isKoPhase){
+  var rounds=t.rounds||[];
+  if(!rounds.length){
+    dv.innerHTML='<div class="bracket-preview"><div class="bracket-hint">No draw yet.<br>Add players and click Generate Draw.</div></div>';
+    return;
+  }
+  var label=isKoPhase?'<div style="font-size:.62rem;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;">Knockout Phase</div>':'';
+  var html='<div style="overflow-x:auto;padding-bottom:12px;">'+label+'<div style="display:flex;gap:0;min-width:fit-content;">';
+  rounds.forEach(function(r){
+    html+='<div style="display:flex;flex-direction:column;min-width:220px;">';
+    html+='<div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);padding:0 12px 10px;text-align:center;">'+esc(r.label)+'</div>';
+    // Space matches evenly
+    var spacer=rounds.length>1?(Math.pow(2,rounds.indexOf(r))-1)*28:0;
+    r.matches.forEach(function(m,mi){
+      if(mi>0) html+='<div style="height:'+(spacer*2+28)+'px;"></div>';
+      html+=renderMatchCard(m,r.round,r.label);
+    });
+    html+='</div>';
+  });
+  html+='</div></div>';
+  var wrapper=document.createElement('div');
+  wrapper.innerHTML=html;
+  dv.appendChild(wrapper);
+}
+
+function renderMatchCard(m,rnd,rlabel){
+  var status_color=m.status==='finished'?'var(--green)':m.status==='active'?'var(--gold)':'var(--text3)';
+  var byeMatch=m.p2==='BYE'||m.p1==='BYE';
+  return '<div style="background:var(--surface2);border:1px solid '+(m.status==='active'?'var(--gold)':'var(--border)')+';border-radius:6px;margin:0 8px;overflow:hidden;cursor:'+(byeMatch?'default':'pointer')+'" onclick="'+(byeMatch?'':'openAssignModal(\''+m.id+'\',\''+esc(m.p1)+'\',\''+esc(m.p2)+'\')')+'">' +
+    '<div style="padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">'+
+    '<div style="display:flex;align-items:center;gap:6px;">'+
+    '<span style="font-size:.62rem;font-weight:700;color:'+status_color+';">'+
+    (m.status==='active'?'LIVE':m.status==='finished'?'DONE':'PENDING')+'</span>'+
+    (m.tableNum?'<span style="font-size:.58rem;color:var(--gold);">T'+m.tableNum+'</span>':'')+'</div>'+
+    '<span style="font-size:.58rem;color:var(--text3);">'+m.id+'</span></div>'+
+    renderPlayer(m.p1,m.p1state,m.score1,m.winner===m.p1,m.p2==='BYE')+
+    renderPlayer(m.p2,m.p2state,m.score2,m.winner===m.p2,m.p1==='BYE')+
+    '</div>';
+}
+
+function renderPlayer(name,state,score,isWinner,isBye){
+  return '<div style="padding:6px 10px;display:flex;align-items:center;justify-content:space-between;background:'+(isWinner?'rgba(46,204,113,.06)':'transparent')+'">'+
+    '<div><div style="font-size:.75rem;font-weight:'+(isWinner?800:600)+';color:'+(isWinner?'var(--green)':isBye?'var(--text3)':'var(--text)')+';">'+esc(name||'TBD')+'</div>'+
+    (state?'<div style="font-size:.58rem;color:var(--text3);">'+esc(state)+'</div>':'')+
+    '</div>'+
+    (!isBye?'<div style="font-size:1rem;font-weight:900;font-family:\'Bebas Neue\',cursive;color:'+(isWinner?'var(--green)':'var(--text2)')+';">'+score+'</div>':'')+
+    '</div>';
+}
+
+function renderGroupView(t,dv){
+  var groups=t.groups||[];
+  if(!groups.length){
+    dv.innerHTML='<div class="bracket-preview"><div class="bracket-hint">No draw yet.<br>Add players and click Generate Draw.</div></div>';
+    return;
+  }
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;">';
+  groups.forEach(function(grp){
+    html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;">'+
+      '<div style="padding:8px 14px;background:var(--surface3);border-bottom:1px solid var(--border);'+
+      'font-size:.65rem;font-weight:700;letter-spacing:2px;color:var(--gold);">'+esc(grp.name)+'</div>';
+    // Standings
+    html+='<table class="standings-table" style="width:100%;"><thead><tr>'+
+      '<th style="width:28px;">#</th><th>Player</th>'+
+      '<th style="text-align:center;">P</th><th style="text-align:center;">W</th>'+
+      '<th style="text-align:center;">L</th><th style="text-align:center;">Pts</th></tr></thead><tbody>';
+    var sorted=(grp.standings||[]).slice().sort(function(a,b){return b.p-a.p;});
+    sorted.forEach(function(s,idx){
+      html+='<tr><td style="color:var(--text3);">'+(idx+1)+'</td>'+
+        '<td><div style="font-weight:700;">'+esc(s.name)+'</div>'+
+        (s.state?'<div style="font-size:.6rem;color:var(--text3);">'+esc(s.state)+'</div>':'')+
+        '</td>'+
+        '<td style="text-align:center;">'+(s.w+s.l)+'</td>'+
+        '<td style="text-align:center;color:var(--green);">'+s.w+'</td>'+
+        '<td style="text-align:center;color:var(--red);">'+s.l+'</td>'+
+        '<td style="text-align:center;font-weight:700;color:var(--gold);">'+s.p+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    // Matches
+    html+='<div style="padding:8px;border-top:1px solid var(--border);">';
+    (grp.matches||[]).forEach(function(m){
+      html+='<div style="padding:6px 8px;margin-bottom:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" '+
+        'onclick="openAssignModal(\''+m.id+'\',\''+esc(m.p1)+'\',\''+esc(m.p2)+'\')">'+
+        '<div style="font-size:.72rem;">'+
+          '<span style="font-weight:700;color:'+(m.winner===m.p1?'var(--green)':'var(--text)')+';">'+esc(m.p1)+'</span>'+
+          '<span style="color:var(--text3);padding:0 6px;">vs</span>'+
+          '<span style="font-weight:700;color:'+(m.winner===m.p2?'var(--green)':'var(--text)')+';">'+esc(m.p2)+'</span>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;">'+
+          (m.tableNum?'<span style="font-size:.6rem;color:var(--gold);">T'+m.tableNum+'</span>':'')+
+          '<span style="font-size:.6rem;color:'+(m.status==='finished'?'var(--green)':m.status==='active'?'var(--gold)':'var(--text3)')+';">'+
+          (m.status==='active'?'LIVE':m.status==='finished'?'✓':'PENDING')+'</span>'+
+        '</div>'+
+        '</div>';
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  var w=document.createElement('div');
+  w.innerHTML=html;
+  dv.appendChild(w);
+}
+
+// ── ASSIGN MATCH TO TABLE ──
+var assignMatchData=null;
+function openAssignModal(matchId,p1,p2){
+  assignMatchId=matchId;
+  assignMatchData={p1:p1,p2:p2};
+  assignTable=1;
+  g('assign-match-info').innerHTML='<b>'+esc(p1)+'</b> <span style="color:var(--text3);">vs</span> <b>'+esc(p2)+'</b>';
+  // Set default bestOf from tournament
+  var t=tournaments[activeTournId];
+  var bo=t?t.bestOf:5;
+  g('assign-bo').value=bo;
+  // Highlight no table
+  [1,2,3,4,5,6].forEach(function(n){g('at'+n).classList.remove('gold');});
+  g('modal-assign').style.display='flex';
+}
+function closeAssignModal(){g('modal-assign').style.display='none';}
+function selectTable(n){
+  assignTable=n;
+  [1,2,3,4,5,6].forEach(function(x){g('at'+x).classList.remove('gold');});
+  g('at'+n).classList.add('gold');
+}
+
+function confirmAssign(){
+  if(!assignMatchId||!assignMatchData) return;
+  var t=tournaments[activeTournId]; if(!t) return;
+  var bo=parseInt(g('assign-bo').value)||5;
+  var p1=assignMatchData.p1, p2=assignMatchData.p2;
+  if(!p1||p1==='TBD'||!p2||p2==='TBD'){showToast('Both players must be known');return;}
+
+  // Find player states from tournament players
+  var players=t.players||[];
+  var p1data=players.find(function(p){return p.name===p1;})||{state:''};
+  var p2data=players.find(function(p){return p.name===p2;})||{state:''};
+  // Also check groups
+  (t.groups||[]).forEach(function(g2){
+    (g2.players||[]).forEach(function(p){
+      if(p.name===p1) p1data=p;
+      if(p.name===p2) p2data=p;
+    });
+  });
+
+  var now=Date.now();
+  var matchId=t.id.slice(0,4)+'-'+assignMatchId;
+  var matchData={
+    matchId:matchId, sport:t.sport||'Snooker', tableNumber:assignTable,
+    tournament:t.name, bestOf:bo, currentFrame:1, status:'active',
+    matchWinner:null, turn:1, breakPlayer:1, frameBreaker:1,
+    currentBreak:0, breakBalls:[], redsRemaining:15,
+    shotClockEnabled:false, shotClockDuration:60, shotClockStarted:now,
+    referee:'', matchStartTime:now, frameStartTime:now,
+    tournamentId:activeTournId, tournamentMatchId:assignMatchId,
+    player1:{name:p1,frames:0,score:0,state:p1data.state||'',currentBreak:0},
+    player2:{name:p2,frames:0,score:0,state:p2data.state||'',currentBreak:0}
+  };
+
+  // Write to matches table
+  db.ref('matches/table-'+assignTable).set(matchData);
+
+  // Update tournament match status
+  updateTournamentMatchField(assignMatchId,'status','active');
+  updateTournamentMatchField(assignMatchId,'tableNum',assignTable);
+  updateTournamentMatchField(assignMatchId,'matchId',matchId);
+
+  closeAssignModal();
+  showToast(p1+' vs '+p2+' → Table '+assignTable);
+}
+
+function updateTournamentMatchField(matchId,field,value){
+  var t=tournaments[activeTournId]; if(!t) return;
+  // Search in rounds
+  var found=false;
+  (t.rounds||[]).forEach(function(r,ri){
+    r.matches.forEach(function(m,mi){
+      if(m.id===matchId){
+        m[field]=value; found=true;
+        db.ref('tournaments/'+activeTournId+'/rounds/'+ri+'/matches/'+mi+'/'+field).set(value);
+      }
+    });
+  });
+  // Search in groups
+  if(!found){
+    (t.groups||[]).forEach(function(grp,gi){
+      (grp.matches||[]).forEach(function(m,mi){
+        if(m.id===matchId){
+          m[field]=value;
+          db.ref('tournaments/'+activeTournId+'/groups/'+gi+'/matches/'+mi+'/'+field).set(value);
+        }
+      });
+    });
+  }
+}
+
+// ── MATCHES TAB ──
+function renderMatchesTab(){
+  var t=tournaments[activeTournId]; if(!t) return;
+  if(activeTab!=='matches') return;
+  var mv=g('matches-view'); mv.innerHTML='';
+  var allTournMatches=[];
+
+  // Collect from rounds
+  (t.rounds||[]).forEach(function(r){
+    r.matches.forEach(function(m){
+      if(m.p1&&m.p1!=='TBD'&&m.p1!=='BYE'&&m.p2&&m.p2!=='TBD'&&m.p2!=='BYE'){
+        var live=m.matchId?findLiveMatch(m.matchId):null;
+        allTournMatches.push({match:m,live:live,round:r.label});
+      }
+    });
+  });
+  // Collect from groups
+  (t.groups||[]).forEach(function(grp){
+    (grp.matches||[]).forEach(function(m){
+      var live=m.matchId?findLiveMatch(m.matchId):null;
+      allTournMatches.push({match:m,live:live,round:grp.name});
+    });
+  });
+
+  if(!allTournMatches.length){
+    mv.innerHTML='<div style="color:var(--text3);font-size:.75rem;padding:20px;">Generate a draw and assign matches to tables.</div>';
+    return;
+  }
+
+  allTournMatches.forEach(function(item){
+    var m=item.match, live=item.live;
+    var s1=live?live.player1.frames:m.score1;
+    var s2=live?live.player2.frames:m.score2;
+    var status=live?live.status:m.status;
+    var d=document.createElement('div');
+    d.className='match-card';
+    d.innerHTML=
+      '<div class="mc-header">'+
+        '<span class="mc-title">'+esc(item.round)+'</span>'+
+        (m.tableNum?'<span class="mc-table">Table '+m.tableNum+'</span>':'')+
+      '</div>'+
+      '<div class="mc-body">'+
+        '<div class="mc-player">'+
+          '<div class="mc-name '+(m.winner===m.p1?'mc-winner':'')+'" style="font-size:.78rem;">'+esc(m.p1)+'</div>'+
+          '<div class="mc-score '+(m.winner===m.p1?'mc-winner':'')+'">'+s1+'</div>'+
+        '</div>'+
+        '<div class="mc-player">'+
+          '<div class="mc-name '+(m.winner===m.p2?'mc-winner':'')+'" style="font-size:.78rem;">'+esc(m.p2)+'</div>'+
+          '<div class="mc-score '+(m.winner===m.p2?'mc-winner':'')+'">'+s2+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="mc-footer">'+
+        '<span class="mc-status" style="color:'+(status==='active'?'var(--gold)':status==='finished'?'var(--green)':'var(--text3)')+'">'+
+          (status==='active'?'● LIVE':status==='finished'?'✓ Done':'○ Pending')+
+        '</span>'+
+        (status==='pending'?'<button class="mc-assign" onclick="openAssignModal(\''+m.id+'\',\''+esc(m.p1)+'\',\''+esc(m.p2)+'\')">Assign Table →</button>':'')+
+      '</div>';
+    mv.appendChild(d);
+  });
+}
+
+function findLiveMatch(matchId){
+  for(var key in allMatches){
+    if(allMatches[key]&&allMatches[key].matchId===matchId) return allMatches[key];
+  }
+  return null;
+}
+
+// ── CHECK MATCH COMPLETION + AUTO-ADVANCE ──
+function checkMatchCompletion(){
+  var t=tournaments[activeTournId]; if(!t) return;
+  var changed=false;
+
+  // Check rounds for completed matches
+  (t.rounds||[]).forEach(function(r,ri){
+    r.matches.forEach(function(m,mi){
+      if(m.status==='finished'||!m.matchId) return;
+      var live=findLiveMatch(m.matchId);
+      if(live&&live.status==='finished'&&live.matchWinner){
+        var winner=live.matchWinner===1?live.player1.name:live.player2.name;
+        var winnerState=live.matchWinner===1?live.player1.state:live.player2.state;
+        m.winner=winner; m.status='finished';
+        m.score1=live.player1.frames; m.score2=live.player2.frames;
+
+        // Advance winner to next match
+        if(m.nextMatch){
+          advanceWinner(t,m.nextMatch,m.nextSlot,winner,winnerState);
+        }
+        changed=true;
+        db.ref('tournaments/'+activeTournId+'/rounds/'+ri+'/matches/'+mi).update({
+          winner:winner,status:'finished',score1:m.score1,score2:m.score2
+        });
+      }
+    });
+  });
+
+  // Check group matches
+  (t.groups||[]).forEach(function(grp,gi){
+    (grp.matches||[]).forEach(function(m,mi){
+      if(m.status==='finished'||!m.matchId) return;
+      var live=findLiveMatch(m.matchId);
+      if(live&&live.status==='finished'&&live.matchWinner){
+        var winner=live.matchWinner===1?live.player1.name:live.player2.name;
+        var loser=live.matchWinner===1?live.player2.name:live.player1.name;
+        m.winner=winner; m.status='finished';
+        m.score1=live.player1.frames; m.score2=live.player2.frames;
+
+        // Update standings
+        updateStandings(grp,winner,loser,live.player1.frames,live.player2.frames,live.matchWinner);
+        changed=true;
+        db.ref('tournaments/'+activeTournId+'/groups/'+gi+'/matches/'+mi).update({
+          winner:winner,status:'finished',score1:m.score1,score2:m.score2
+        });
+        db.ref('tournaments/'+activeTournId+'/groups/'+gi+'/standings').set(grp.standings);
+      }
+    });
+  });
+
+  if(changed) db.ref('tournaments/'+activeTournId+'/lastUpdated').set(Date.now());
+}
+
+function advanceWinner(t,nextMatchId,slot,winner,winnerState){
+  (t.rounds||[]).forEach(function(r,ri){
+    r.matches.forEach(function(m,mi){
+      if(m.id===nextMatchId){
+        m[slot]=winner;
+        m[slot+'state']=winnerState||'';
+        db.ref('tournaments/'+activeTournId+'/rounds/'+ri+'/matches/'+mi+'/'+slot).set(winner);
+        db.ref('tournaments/'+activeTournId+'/rounds/'+ri+'/matches/'+mi+'/'+slot+'state').set(winnerState||'');
+      }
+    });
+  });
+}
+
+function updateStandings(grp,winner,loser,s1,s2,winnerPlayer){
+  (grp.standings||[]).forEach(function(s){
+    if(s.name===winner){ s.w++; s.p+=2; s.sf+=winnerPlayer===1?s1:s2; s.sa+=winnerPlayer===1?s2:s1; }
+    if(s.name===loser){ s.l++; s.sf+=winnerPlayer===1?s2:s1; s.sa+=winnerPlayer===1?s1:s2; }
+  });
+}
+
+// ── STANDINGS TAB ──
+function renderStandingsTab(t){
+  var sv=g('standings-view'); sv.innerHTML='';
+  if(!t.groups||!t.groups.length){
+    sv.innerHTML='<div style="color:var(--text3);font-size:.75rem;padding:20px;">Standings available for Round Robin, Pools and League formats.</div>';
+    return;
+  }
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;">';
+  t.groups.forEach(function(grp){
+    html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;">'+
+      '<div style="padding:8px 14px;background:var(--surface3);border-bottom:1px solid var(--border);'+
+      'font-size:.65rem;font-weight:700;letter-spacing:2px;color:var(--gold);">'+esc(grp.name)+'</div>'+
+      '<table class="standings-table"><thead><tr>'+
+      '<th style="width:28px;">#</th><th>Player</th>'+
+      '<th style="text-align:center;width:36px;" title="Played">P</th>'+
+      '<th style="text-align:center;width:36px;" title="Won">W</th>'+
+      '<th style="text-align:center;width:36px;" title="Lost">L</th>'+
+      '<th style="text-align:center;width:40px;" title="Frames For">FF</th>'+
+      '<th style="text-align:center;width:40px;" title="Frames Against">FA</th>'+
+      '<th style="text-align:center;width:40px;" title="Points">Pts</th></tr></thead><tbody>';
+    var sorted=(grp.standings||[]).slice().sort(function(a,b){
+      if(b.p!==a.p) return b.p-a.p;
+      return (b.sf-b.sa)-(a.sf-a.sa);
+    });
+    sorted.forEach(function(s,idx){
+      html+='<tr><td style="color:var(--text3);">'+(idx+1)+'</td>'+
+        '<td><div style="font-weight:700;">'+esc(s.name)+'</div>'+
+        (s.state?'<div style="font-size:.6rem;color:var(--text3);">'+esc(s.state)+'</div>':'')+
+        '</td>'+
+        '<td style="text-align:center;">'+(s.w+s.l)+'</td>'+
+        '<td style="text-align:center;color:var(--green);">'+s.w+'</td>'+
+        '<td style="text-align:center;color:var(--red);">'+s.l+'</td>'+
+        '<td style="text-align:center;">'+s.sf+'</td>'+
+        '<td style="text-align:center;">'+s.sa+'</td>'+
+        '<td style="text-align:center;font-weight:900;color:var(--gold);">'+s.p+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+  });
+  html+='</div>';
+  sv.innerHTML=html;
+}
+
+// ── PUBLISH DRAW ──
+function publishDraw(){
+  var t=tournaments[activeTournId]; if(!t) return;
+  db.ref('tournaments/'+activeTournId+'/published').set(true);
+  db.ref('live/tournament').set(activeTournId);
+  showToast('Draw published to viewers ✓');
+}
+
+// ── DELETE ──
+function deleteTournament(){
+  if(!confirm('Delete this tournament? This cannot be undone.')) return;
+  db.ref('tournaments/'+activeTournId).remove().then(function(){
+    activeTournId=null;
+    g('view-empty').style.display='flex';
+    g('view-tournament').style.display='none';
+    g('ss-info').style.display='none';
+    g('ss-actions').style.display='none';
+    g('tb-tourn-name').textContent='No tournament selected';
+    showToast('Deleted');
+  });
+}
+
+// Init
+showTab('players');
+</script>
+</body>
+</html>
