@@ -1,5 +1,5 @@
 // UPBSA.TV Service Worker
-const CACHE = 'upbsa-tv-v2';
+const CACHE = 'upbsa-tv-v3';
 
 // Files to cache for offline use
 const STATIC_FILES = [
@@ -21,6 +21,7 @@ const STATIC_FILES = [
   './stats-control.html',
   './diagnostic.html',
   './setup.html',
+  './upbsa-theme.css',
   './shootout-core.js',
   './shootout-referee.html',
   './shootout-board.html',

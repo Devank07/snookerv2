@@ -1,0 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════
+   UPBSA.TV — SHARED LOOK (the "Shoot Out" style)
+   Loaded LAST in each page's <head>, so it re-skins the page's own
+   styles without touching layout. Page-specific touches live in each
+   page's  <style id="so-look">  block right after this file.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root{
+  /* surfaces — deep green-black */
+  --so-bg:#060d08; --so-bg2:#0a1610; --so-bg3:#0f1f14; --so-bg4:#132819; --so-bg5:#17301e;
+  --so-line:rgba(255,255,255,.08); --so-line2:rgba(255,255,255,.12); --so-line3:rgba(255,255,255,.18);
+  /* accents */
+  --so-gold:#f0c040; --so-gold-d:#c9a227; --so-green:#2ecc71; --so-amber:#f5a623;
+  --so-red:#e74c3c; --so-blue:#5fb8ff; --so-purple:#b07ce0;
+  --so-text:#e8f4e0; --so-sub:rgba(232,244,224,.55); --so-faint:rgba(232,244,224,.32);
+  --so-tag:linear-gradient(90deg,#f0c040,#ff8a3d);
+  --so-go:linear-gradient(180deg,#2ecc71,#1e9e54);
+  /* type */
+  --num:'Bebas Neue','Arial Narrow',sans-serif;
+  --cond:'Barlow Condensed','Arial Narrow',sans-serif;
+  --body:'Barlow','Helvetica Neue',Arial,sans-serif;
+
+  /* every variable name the existing pages use, pointed at the new palette */
+  --bg:var(--so-bg); --bg2:var(--so-bg2); --bg3:var(--so-bg3); --bg4:var(--so-bg4); --bg5:var(--so-bg5);
+  --border:var(--so-line); --border2:var(--so-line2); --border3:var(--so-line3);
+  --gold:var(--so-gold); --gold2:#ffd45e; --green:var(--so-green); --red:var(--so-red);
+  --blue:var(--so-blue); --orange:var(--so-amber); --purple:var(--so-purple);
+  --text:var(--so-text); --text2:var(--so-sub); --text3:var(--so-faint); --sub:var(--so-sub);
+}
+
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+body{font-family:var(--body);}
+body:not(.so-transparent){background-color:var(--so-bg);}
+
+/* form controls pick up the look everywhere */
+input,select,textarea{font-family:var(--body);}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--so-gold) !important;box-shadow:0 0 0 3px rgba(240,192,64,.12);}
+select option{background:var(--so-bg2);color:var(--so-text);}
+button{font-family:var(--cond);}
+::selection{background:rgba(240,192,64,.35);}
+
+/* slim dark scrollbars */
+*{scrollbar-width:thin;scrollbar-color:#24402c transparent;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:#24402c;border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* reusable bits pages can opt into */
+.so-tag{display:inline-block;font-family:var(--cond);font-weight:900;letter-spacing:.15em;color:#000;background:var(--so-tag);padding:2px 9px;border-radius:5px;}
+.so-num{font-family:var(--num);font-weight:400;letter-spacing:.03em;}
+.so-label{font-family:var(--cond);font-weight:800;letter-spacing:.18em;text-transform:uppercase;}
