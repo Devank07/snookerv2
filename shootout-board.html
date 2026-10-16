@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#050805">
+<title>Shoot Out Scoreboard — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="shootout-core.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#f0c040;--green:#2ecc71;--amber:#f5a623;--red:#ff4433;--mblue:#5fb8ff;--fgreen:#59e08a;
+  --num:'Bebas Neue',sans-serif;--cond:'Barlow Condensed',sans-serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#050805;color:#fff;font-family:'Barlow',sans-serif;}
+#app{position:relative;width:100%;height:100%;display:flex;flex-direction:column;}
+
+/* red pulse layer for the last seconds (driven per-second from JS) */
+#pulse{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:0;
+  background:radial-gradient(ellipse at center,rgba(255,40,20,0) 35%,rgba(255,40,20,.55) 100%);}
+
+/* ── banner ── */
+.ban{height:7vh;min-height:40px;display:flex;align-items:center;gap:1.2vw;padding:0 2vw;flex-shrink:0;
+  background:linear-gradient(180deg,#14361f,#0a1d10);border-bottom:3px solid var(--gold);}
+.pill{font-family:var(--num);font-size:min(3.6vh,2.2vw);letter-spacing:3px;padding:.2vh 1.1vw;border-radius:40px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);}
+.sotag{font-family:var(--cond);font-weight:900;font-size:min(3vh,1.8vw);letter-spacing:3px;color:#000;background:linear-gradient(90deg,#f0c040,#ff8a3d);padding:.3vh .9vw;border-radius:6px;}
+.btitle{flex:1;min-width:0;text-align:center;font-family:var(--cond);font-weight:800;font-size:min(3.3vh,2vw);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bclock{font-family:var(--cond);font-weight:700;font-size:min(3vh,1.8vw);color:rgba(255,255,255,.65);letter-spacing:1px;}
+
+/* ── match + frame clocks ── */
+.clocks{display:grid;grid-template-columns:1fr 1fr;gap:1.2vw;padding:1.4vh 1.6vw 0;flex-shrink:0;}
+.ck{position:relative;border-radius:1.4vh;padding:.8vh 1.6vw 1.6vh;overflow:hidden;display:flex;align-items:center;gap:1.4vw;
+  background:rgba(255,255,255,.035);border:2px solid rgba(255,255,255,.08);}
+.ck-l{display:flex;flex-direction:column;}
+.ck-l i{font-style:normal;font-family:var(--cond);font-weight:900;font-size:min(3vh,1.8vw);letter-spacing:.35em;}
+.ck-l small{font-family:var(--cond);font-weight:600;font-size:min(2.2vh,1.3vw);letter-spacing:2px;color:rgba(255,255,255,.45);text-transform:uppercase;}
+.ck b{flex:1;text-align:right;font-family:var(--num);font-weight:400;font-size:min(13vh,8vw);line-height:.95;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.ck .track{position:absolute;left:0;right:0;bottom:0;height:1vh;background:rgba(255,255,255,.07);}
+.ck .fill{height:100%;transition:width .3s linear;}
+.ck.m i{color:var(--mblue);} .ck.m .fill{background:var(--mblue);} .ck.m{border-color:rgba(95,184,255,.25);}
+.ck.f i{color:var(--fgreen);} .ck.f .fill{background:var(--fgreen);} .ck.f{border-color:rgba(89,224,138,.25);}
+.ck.warn b{color:var(--amber);} .ck.warn .fill{background:var(--amber);} .ck.warn{border-color:rgba(245,166,35,.55);}
+.ck.danger b{color:var(--red);} .ck.danger .fill{background:var(--red);} .ck.danger{border-color:rgba(255,68,51,.7);animation:ckb 1s steps(2) infinite;}
+@keyframes ckb{50%{background:rgba(255,68,51,.12);}}
+.ck.off{opacity:.25;}
+.ck.up b{font-size:min(8vh,4.4vw);white-space:nowrap;color:var(--red);}
+
+/* ── main area ── */
+.main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,36vw) minmax(0,1fr);min-height:0;}
+.pp{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1vh 1.5vw;min-width:0;position:relative;transition:background .4s;}
+.pp.at{background:linear-gradient(180deg,rgba(46,204,113,.07),rgba(46,204,113,0));}
+.pp .attag{font-family:var(--cond);font-weight:900;font-size:min(2.4vh,1.4vw);letter-spacing:.4em;color:#04140a;background:var(--green);padding:.3vh 1.2vw;border-radius:30px;opacity:0;transition:opacity .3s;margin-bottom:1vh;}
+.pp.at .attag{opacity:1;}
+.nm{width:100%;text-align:center;}
+.fn,.sn{display:block;width:100%;white-space:nowrap;overflow:hidden;line-height:1.02;}
+.fn{font-weight:300;font-size:min(6.5vh,4vw);color:rgba(255,255,255,.8);}
+.sn{font-weight:900;font-size:min(9.5vh,6vw);text-transform:uppercase;letter-spacing:.02em;}
+.loc{font-family:var(--cond);font-weight:700;font-size:min(2.4vh,1.4vw);letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-top:.4vh;min-height:1em;}
+.sc{font-family:var(--num);font-size:min(24vh,14vw);line-height:.9;color:var(--gold);text-shadow:0 0 5vh rgba(240,192,64,.3);}
+.pop{animation:pop .35s ease;}
+@keyframes pop{40%{transform:scale(1.12);color:#fff;}}
+.meta{display:flex;gap:1.6vw;align-items:center;margin-top:1vh;}
+.ext{display:flex;align-items:center;gap:.5vw;font-family:var(--cond);font-weight:800;font-size:min(2.4vh,1.4vw);letter-spacing:2px;color:rgba(255,255,255,.5);}
+.ext span{width:min(2.6vh,1.6vw);height:min(2.6vh,1.6vw);border-radius:50%;border:2px solid var(--gold);}
+.ext span.on{background:var(--gold);}
+.tfc{font-family:var(--cond);font-weight:800;font-size:min(2.4vh,1.4vw);letter-spacing:2px;color:rgba(255,120,100,.85);}
+
+/* ── shot clock ring ── */
+.cen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;}
+.ring{position:relative;width:min(46vh,31vw);height:min(46vh,31vw);}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);}
+.ring .bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:7;}
+.ring .fg{fill:none;stroke:var(--green);stroke-width:7;stroke-linecap:round;transition:stroke .2s;}
+.ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-n{font-family:var(--num);font-size:min(25vh,16vw);line-height:.85;font-variant-numeric:tabular-nums;}
+.ring-l{font-family:var(--cond);font-weight:900;font-size:min(2.6vh,1.6vw);letter-spacing:.4em;color:rgba(255,255,255,.55);}
+.ring.warn .fg{stroke:var(--amber);} .ring.warn .ring-n{color:var(--amber);}
+.ring.danger .fg{stroke:var(--red);} .ring.danger .ring-n{color:var(--red);}
+.ring.idle .fg{stroke:rgba(255,255,255,.25);} .ring.idle .ring-n{color:rgba(255,255,255,.4);}
+.ring.idle .ring-l{color:var(--amber);}
+.who{margin-top:1.2vh;font-family:var(--cond);font-weight:900;font-size:min(3.6vh,2.2vw);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:1vw;max-width:100%;}
+.who .ar{color:var(--green);font-size:1.1em;}
+.who .nmx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.phase{margin-top:1vh;display:flex;gap:.6vw;}
+.phase span{font-family:var(--cond);font-weight:800;font-size:min(2.3vh,1.4vw);letter-spacing:2px;padding:.4vh .9vw;border-radius:6px;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.45);}
+.phase span.on{color:#04140a;background:var(--green);border-color:var(--green);}
+.phase span.on.p2{background:var(--amber);border-color:var(--amber);}
+
+/* ── bottom bar ── */
+.bot{height:13vh;flex-shrink:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 3vw;
+  background:linear-gradient(180deg,#1f7a1f,#115011);border-top:3px solid #2d9e2d;}
+.fw{font-family:var(--num);font-size:min(12vh,8vw);line-height:1;}
+.fw.r{text-align:right;}
+.bmid{text-align:center;}
+.bmid b{display:block;font-family:var(--num);font-size:min(5vh,3.2vw);letter-spacing:.25em;line-height:1;}
+.bmid span{display:block;font-family:var(--num);font-size:min(3.6vh,2.4vw);letter-spacing:.2em;color:var(--gold);}
+.info{height:5vh;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 3vw;background:#000;font-family:var(--cond);font-weight:800;font-size:min(2.4vh,1.5vw);letter-spacing:.15em;color:rgba(255,255,255,.55);text-transform:uppercase;}
+.rd{display:inline-flex;gap:.3vw;vertical-align:middle;margin-right:.8vw;}
+.rd i{width:min(1.8vh,1.1vw);height:min(1.8vh,1.1vw);border-radius:50%;background:#c0392b;}
+.rd i.off{background:rgba(255,255,255,.1);}
+.bk b{color:#fff;font-family:var(--num);font-size:1.4em;font-weight:400;letter-spacing:1px;}
+
+/* ── banner stinger ── */
+#stg{position:absolute;left:0;right:0;top:50%;z-index:30;opacity:0;transform:translateY(-50%) scaleY(0);transition:transform .35s cubic-bezier(.2,.9,.3,1.2),opacity .25s;
+  padding:2.2vh 4vw;text-align:center;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.92) 15%,rgba(0,0,0,.92) 85%,rgba(0,0,0,0));border-top:3px solid var(--gold);border-bottom:3px solid var(--gold);}
+#stg.show{opacity:1;transform:translateY(-50%) scaleY(1);}
+#stg b{display:block;text-transform:uppercase;font-family:var(--num);font-size:min(13vh,9vw);letter-spacing:.08em;line-height:1;}
+#stg span{display:block;font-family:var(--cond);font-weight:800;font-size:min(4vh,2.6vw);letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-top:.6vh;}
+#stg.red{border-color:var(--red);} #stg.red b{color:var(--red);}
+#stg.amber{border-color:var(--amber);} #stg.amber b{color:var(--amber);}
+#stg.green{border-color:var(--green);} #stg.green b{color:var(--green);}
+
+
+/* ── format explainer (full screen) ── */
+#fmt{position:absolute;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:4vh;
+  background:radial-gradient(ellipse at top,#163a22,#040a06 70%);padding:4vh 5vw;}
+#fmt.show{display:flex;}
+.fx-h{text-align:center;}
+.fx-h i{font-style:normal;font-family:var(--cond);font-weight:900;letter-spacing:.5em;font-size:min(3vh,2vw);color:var(--gold);}
+.fx-h b{display:block;font-family:var(--num);font-size:min(11vh,7vw);letter-spacing:.06em;line-height:1;}
+.fx-h span{display:block;font-family:var(--cond);font-weight:700;font-size:min(3vh,2vw);letter-spacing:.2em;color:rgba(255,255,255,.55);margin-top:.5vh;}
+.fx-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:2vw;width:100%;}
+.fx-c{border-radius:2vh;padding:2.5vh 1.5vw;text-align:center;background:rgba(0,0,0,.35);border:2px solid;opacity:0;transform:translateY(3vh);animation:fxin .6s forwards;}
+.fx-c:nth-child(2){animation-delay:.25s;} .fx-c:nth-child(3){animation-delay:.5s;}
+@keyframes fxin{to{opacity:1;transform:none;}}
+.fx-c i{font-style:normal;display:block;font-family:var(--cond);font-weight:900;letter-spacing:.4em;font-size:min(3vh,1.9vw);}
+.fx-c b{display:block;font-family:var(--num);font-size:min(10vh,6.5vw);line-height:1.05;}
+.fx-c small{display:block;font-family:var(--cond);font-weight:600;font-size:min(2.4vh,1.5vw);letter-spacing:.1em;color:rgba(255,255,255,.55);}
+.fx-c.m{border-color:var(--mblue);} .fx-c.m i{color:var(--mblue);}
+.fx-c.f{border-color:var(--fgreen);} .fx-c.f i{color:var(--fgreen);}
+.fx-c.s{border-color:var(--gold);} .fx-c.s i{color:var(--gold);}
+.fx-tl{width:100%;}
+.fx-tl .bar{display:flex;height:6vh;border-radius:1.2vh;overflow:hidden;}
+.fx-tl .bar{background:rgba(255,255,255,.05);}
+.fx-tl .bar div{white-space:nowrap;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:900;font-size:min(3vh,1.9vw);letter-spacing:.1em;width:0;animation:grow 1.2s .8s forwards ease-out;}
+@keyframes grow{to{width:var(--w);}}
+.fx-tl .p1{background:linear-gradient(90deg,#2ecc71,#8ee3a5);color:#04140a;}
+.fx-tl .p2{background:linear-gradient(90deg,#f5a623,#ff4433);}
+.fx-tl .lab{display:flex;justify-content:space-between;margin-top:.8vh;font-family:var(--cond);font-weight:700;font-size:min(2.4vh,1.5vw);letter-spacing:.1em;color:rgba(255,255,255,.55);}
+.fx-r{display:grid;grid-template-columns:1fr 1fr;gap:1.2vh 3vw;width:100%;}
+.fx-r div{display:flex;gap:1vw;align-items:center;font-family:var(--cond);font-weight:600;font-size:min(3vh,1.9vw);letter-spacing:.03em;line-height:1.2;}
+.fx-r em{font-style:normal;flex-shrink:0;width:min(5vh,3vw);height:min(5vh,3vw);border-radius:1vh;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);}
+.fx-r b{color:var(--gold);}
+
+/* ── winner ── */
+#win{position:absolute;inset:0;z-index:25;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vh;background:rgba(0,0,0,.94);text-align:center;}
+#win i{font-style:normal;font-family:var(--cond);font-weight:900;font-size:min(4vh,2.6vw);letter-spacing:.5em;color:var(--gold);}
+#win b{font-family:var(--num);font-size:min(18vh,11vw);letter-spacing:.04em;line-height:1;text-shadow:0 0 8vh rgba(240,192,64,.5);}
+#win span{font-family:var(--num);font-size:min(9vh,6vw);color:rgba(255,255,255,.7);}
+#win table{border-collapse:collapse;font-family:var(--cond);font-weight:700;font-size:min(3vh,1.9vw);letter-spacing:.08em;margin-top:2vh;}
+#win td{padding:.6vh 2.4vw;border-bottom:1px solid rgba(255,255,255,.1);}
+#win td:first-child{color:rgba(255,255,255,.45);text-align:left;}
+
+/* waiting */
+#wait{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vh;background:#050805;}
+#wait b{font-family:var(--num);font-size:min(12vh,8vw);letter-spacing:.1em;color:var(--gold);}
+#wait span{font-family:var(--cond);font-weight:700;font-size:min(3vh,2vw);letter-spacing:.3em;color:rgba(255,255,255,.4);}
+
+#snd{z-index:45;flex-shrink:0;font-family:var(--cond);font-weight:800;font-size:min(2vh,1.3vw);letter-spacing:.15em;padding:.8vh 1.2vw;border-radius:30px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.6);color:rgba(255,255,255,.7);cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="pulse"></div>
+
+  <div class="ban">
+    <div class="pill" id="b-tbl">TABLE –</div>
+    <div class="sotag">SHOOT OUT</div>
+    <div class="btitle" id="b-title">–</div>
+    <button id="snd" onclick="enableSound()">🔊 TAP FOR SOUND</button>
+    <div class="bclock" id="b-clock"></div>
+  </div>
+
+  <div class="clocks">
+    <div class="ck m" id="ck-m"><div class="ck-l"><i>MATCH</i><small>total time left</small></div><b id="ck-m-v">--:--</b><div class="track"><div class="fill" id="ck-m-f"></div></div></div>
+    <div class="ck f" id="ck-f"><div class="ck-l"><i>FRAME <span id="ck-f-n">1</span></i><small>frame time left</small></div><b id="ck-f-v">--:--</b><div class="track"><div class="fill" id="ck-f-f"></div></div></div>
+  </div>
+
+  <div class="main">
+    <div class="pp" id="pp1">
+      <div class="attag">AT TABLE</div>
+      <div class="nm"><span class="fn" id="fn1"></span><span class="sn" id="sn1">–</span></div>
+      <div class="loc" id="loc1"></div>
+      <div class="sc" id="sc1">0</div>
+      <div class="meta"><div class="ext" id="ex1"></div><div class="tfc" id="tf1"></div></div>
+    </div>
+    <div class="cen">
+      <div class="ring idle" id="ring">
+        <svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="45"/><circle class="fg" id="ring-fg" cx="50" cy="50" r="45" stroke-dasharray="282.74" stroke-dashoffset="0"/></svg>
+        <div class="ring-c"><div class="ring-n" id="ring-n">--</div><div class="ring-l" id="ring-l">SHOT CLOCK</div></div>
+      </div>
+      <div class="who" id="who"></div>
+      <div class="phase" id="phase"></div>
+    </div>
+    <div class="pp" id="pp2">
+      <div class="attag">AT TABLE</div>
+      <div class="nm"><span class="fn" id="fn2"></span><span class="sn" id="sn2">–</span></div>
+      <div class="loc" id="loc2"></div>
+      <div class="sc" id="sc2">0</div>
+      <div class="meta"><div class="ext" id="ex2"></div><div class="tfc" id="tf2"></div></div>
+    </div>
+  </div>
+
+  <div class="bot">
+    <div class="fw" id="fw1">0</div>
+    <div class="bmid"><b id="bo">BEST OF 5</b><span id="fr">FRAME 1</span></div>
+    <div class="fw r" id="fw2">0</div>
+  </div>
+  <div class="info">
+    <div><span class="rd" id="rd"></span><span id="rl">15 reds</span></div>
+    <div class="bk" id="bk"></div>
+    <div id="lead">–</div>
+  </div>
+
+  <div id="stg"><b id="stg-b"></b><span id="stg-s"></span></div>
+  <div id="fmt"></div>
+  <div id="win"></div>
+  <div id="wait"><b>SHOOT OUT</b><span>TABLE <span id="w-t">–</span> · AWAITING MATCH</span></div>
+</div>
+
+<script>
+var tbl = SO.table || '1', S = null, prev = { s1:-1, s2:-1 };
+function g(id){ return document.getElementById(id); }
+g('b-tbl').textContent = 'TABLE '+tbl; g('w-t').textContent = tbl;
+document.title = 'Shoot Out T'+tbl+' · UPBSA.TV';
+
+setInterval(function(){ var n=new Date(); g('b-clock').textContent=('0'+n.getHours()).slice(-2)+':'+('0'+n.getMinutes()).slice(-2); }, 1000);
+
+/* ── sound (browsers need one tap before audio is allowed) ── */
+var AC = null;
+function enableSound(){
+  try{ AC = new (window.AudioContext||window.webkitAudioContext)(); beep(660,.08); }catch(e){}
+  g('snd').style.display='none';
+}
+function beep(freq, dur, vol){
+  if(!AC) return;
+  var o = AC.createOscillator(), gn = AC.createGain();
+  o.type='square'; o.frequency.value=freq; gn.gain.value=vol||.12;
+  o.connect(gn); gn.connect(AC.destination);
+  o.start(); gn.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+dur); o.stop(AC.currentTime+dur+.02);
+}
+
+/* ── name auto-fit ── */
+function fit(el){ if(!el) return; el.style.fontSize=''; if(!el.textContent||!el.clientWidth) return;
+  var sz=parseFloat(getComputedStyle(el).fontSize), mn=sz*.3; while(el.scrollWidth>el.clientWidth+1&&sz>mn){ sz*=.94; el.style.fontSize=sz+'px'; } }
+function fitAll(){ ['fn1','sn1','fn2','sn2'].forEach(function(i){ fit(g(i)); }); }
+window.addEventListener('resize', function(){ clearTimeout(window._ft); window._ft=setTimeout(fitAll,120); });
+if(document.fonts) document.fonts.ready.then(fitAll);
+
+/* ── data ── */
+SO.db.ref('matches/table-'+tbl).on('value', function(snap){
+  S = snap.val();
+  if(S && S.sport && S.sport!=='shootout'){ location.replace('scoreboard.html?table='+tbl); return; }
+  g('wait').style.display = S ? 'none' : 'flex';
+  if(!S) return;
+  render();
+});
+
+var lastNames = '';
+function render(){
+  var s = S, c = SO.cfgOf(s), so = s.so || {};
+  g('b-title').textContent = (s.tournament||'Shoot Out') + (so.decider ? ' — DECIDING FRAME' : '');
+  [1,2].forEach(function(n){
+    var p = s['player'+n], nm = SO.splitName(p.name);
+    g('fn'+n).textContent = nm.f; g('sn'+n).textContent = nm.l;
+    g('loc'+n).textContent = p.state || '';
+    if(p.score !== prev['s'+n]){ if(prev['s'+n] >= 0){ var e=g('sc'+n); e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); } prev['s'+n] = p.score; }
+    g('sc'+n).textContent = p.score;
+    g('pp'+n).className = 'pp'+(s.turn===n && s.status==='active' ? ' at' : '');
+    var left = (so.ext && so.ext['p'+n]) || 0, ex = '';
+    if(c.extCount){ ex = 'EXT '; for(var i=0;i<c.extCount;i++) ex += '<span class="'+(i<left?'on':'')+'"></span>'; }
+    g('ex'+n).innerHTML = ex;
+    var tf = (so.stats && so.stats['p'+n] && so.stats['p'+n].tf) || 0;
+    g('tf'+n).textContent = tf ? tf+' TIME FOUL'+(tf>1?'S':'') : '';
+    g('fw'+n).textContent = p.frames;
+  });
+  var names = s.player1.name+'|'+s.player2.name; if(names!==lastNames){ lastNames=names; fitAll(); }
+  g('bo').textContent = 'BEST OF '+s.bestOf; g('fr').textContent = (so.decider?'DECIDER · ':'')+'FRAME '+s.currentFrame;
+  g('ck-f-n').textContent = s.currentFrame;
+  var reds = Math.max(0, s.redsRemaining||0), rd='';
+  for(var r=0;r<c.reds;r++) rd += '<i class="'+(r<reds?'':'off')+'"></i>';
+  g('rd').innerHTML = rd; g('rl').textContent = reds+' reds · '+SO.ptsLeft(s)+' on table';
+  g('bk').innerHTML = s.currentBreak ? 'BREAK <b>'+s.currentBreak+'</b>' : '';
+  var d = s.player1.score - s.player2.score;
+  g('lead').textContent = d===0 ? 'SCORES LEVEL' : SO.splitName(s['player'+(d>0?1:2)].name).l+' LEADS BY '+Math.abs(d);
+  // phase chips
+  g('phase').innerHTML = (c.p2On && c.frameSec) ? '<span id="ph1">'+c.shotSec+'s</span><span id="ph2" class="p2">'+c.p2Sec+'s FROM '+SO.fmt(c.p2After*1000)+'</span>' : '<span class="on">'+c.shotSec+'s PER SHOT</span>';
+  // explainer
+  var showFmt = s.status==='active' && ((so.explainer && so.explainer.on) || !so.started);
+  if(showFmt && !g('fmt').classList.contains('show')){ g('fmt').innerHTML = fmtHTML(s, c); g('fmt').classList.add('show'); }
+  if(!showFmt) g('fmt').classList.remove('show');
+  // winner
+  if(s.status==='finished') showWin(s); else g('win').style.display='none';
+  // stinger
+  if(so.ev && so.ev.ts !== lastEv){ var first = lastEv===null; lastEv = so.ev.ts; if(!first && SO.now()-so.ev.ts < 6000) stinger(so.ev); }
+}
+
+/* ── events → big centre banner ── */
+var lastEv = null, stgT = null, lastPhase = null;
+var EVSTYLE = { timefoul:'red', frameup:'red', matchup:'red', foul:'red', ext:'amber', phase:'amber', go:'green', frame:'', resume:'green', pause:'amber' };
+function stinger(e){
+  if(!e.txt) return;
+  if(e.t==='pause'||e.t==='resume'||e.t==='ready') return;   // the PAUSED tag covers these
+  if(e.t==='win') return;
+  var el = g('stg'); el.className = EVSTYLE[e.t]||''; g('stg-b').textContent = e.txt; g('stg-s').textContent = e.sub||'';
+  void el.offsetWidth; el.classList.add('show');
+  if(e.t==='timefoul'||e.t==='frameup'||e.t==='matchup') beep(330,.6,.18);
+  clearTimeout(stgT); stgT = setTimeout(function(){ el.classList.remove('show'); }, e.t==='go'?2200:3800);
+}
+
+function fmtHTML(s, c){
+  var mm = function(x){ return x ? SO.fmt(x*1000) : 'NO LIMIT'; };
+  var split = (c.p2On && c.frameSec) ? Math.min(100, Math.round(c.p2After/c.frameSec*100)) : 100;
+  return '<div class="fx-h"><i>HOW THIS MATCH WORKS</i><b>SHOOT OUT</b><span>'+SO.esc(s.player1.name)+'  v  '+SO.esc(s.player2.name)+' · BEST OF '+s.bestOf+'</span></div>'+
+    '<div class="fx-cards">'+
+      '<div class="fx-c m"><i>MATCH</i><b>'+mm(c.matchSec)+'</b><small>total match time</small></div>'+
+      '<div class="fx-c f"><i>FRAME</i><b>'+mm(c.frameSec)+'</b><small>every frame</small></div>'+
+      '<div class="fx-c s"><i>SHOT</i><b>'+c.shotSec+'s'+(split<100?' → '+c.p2Sec+'s':'')+'</b><small>every shot</small></div>'+
+    '</div>'+
+    (c.frameSec ? '<div class="fx-tl"><div class="bar"><div class="p1" style="--w:'+split+'%">'+c.shotSec+' SEC SHOTS</div>'+(split<100?'<div class="p2" style="--w:'+(100-split)+'%">'+c.p2Sec+' SEC</div>':'')+'</div>'+
+      '<div class="lab"><span>FRAME STARTS</span>'+(split<100?'<span>SHOT CLOCK DROPS AT '+SO.fmt(c.p2After*1000)+'</span>':'')+'<span>'+SO.fmt(c.frameSec*1000)+' · FRAME ENDS</span></div></div>' : '')+
+    '<div class="fx-r">'+
+      '<div><em>⏱</em><span>Shot clock runs out = <b>TIME FOUL</b> · +'+c.penalty+' to opponent, ball in hand</span></div>'+
+      (c.extCount ? '<div><em>＋</em><span><b>'+c.extCount+' EXTENSION'+(c.extCount>1?'S':'')+'</b> per player per frame · +'+c.extSec+'s</span></div>' : '<div><em>＋</em><span>No extensions in this format</span></div>')+
+      (c.frameSec ? '<div><em>🏁</em><span>Frame clock hits zero → <b>highest score wins the frame</b></span></div>' : '')+
+      (c.matchSec ? '<div><em>⌛</em><span>Match clock hits zero → '+(c.endRule==='finish'?'current frame is the <b>last frame</b>':'<b>play stops</b>')+'. Level on frames = deciding frame</span></div>' : '')+
+    '</div>';
+}
+
+function showWin(s){
+  var w = s.matchWinner, st = (s.so && s.so.stats) || { p1:{}, p2:{} };
+  function avg(p){ return p && p.shots ? (p.ms/p.shots/1000).toFixed(1)+'s' : '–'; }
+  var a = SO.splitName(s.player1.name).l, b = SO.splitName(s.player2.name).l;
+  g('win').innerHTML = '<i>MATCH WINNER</i><b>'+SO.esc(s['player'+w].name)+'</b><span>'+s.player1.frames+' – '+s.player2.frames+'</span>'+
+    '<table><tr><td></td><td>'+SO.esc(a)+'</td><td>'+SO.esc(b)+'</td></tr>'+
+    '<tr><td>AVG SHOT TIME</td><td>'+avg(st.p1)+'</td><td>'+avg(st.p2)+'</td></tr>'+
+    '<tr><td>TIME FOULS</td><td>'+(st.p1.tf||0)+'</td><td>'+(st.p2.tf||0)+'</td></tr></table>';
+  g('win').style.display = 'flex';
+}
+
+/* ── per-frame clock drawing ── */
+var lastSec = -1;
+function setCk(id, rem, tot, on, warnMs, dangerMs, upTxt){
+  var el = g(id), base = 'ck '+(id==='ck-m'?'m':'f');
+  if(!on){ el.className = base+' off'; g(id+'-v').textContent='—'; g(id+'-f').style.width='0'; return; }
+  if(upTxt){ el.className = base+' danger up'; g(id+'-v').textContent = upTxt; g(id+'-f').style.width='0'; return; }
+  el.className = base+' '+SO.level(rem, tot, warnMs, dangerMs);
+  g(id+'-v').textContent = SO.fmt(rem);
+  g(id+'-f').style.width = (tot ? rem/tot*100 : 0)+'%';
+}
+/* pulse strength 0..1: flashes on each second tick, twice per second in the final 2 */
+function pulseAt(rem, warnMs){
+  if(rem <= 0) return .55;
+  if(rem > warnMs) return 0;
+  var period = rem <= 2000 ? 500 : 1000;
+  var frac = (rem % period) / period;          // 1 right after a tick → 0 just before the next
+  return Math.pow(frac, 2.2);
+}
+function frame(){
+  requestAnimationFrame(frame);
+  if(!S || !S.so || S.status!=='active'){ g('pulse').style.opacity=0; return; }
+  var t = SO.times(S), c = t.cfg, so = S.so, warn = c.warnAt*1000;
+  setCk('ck-m', t.mRem, t.mTot, t.hasMatch, 60000, 30000, so.matchUp ? (c.endRule==='finish'?'LAST FRAME':'TIME UP') : null);
+  setCk('ck-f', t.fRem, t.fTot, t.hasFrame, 60000, 15000, (t.hasFrame && t.fRem<=0) ? 'TIME UP' : null);
+  // shot ring
+  var ring = g('ring'), sec = SO.secs(t.sRem), frac = t.sDur ? t.sRem/t.sDur : 0;
+  var live = t.running && so.started;
+  g('ring-n').textContent = live ? sec : SO.secs(t.sDur);
+  g('ring-fg').setAttribute('stroke-dashoffset', (282.74*(1-(live?frac:1))).toFixed(1));
+  ring.className = 'ring '+(!live ? 'idle' : t.sRem <= warn ? 'danger' : t.sRem <= Math.max(warn*2,10000) ? 'warn' : '');
+  var turnName = S['player'+S.turn].name;
+  g('who').innerHTML = S.turn===1 ? '<span class="ar">◀</span><span class="nmx">'+SO.esc(turnName)+'</span>' : '<span class="nmx">'+SO.esc(turnName)+'</span><span class="ar">▶</span>';
+  g('ring-l').textContent = live ? 'SHOT CLOCK' : !so.started ? 'STARTING SOON' : t.fEl===0 ? 'FRAME '+S.currentFrame+' READY' : 'PAUSED';
+  // phase chips + phase-change banner
+  if(c.p2On && c.frameSec){
+    var p1 = g('ph1'), p2 = g('ph2'); if(p1){ p1.className = t.phase===1?'on':''; p2.className = 'p2'+(t.phase===2?' on':''); }
+    if(live && lastPhase===1 && t.phase===2) stinger({ t:'phase', txt:'SHOT CLOCK '+c.p2Sec+'s', sub:'Faster shot clock from now on' });
+    lastPhase = t.phase;
+  }
+  // red pulse + countdown beeps
+  var pv = live ? pulseAt(t.sRem, warn) : 0;
+  g('pulse').style.opacity = pv;
+  if(live && sec !== lastSec){
+    if(sec <= c.warnAt && sec > 0) beep(sec<=2?1040:880, .09);
+    if(sec === 0) beep(440, .7, .2);
+    lastSec = sec;
+  }
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

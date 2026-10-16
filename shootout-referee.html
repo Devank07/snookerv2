@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#060d08">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="upbsa-logo.jpg">
+<title>Shoot Out Referee</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="shootout-core.js"></script>
+<style>
+:root{
+  --bg:#060d08;--bg2:#0a1610;--bg3:#0f1f14;--line:rgba(255,255,255,.08);
+  --gold:#f0c040;--gold-d:#c9a227;--green:#2ecc71;--amber:#f39c12;--red:#e74c3c;--blue:#5dade2;
+  --text:#e8f4e0;--sub:rgba(232,244,224,.5);--r:12px;
+  --num:'Bebas Neue',sans-serif;--cond:'Barlow Condensed','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Arial,sans-serif;min-height:100%;max-width:480px;margin:0 auto;overscroll-behavior:none;}
+button{font-family:inherit;color:inherit;border:none;cursor:pointer;}
+button:active{transform:scale(.97);}
+button:disabled{opacity:.3;pointer-events:none;}
+input,select{font-family:inherit;}
+.scr{display:none;flex-direction:column;min-height:100vh;}
+
+/* ── generic ── */
+.hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+.badge{font-family:var(--cond);font-weight:800;font-size:.85rem;letter-spacing:2px;color:var(--gold);border:1px solid rgba(240,192,64,.35);padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.so-tag{font-family:var(--cond);font-weight:800;font-size:.72rem;letter-spacing:2px;color:#000;background:linear-gradient(90deg,#f0c040,#ff8a3d);padding:3px 9px;border-radius:4px;}
+.hdr-t{flex:1;min-width:0;font-size:.78rem;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.dot.off{background:var(--red);}
+.icon-btn{background:var(--bg3);border:1px solid var(--line);border-radius:8px;width:36px;height:34px;font-size:1.1rem;}
+.sec{padding:14px;}
+.lbl{font-family:var(--cond);font-weight:700;font-size:.78rem;letter-spacing:2px;text-transform:uppercase;color:var(--sub);margin:16px 0 8px;}
+.lbl:first-child{margin-top:0;}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px;}
+
+/* ── table picker ── */
+#scr-select{align-items:center;justify-content:center;gap:18px;padding:28px;text-align:center;}
+.sel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:300px;}
+.sel-grid a{padding:18px 6px;background:var(--bg2);border:1px solid rgba(240,192,64,.25);border-radius:var(--r);color:var(--gold);font-family:var(--cond);font-weight:800;font-size:1.1rem;letter-spacing:1px;text-decoration:none;}
+
+/* ── setup ── */
+.in{width:100%;background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font-size:1rem;}
+.in:focus{outline:none;border-color:var(--gold);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{background:var(--bg3);border:1.5px solid var(--line);border-radius:9px;padding:9px 13px;font-family:var(--cond);font-weight:700;font-size:1rem;color:var(--sub);}
+.chip.on{border-color:var(--gold);color:var(--gold);background:rgba(240,192,64,.1);}
+.preset{flex:1;min-width:30%;text-align:left;padding:10px;}
+.preset b{display:block;font-size:1.05rem;}
+.preset small{display:block;font-family:Arial,sans-serif;font-weight:400;font-size:.66rem;line-height:1.35;margin-top:3px;opacity:.8;}
+.step{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);}
+.step:last-child{border-bottom:none;}
+.step-l{flex:1;min-width:0;}
+.step-l b{display:block;font-size:.92rem;}
+.step-l small{display:block;font-size:.68rem;color:var(--sub);margin-top:2px;}
+.step-c{display:flex;align-items:center;gap:6px;}
+.step-c button{width:38px;height:38px;border-radius:9px;background:var(--bg3);border:1px solid var(--line);font-size:1.2rem;font-weight:700;}
+.step-v{font-family:var(--num);font-size:1.6rem;min-width:70px;text-align:center;color:var(--gold);letter-spacing:1px;}
+.tog{width:52px;height:30px;border-radius:15px;background:var(--bg3);border:1px solid var(--line);position:relative;flex-shrink:0;}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#555;transition:all .2s;}
+.tog.on{background:rgba(46,204,113,.25);border-color:var(--green);}
+.tog.on::after{left:25px;background:var(--green);}
+.dim{opacity:.35;pointer-events:none;}
+.err{color:var(--red);font-size:.85rem;margin-top:10px;display:none;}
+.go{width:100%;padding:18px;border-radius:var(--r);background:linear-gradient(180deg,#2ecc71,#1e9e54);color:#04140a;font-family:var(--cond);font-weight:800;font-size:1.25rem;letter-spacing:2px;margin-top:16px;}
+
+/* ── format preview (shared look with board/overlay explainer) ── */
+.fmt{background:linear-gradient(160deg,#0f2416,#08120b);border:1px solid rgba(240,192,64,.25);border-radius:14px;padding:14px;}
+.fmt-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.fmt-h b{font-family:var(--num);font-size:1.5rem;letter-spacing:2px;color:var(--gold);}
+.fmt-h span{font-size:.7rem;color:var(--sub);letter-spacing:1px;}
+.fmt-clocks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.fc{border-radius:10px;padding:8px 6px;text-align:center;border:1px solid var(--line);background:rgba(0,0,0,.3);}
+.fc i{display:block;font-style:normal;font-family:var(--cond);font-weight:800;font-size:.66rem;letter-spacing:2px;}
+.fc b{display:block;font-family:var(--num);font-size:1.7rem;line-height:1.1;}
+.fc small{display:block;font-size:.6rem;color:var(--sub);}
+.fc.m i{color:#9ad1ff;} .fc.f i{color:#b8f5c8;} .fc.s i{color:var(--gold);}
+.tl{position:relative;height:30px;border-radius:7px;overflow:hidden;display:flex;margin:6px 0 4px;}
+.tl div{display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:800;font-size:.8rem;color:#04140a;}
+.tl .ph1{background:linear-gradient(90deg,#2ecc71,#7bd88f);}
+.tl .ph2{background:linear-gradient(90deg,#f39c12,#e74c3c);color:#fff;}
+.tl-l{display:flex;justify-content:space-between;font-size:.62rem;color:var(--sub);}
+.fmt-rules{margin-top:10px;display:grid;gap:6px;}
+.fr{display:flex;gap:8px;align-items:flex-start;font-size:.78rem;line-height:1.35;}
+.fr em{font-style:normal;flex-shrink:0;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.8rem;background:rgba(255,255,255,.06);}
+
+/* ── LIVE ── */
+.clocks{padding:10px 12px 0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
+.ck{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;position:relative;overflow:hidden;}
+.ck i{font-style:normal;font-family:var(--cond);font-weight:800;font-size:.7rem;letter-spacing:2px;color:var(--sub);}
+.ck b{display:block;font-family:var(--num);font-size:2.1rem;line-height:1;letter-spacing:1px;}
+.ck .bar{position:absolute;left:0;bottom:0;height:4px;background:var(--green);transition:width .25s linear;}
+.ck.warn b{color:var(--amber);} .ck.warn .bar{background:var(--amber);}
+.ck.danger b{color:var(--red);} .ck.danger .bar{background:var(--red);}
+.ck.off{opacity:.35;}
+.shot{margin:8px 12px 0;border-radius:14px;background:var(--bg2);border:2px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 14px;position:relative;overflow:hidden;transition:border-color .2s;}
+.shot-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(46,204,113,.12);transition:width .1s linear;}
+.shot-n{font-family:var(--num);font-size:4.6rem;line-height:.9;min-width:110px;text-align:center;position:relative;}
+.shot-i{flex:1;min-width:0;position:relative;}
+.shot-i i{display:block;font-style:normal;font-family:var(--cond);font-weight:800;letter-spacing:2px;font-size:.8rem;color:var(--sub);}
+.shot-i b{display:block;font-family:var(--cond);font-weight:800;font-size:1.25rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.shot-i small{display:block;font-size:.7rem;color:var(--sub);margin-top:2px;}
+.shot.warn{border-color:var(--amber);} .shot.warn .shot-n{color:var(--amber);} .shot.warn .shot-fill{background:rgba(243,156,18,.15);}
+.shot.danger{border-color:var(--red);} .shot.danger .shot-n{color:var(--red);} .shot.danger .shot-fill{background:rgba(231,76,60,.2);}
+.shot.idle .shot-n{color:var(--sub);}
+.play{margin:8px 12px 0;width:calc(100% - 24px);padding:16px;border-radius:14px;font-family:var(--cond);font-weight:800;font-size:1.45rem;letter-spacing:3px;}
+.play.start{background:linear-gradient(180deg,#2ecc71,#1e9e54);color:#04140a;}
+.play.pause{background:linear-gradient(180deg,#f5b041,#d68910);color:#1a1000;}
+.players{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:8px 12px 0;}
+.pc{min-width:0;background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:9px 10px;position:relative;text-align:center;}
+.pc.at{border-color:var(--green);background:rgba(46,204,113,.07);}
+.pc.at::before{content:'AT TABLE';position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--green);color:#04140a;font-family:var(--cond);font-weight:800;font-size:.62rem;letter-spacing:2px;padding:1px 8px;border-radius:10px;}
+.pc-n{padding:0 30px;font-family:var(--cond);font-weight:800;font-size:1.05rem;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc-s{font-family:var(--num);font-size:3.2rem;line-height:1;color:var(--gold);}
+.pc-m{display:flex;justify-content:center;gap:10px;font-size:.7rem;color:var(--sub);}
+.pc-m b{color:var(--text);}
+.pc-f{position:absolute;top:6px;right:8px;font-family:var(--num);font-size:1.4rem;color:#fff;}
+.pc-sw{position:absolute;top:6px;left:6px;font-size:.75rem;background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:2px 6px;color:var(--sub);}
+.brk{margin:8px 12px 0;display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--sub);min-height:26px;}
+.brk b{font-family:var(--num);font-size:1.4rem;color:#fff;}
+.bb{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;color:#fff;}
+.pad{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px 12px 0;}
+.ball{aspect-ratio:1;border-radius:50%;font-family:var(--num);font-size:1.25rem;color:#fff;box-shadow:inset 0 -4px 8px rgba(0,0,0,.4),inset 0 3px 4px rgba(255,255,255,.25);}
+.b-red{background:radial-gradient(circle at 35% 30%,#ff6b5b,#a5221a);}
+.b-yellow{background:radial-gradient(circle at 35% 30%,#fff07a,#c9a000);color:#332800;}
+.b-green{background:radial-gradient(circle at 35% 30%,#5fd68b,#156b33);}
+.b-brown{background:radial-gradient(circle at 35% 30%,#b8865e,#5a3520);}
+.b-blue{background:radial-gradient(circle at 35% 30%,#6cb8ef,#174e7a);}
+.b-pink{background:radial-gradient(circle at 35% 30%,#ff8cb3,#b71c5d);}
+.b-black{background:radial-gradient(circle at 35% 30%,#5a5a5a,#0b0b0b);border:1px solid #555;}
+.acts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:8px 12px 0;}
+.act{padding:14px 8px;border-radius:12px;font-family:var(--cond);font-weight:800;font-size:1.05rem;letter-spacing:1px;background:var(--bg3);border:1.5px solid var(--line);}
+.act small{display:block;font-family:Arial,sans-serif;font-weight:400;font-size:.62rem;letter-spacing:0;opacity:.7;margin-top:2px;}
+.act.miss{background:rgba(93,173,226,.12);border-color:rgba(93,173,226,.45);color:#9ad1ff;}
+.act.foul{background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.4);color:#ff9b8f;}
+.act.tf{background:rgba(231,76,60,.22);border-color:var(--red);color:#fff;}
+.act.ext{background:rgba(240,192,64,.1);border-color:rgba(240,192,64,.45);color:var(--gold);}
+.act.undo{color:var(--sub);}
+.act.fo{background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.45);color:#9ff0bf;}
+.foulrow{display:none;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 12px 0;}
+.foulrow.open{display:grid;}
+.foulrow button{padding:12px 0;border-radius:10px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.45);font-family:var(--num);font-size:1.5rem;color:#ff9b8f;}
+.info{display:flex;justify-content:space-between;padding:10px 14px 4px;font-size:.74rem;color:var(--sub);}
+.info b{color:var(--text);}
+.spacer{height:28px;}
+
+/* ── sheets & modals ── */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+.ov.open{display:flex;}
+.sheet{background:var(--bg2);border-top:2px solid rgba(240,192,64,.35);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:16px 16px 26px;max-height:88vh;overflow:auto;}
+.sheet h3{font-family:var(--cond);font-weight:800;font-size:1.3rem;letter-spacing:2px;margin-bottom:4px;}
+.sheet p{font-size:.85rem;color:var(--sub);margin-bottom:12px;line-height:1.4;}
+.sheet .big{width:100%;padding:16px;border-radius:12px;font-family:var(--cond);font-weight:800;font-size:1.15rem;letter-spacing:1px;margin-top:8px;background:var(--bg3);border:1.5px solid var(--line);}
+.sheet .big.red{background:var(--red);border-color:var(--red);color:#fff;}
+.sheet .big.green{background:var(--green);border-color:var(--green);color:#04140a;}
+.sheet .big.gold{background:rgba(240,192,64,.15);border-color:var(--gold);color:var(--gold);}
+.adj{display:grid;grid-template-columns:70px repeat(4,1fr);gap:6px;align-items:center;margin-top:8px;}
+.adj span{font-family:var(--cond);font-weight:800;letter-spacing:1px;font-size:.85rem;color:var(--sub);}
+.adj button{padding:11px 0;border-radius:9px;background:var(--bg3);border:1px solid var(--line);font-family:var(--cond);font-weight:800;}
+.alert-flash{animation:af .5s 3;}
+@keyframes af{50%{background:rgba(231,76,60,.35);}}
+
+/* ── finished ── */
+.win{text-align:center;padding:30px 16px 10px;}
+.win i{font-style:normal;font-family:var(--cond);font-weight:800;letter-spacing:4px;color:var(--gold);}
+.win h2{font-family:var(--num);font-size:3.2rem;letter-spacing:2px;line-height:1.05;margin:6px 0;}
+.win div{font-family:var(--num);font-size:2rem;color:var(--sub);}
+.stt{width:100%;border-collapse:collapse;font-size:.85rem;}
+.stt td,.stt th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:center;}
+.stt th{font-family:var(--cond);letter-spacing:1px;color:var(--sub);font-weight:700;}
+.stt td:first-child,.stt th:first-child{text-align:left;color:var(--sub);}
+</style>
+</head>
+<body>
+
+<!-- ══ TABLE PICKER ══ -->
+<div class="scr" id="scr-select">
+  <div class="so-tag" style="font-size:.9rem">SHOOT OUT</div>
+  <div style="font-family:var(--cond);font-weight:800;font-size:1.4rem;letter-spacing:2px">Choose your table</div>
+  <div class="sel-grid">
+    <a href="?table=1">T 1</a><a href="?table=2">T 2</a><a href="?table=3">T 3</a>
+    <a href="?table=4">T 4</a><a href="?table=5">T 5</a><a href="?table=6">T 6</a>
+  </div>
+  <a href="referee-hub.html" style="color:var(--sub);font-size:.8rem">← Referee hub</a>
+</div>
+
+<!-- ══ OTHER SPORT ACTIVE ══ -->
+<div class="scr" id="scr-other" style="align-items:center;justify-content:center;padding:28px;text-align:center;gap:14px">
+  <div style="font-size:2.4rem">⚠️</div>
+  <div style="font-family:var(--cond);font-weight:800;font-size:1.3rem;letter-spacing:1px">Table <span class="tnum"></span> has a live <span id="oth-sport"></span> match</div>
+  <div style="color:var(--sub);font-size:.85rem" id="oth-match"></div>
+  <a id="oth-link" class="go" style="text-decoration:none;display:block;text-align:center" href="#">Open that remote</a>
+  <button class="sheet-btn" style="background:none;color:var(--red);font-size:.85rem;text-decoration:underline" onclick="replaceOther()">Clear it and start a Shoot Out instead</button>
+</div>
+
+<!-- ══ SETUP ══ -->
+<div class="scr" id="scr-setup">
+  <div class="hdr">
+    <div class="badge">TABLE <span class="tnum"></span></div>
+    <div class="so-tag">SHOOT OUT</div>
+    <div class="hdr-t">Pre-match setup</div>
+    <a href="referee-hub.html" class="icon-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--sub)">✕</a>
+  </div>
+  <div class="sec">
+    <div class="lbl">Tournament</div>
+    <input class="in" id="su-tourn" placeholder="e.g. UP State Shoot Out 2026">
+
+    <div class="lbl">Players</div>
+    <div class="row2">
+      <input class="in" id="su-p1" placeholder="Player 1 name" autocomplete="off">
+      <input class="in" id="su-p2" placeholder="Player 2 name" autocomplete="off">
+      <input class="in" id="su-p1s" placeholder="State / city" list="states">
+      <input class="in" id="su-p2s" placeholder="State / city" list="states">
+    </div>
+    <datalist id="states"></datalist>
+
+    <div class="lbl">First break</div>
+    <div class="chips" id="su-brk">
+      <button class="chip on" data-v="1" style="flex:1">Player 1</button>
+      <button class="chip" data-v="2" style="flex:1">Player 2</button>
+    </div>
+
+    <div class="lbl">Best of (frames)</div>
+    <div class="chips" id="su-bo">
+      <button class="chip" data-v="1">1</button><button class="chip" data-v="3">3</button>
+      <button class="chip on" data-v="5">5</button><button class="chip" data-v="7">7</button>
+      <button class="chip" data-v="9">9</button><button class="chip" data-v="11">11</button>
+    </div>
+
+    <div class="lbl">Reds on the table</div>
+    <div class="chips" id="su-reds">
+      <button class="chip" data-v="6">6 reds</button><button class="chip" data-v="10">10 reds</button><button class="chip on" data-v="15">15 reds</button>
+    </div>
+
+    <div class="lbl">Time format — quick presets</div>
+    <div class="chips" id="su-presets"></div>
+
+    <div class="lbl">Time format — fine tune</div>
+    <div class="card" id="su-steps"></div>
+
+    <div class="lbl">Format preview (this is what viewers see)</div>
+    <div id="su-preview"></div>
+
+    <div class="lbl">Referee</div>
+    <input class="in" id="su-ref" placeholder="Your name (optional)">
+
+    <div class="err" id="su-err"></div>
+    <button class="go" onclick="createMatch()">CREATE MATCH →</button>
+    <div style="text-align:center;font-size:.72rem;color:var(--sub);margin-top:10px">Clocks don't start until you press START on the next screen.</div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<!-- ══ LIVE ══ -->
+<div class="scr" id="scr-live">
+  <div class="hdr">
+    <div class="badge">T<span class="tnum"></span></div>
+    <div class="so-tag">SHOOT OUT</div>
+    <div class="hdr-t" id="lv-hdr">–</div>
+    <div class="dot" id="conn"></div>
+    <button class="icon-btn" onclick="openSheet('sh-menu')">⋯</button>
+  </div>
+
+  <div class="clocks">
+    <div class="ck" id="ck-m"><i>MATCH TIME</i><b id="ck-m-v">--:--</b><div class="bar" id="ck-m-b"></div></div>
+    <div class="ck" id="ck-f"><i>FRAME <span id="ck-f-n">1</span> TIME</i><b id="ck-f-v">--:--</b><div class="bar" id="ck-f-b"></div></div>
+  </div>
+
+  <div class="shot idle" id="shot">
+    <div class="shot-fill" id="shot-fill"></div>
+    <div class="shot-n" id="shot-n">--</div>
+    <div class="shot-i">
+      <i>SHOT CLOCK</i>
+      <b id="shot-who">–</b>
+      <small id="shot-ph">–</small>
+    </div>
+  </div>
+
+  <button class="play start" id="play" onclick="togglePlay()">▶ START</button>
+
+  <div class="players">
+    <div class="pc" id="pc1">
+      <button class="pc-sw" onclick="setTurn(1)">⇄</button>
+      <div class="pc-f" id="pf1">0</div>
+      <div class="pc-n" id="pn1">–</div>
+      <div class="pc-s" id="ps1">0</div>
+      <div class="pc-m"><span>EXT <b id="pe1">0</b></span><span>TF <b id="pt1">0</b></span></div>
+    </div>
+    <div class="pc" id="pc2">
+      <button class="pc-sw" onclick="setTurn(2)">⇄</button>
+      <div class="pc-f" id="pf2">0</div>
+      <div class="pc-n" id="pn2">–</div>
+      <div class="pc-s" id="ps2">0</div>
+      <div class="pc-m"><span>EXT <b id="pe2">0</b></span><span>TF <b id="pt2">0</b></span></div>
+    </div>
+  </div>
+
+  <div class="brk" id="brk"></div>
+
+  <div class="pad">
+    <button class="ball b-red" onclick="pot('red',1)">1</button>
+    <button class="ball b-yellow" onclick="pot('yellow',2)">2</button>
+    <button class="ball b-green" onclick="pot('green',3)">3</button>
+    <button class="ball b-brown" onclick="pot('brown',4)">4</button>
+    <button class="ball b-blue" onclick="pot('blue',5)">5</button>
+    <button class="ball b-pink" onclick="pot('pink',6)">6</button>
+    <button class="ball b-black" onclick="pot('black',7)">7</button>
+  </div>
+
+  <div class="acts">
+    <button class="act miss" onclick="endVisit()">MISS / SAFETY<small>end visit · shot clock resets</small></button>
+    <button class="act foul" onclick="toggleFoul()">FOUL<small>pick 4 · 5 · 6 · 7</small></button>
+  </div>
+  <div class="foulrow" id="foulrow">
+    <button onclick="foul(4)">4</button><button onclick="foul(5)">5</button><button onclick="foul(6)">6</button><button onclick="foul(7)">7</button>
+  </div>
+  <div class="acts">
+    <button class="act tf" onclick="askTimeFoul(false)">⏱ TIME FOUL<small id="tf-sub">+5 to opponent</small></button>
+    <button class="act ext" id="ext-btn" onclick="useExtension()">+ EXTENSION<small id="ext-sub">–</small></button>
+    <button class="act undo" onclick="undo()">↶ UNDO<small id="undo-sub">nothing to undo</small></button>
+    <button class="act fo" onclick="askFrameOver(false)">FRAME OVER<small>award the frame</small></button>
+  </div>
+  <div class="info"><span><b id="in-reds">15</b> reds · <b id="in-left">147</b> on table</span><span id="in-diff">Tied</span></div>
+  <div class="spacer"></div>
+</div>
+
+<!-- ══ FINISHED ══ -->
+<div class="scr" id="scr-over">
+  <div class="hdr"><div class="badge">T<span class="tnum"></span></div><div class="so-tag">SHOOT OUT</div><div class="hdr-t" id="ov-mid"></div></div>
+  <div class="win"><i>MATCH WINNER</i><h2 id="ov-name">–</h2><div id="ov-score"></div></div>
+  <div class="sec">
+    <div class="card"><table class="stt" id="ov-stats"></table></div>
+    <button class="go" onclick="newMatch()">NEW MATCH ON THIS TABLE</button>
+    <a href="referee-hub.html" style="display:block;text-align:center;color:var(--sub);font-size:.85rem;margin-top:14px">← Referee hub</a>
+  </div>
+</div>
+
+<!-- ══ SHEETS ══ -->
+<div class="ov" id="sh-menu" onclick="if(event.target===this)closeSheets()">
+  <div class="sheet">
+    <h3>Match menu</h3>
+    <button class="big gold" id="mn-exp" onclick="toggleExplainer()">📺 Show format to viewers</button>
+    <button class="big" onclick="closeSheets();openSheet('sh-adj')">⏱ Adjust clocks</button>
+    <button class="big" onclick="closeSheets();openSheet('sh-names');fillNames()">✏️ Edit player names</button>
+    <button class="big" onclick="resetFrame()">↺ Reset this frame's scores</button>
+    <button class="big red" onclick="abandon()">✕ Abandon match</button>
+    <button class="big" onclick="closeSheets()">Close</button>
+  </div>
+</div>
+
+<div class="ov" id="sh-adj" onclick="if(event.target===this)closeSheets()">
+  <div class="sheet">
+    <h3>Adjust clocks</h3>
+    <p>Fix a clock if it was started late or ran on by mistake. "+" gives time back.</p>
+    <div class="adj"><span>MATCH</span><button onclick="adj('m',-60)">−1m</button><button onclick="adj('m',-10)">−10s</button><button onclick="adj('m',10)">+10s</button><button onclick="adj('m',60)">+1m</button></div>
+    <div class="adj"><span>FRAME</span><button onclick="adj('f',-60)">−1m</button><button onclick="adj('f',-10)">−10s</button><button onclick="adj('f',10)">+10s</button><button onclick="adj('f',60)">+1m</button></div>
+    <div class="adj"><span>SHOT</span><button onclick="adj('s',-5)">−5s</button><button onclick="adj('s',5)">+5s</button><button style="grid-column:span 2" onclick="resetShotOnly()">Reset shot</button></div>
+    <button class="big" onclick="closeSheets()">Done</button>
+  </div>
+</div>
+
+<div class="ov" id="sh-names" onclick="if(event.target===this)closeSheets()">
+  <div class="sheet">
+    <h3>Player names</h3>
+    <input class="in" id="ed-p1" style="margin-top:8px"><input class="in" id="ed-p2" style="margin-top:8px">
+    <button class="big green" onclick="saveNames()">Save</button>
+    <button class="big" onclick="closeSheets()">Cancel</button>
+  </div>
+</div>
+
+<div class="ov" id="sh-modal"><div class="sheet" id="modal-body"></div></div>
+
+<script>
+var tbl = SO.table, db = SO.db, S = null, ref = null;
+var write = SO.makeWriter(tbl);
+var hist = [], HMAX = 60;
+var sel = { brk: 1, bo: 5, reds: 15 };
+var cfg = JSON.parse(JSON.stringify(SO.DEFAULT_CFG));
+var STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chandigarh','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','PSPB','Puducherry','Punjab','Railways','Rajasthan','RSPB','Services','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
+
+function g(id){ return document.getElementById(id); }
+function vibe(p){ if(navigator.vibrate) navigator.vibrate(p); }
+function show(id){ document.querySelectorAll('.scr').forEach(function(e){ e.style.display='none'; }); g(id).style.display='flex'; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function pname(s,n){ return (s['player'+n]&&s['player'+n].name)||('Player '+n); }
+function short(s,n){ return SO.splitName(pname(s,n)).l; }
+function openSheet(id){ g(id).classList.add('open'); }
+function closeSheets(){ document.querySelectorAll('.ov').forEach(function(e){ e.classList.remove('open'); }); }
+
+document.querySelectorAll('.tnum').forEach(function(e){ e.textContent = tbl || '–'; });
+window.addEventListener('online', function(){ g('conn').className='dot'; });
+window.addEventListener('offline', function(){ g('conn').className='dot off'; });
+
+/* ══════════ SETUP ══════════ */
+var STEPS = [
+  { k:'matchSec', t:'Total match time', d:'Whole match clock. 0 = no match limit', step:300, min:0, max:14400, f:'min' },
+  { k:'frameSec', t:'Frame time', d:'Each frame\'s clock. Frame ends at 0. 0 = no limit', step:60, min:0, max:3600, f:'min' },
+  { k:'shotSec', t:'Shot clock', d:'Seconds per shot', step:1, min:5, max:120, f:'sec' },
+  { k:'p2On', t:'Faster shot clock later in frame', d:'Switch to a shorter shot clock', tog:true },
+  { k:'p2After', t:'…switch after', d:'Frame time elapsed', step:30, min:30, max:3600, f:'min', dep:'p2On' },
+  { k:'p2Sec', t:'…new shot clock', d:'Seconds per shot after the switch', step:1, min:5, max:120, f:'sec', dep:'p2On' },
+  { k:'penalty', t:'Time foul penalty', d:'Points to the opponent (+ ball in hand)', step:1, min:1, max:20, f:'pts' },
+  { k:'extCount', t:'Extensions per player', d:'Per frame. 0 = none', step:1, min:0, max:5, f:'n' },
+  { k:'extSec', t:'Extension length', d:'Extra seconds added to the shot', step:5, min:5, max:120, f:'sec', dep:'extCount' },
+  { k:'warnAt', t:'Final warning at', d:'Red pulse + beeps start here', step:1, min:3, max:15, f:'sec' },
+  { k:'endRule', t:'When match time runs out', d:'', opts:[['finish','Finish frame'],['stop','Stop now']] }
+];
+function fmtStep(st, v){
+  if(st.f==='min'){ if(!v) return 'OFF'; var m=Math.floor(v/60), s=v%60; return m+(s?':'+('0'+s).slice(-2):'')+'m'; }
+  if(st.f==='sec') return v+'s';
+  if(st.f==='pts') return '+'+v;
+  return String(v);
+}
+function buildSetup(){
+  var dl = g('states'); dl.innerHTML = STATES.map(function(s){ return '<option value="'+s+'">'; }).join('');
+  g('su-ref').value = localStorage.getItem('refName') || '';
+  // presets
+  g('su-presets').innerHTML = Object.keys(SO.PRESETS).map(function(k){
+    var p = SO.PRESETS[k];
+    return '<button class="chip preset" data-k="'+k+'"><b>'+p.label+'</b><small>'+p.desc+'</small></button>';
+  }).join('');
+  g('su-presets').querySelectorAll('.preset').forEach(function(b){
+    b.onclick = function(){
+      var p = SO.PRESETS[b.dataset.k];
+      for(var k in p) if(k in cfg) cfg[k] = p[k];
+      if(p.reds){ sel.reds = p.reds; markChip('su-reds', p.reds); }
+      g('su-presets').querySelectorAll('.preset').forEach(function(x){ x.classList.toggle('on', x===b); });
+      renderSteps();
+    };
+  });
+  chipGroup('su-brk','brk'); chipGroup('su-bo','bo'); chipGroup('su-reds','reds');
+  renderSteps();
+}
+function markChip(gid, v){ g(gid).querySelectorAll('.chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.v===+v); }); }
+function chipGroup(gid, key){
+  g(gid).querySelectorAll('.chip').forEach(function(c){
+    c.onclick = function(){ sel[key] = +c.dataset.v; markChip(gid, c.dataset.v); if(key==='reds'){ cfg.reds = sel.reds; } renderPreview(); };
+  });
+}
+function renderSteps(){
+  g('su-steps').innerHTML = STEPS.map(function(st, i){
+    var dis = st.dep && !cfg[st.dep] ? ' dim' : '';
+    var ctl;
+    if(st.tog) ctl = '<button class="tog'+(cfg[st.k]?' on':'')+'" onclick="stepTog('+i+')"></button>';
+    else if(st.opts) ctl = '<div class="chips">'+st.opts.map(function(o){ return '<button class="chip'+(cfg[st.k]===o[0]?' on':'')+'" onclick="stepOpt('+i+',\''+o[0]+'\')">'+o[1]+'</button>'; }).join('')+'</div>';
+    else ctl = '<div class="step-c"><button onclick="stepBy('+i+',-1)">−</button><div class="step-v">'+fmtStep(st,cfg[st.k])+'</div><button onclick="stepBy('+i+',1)">+</button></div>';
+    return '<div class="step'+dis+'"><div class="step-l"><b>'+st.t+'</b>'+(st.d?'<small>'+st.d+'</small>':'')+'</div>'+ctl+'</div>';
+  }).join('');
+  renderPreview();
+}
+function stepBy(i, dir){
+  var st = STEPS[i], v = cfg[st.k] + dir*st.step;
+  cfg[st.k] = Math.min(st.max, Math.max(st.min, v));
+  g('su-presets').querySelectorAll('.preset').forEach(function(x){ x.classList.remove('on'); });
+  renderSteps();
+}
+function stepTog(i){ cfg[STEPS[i].k] = !cfg[STEPS[i].k]; renderSteps(); }
+function stepOpt(i, v){ cfg[STEPS[i].k] = v; renderSteps(); }
+
+/* Visual explanation of the format — same content the board/overlay show */
+function formatCardHTML(c, bo){
+  var mm = function(sec){ return sec ? SO.fmt(sec*1000) : 'NO LIMIT'; };
+  var shotTxt = c.shotSec+'s' + (c.p2On && c.frameSec ? ' → '+c.p2Sec+'s' : '');
+  var tl = '';
+  if(c.frameSec){
+    var split = c.p2On ? Math.min(100, Math.round(c.p2After / c.frameSec * 100)) : 100;
+    tl = '<div class="lbl" style="margin:6px 0 0">Each frame</div><div class="tl">'+
+      '<div class="ph1" style="width:'+split+'%">'+c.shotSec+'s per shot</div>'+
+      (split<100 ? '<div class="ph2" style="width:'+(100-split)+'%">'+c.p2Sec+'s</div>' : '')+
+      '</div><div class="tl-l"><span>0:00</span>'+(split<100?'<span>switch at '+SO.fmt(c.p2After*1000)+'</span>':'')+'<span>'+SO.fmt(c.frameSec*1000)+' · frame ends</span></div>';
+  }
+  return '<div class="fmt">'+
+    '<div class="fmt-h"><b>SHOOT OUT FORMAT</b><span>BEST OF '+bo+' · '+c.reds+' REDS</span></div>'+
+    '<div class="fmt-clocks">'+
+      '<div class="fc m"><i>MATCH</i><b>'+mm(c.matchSec)+'</b><small>whole match</small></div>'+
+      '<div class="fc f"><i>FRAME</i><b>'+mm(c.frameSec)+'</b><small>each frame</small></div>'+
+      '<div class="fc s"><i>SHOT</i><b>'+shotTxt+'</b><small>per shot</small></div>'+
+    '</div>'+ tl +
+    '<div class="fmt-rules">'+
+      '<div class="fr"><em>⏱</em><span>Run out of shot time = <b>time foul</b>: +'+c.penalty+' to opponent and ball in hand.</span></div>'+
+      (c.extCount ? '<div class="fr"><em>＋</em><span>Each player gets <b>'+c.extCount+' extension'+(c.extCount>1?'s':'')+'</b> of '+c.extSec+'s per frame.</span></div>' : '')+
+      (c.frameSec ? '<div class="fr"><em>🏁</em><span>Frame clock hits 0 → frame ends, highest score wins it.</span></div>' : '')+
+      (c.matchSec ? '<div class="fr"><em>⌛</em><span>Match clock hits 0 → '+(c.endRule==='finish'?'current frame is the last one':'play stops')+'. Most frames wins; level = deciding frame.</span></div>' : '')+
+    '</div></div>';
+}
+function renderPreview(){ cfg.reds = sel.reds; g('su-preview').innerHTML = formatCardHTML(cfg, sel.bo); }
+
+function createMatch(){
+  var p1 = g('su-p1').value.trim(), p2 = g('su-p2').value.trim();
+  var err = g('su-err');
+  if(!p1 || !p2){ err.textContent = 'Both player names are required.'; err.style.display='block'; return; }
+  if(!cfg.matchSec && !cfg.frameSec){ /* allowed: shot clock only */ }
+  err.style.display='none';
+  var refName = g('su-ref').value.trim(); if(refName) localStorage.setItem('refName', refName);
+  var tourn = g('su-tourn').value.trim() || 'Shoot Out';
+  cfg.reds = sel.reds;
+  db.ref('meta/matchCounter').transaction(function(c){ return (c||0)+1; }, function(e, ok, snap){
+    var num = (snap && snap.val()) || Date.now()%10000;
+    var mid = 'UPBSA-' + String(num).padStart(4,'0');
+    var t = SO.now();
+    var m = {
+      matchId: mid, sport:'shootout', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo,
+      currentFrame:1, status:'active', matchWinner:null,
+      turn:sel.brk, breakPlayer:sel.brk, frameBreaker:sel.brk,
+      currentBreak:0, breakBalls:[], redsRemaining:sel.reds, bestBreak1:0, bestBreak2:0,
+      frameStartTime:t, matchStartTime:t, shotClockEnabled:false, referee:refName,
+      player1:{ name:p1, frames:0, score:0, state:g('su-p1s').value.trim(), currentBreak:0 },
+      player2:{ name:p2, frames:0, score:0, state:g('su-p2s').value.trim(), currentBreak:0 },
+      so:{
+        cfg:clone(cfg), started:false,
+        clk:{ running:false, mEl:0, fEl:0, sEl:0, sDur:cfg.shotSec*1000 },
+        ext:{ p1:cfg.extCount, p2:cfg.extCount },
+        stats:{ p1:{shots:0,ms:0,tf:0}, p2:{shots:0,ms:0,tf:0} },
+        frames:[], matchUp:false, decider:false,
+        explainer:{ on:true, ts:t }, ev:{ t:'ready', txt:'SHOOT OUT', sub:p1+' v '+p2, ts:t }
+      }
+    };
+    db.ref('matches/table-'+tbl).set(m);
+    db.ref('match_registry/'+mid).set({ matchId:mid, sport:'shootout', status:'active', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo, p1:p1, p1state:m.player1.state, p2:p2, p2state:m.player2.state, firstBreak:sel.brk, startTime:t, format:cfg });
+  });
+}
+
+/* ══════════ LIVE STATE ══════════ */
+if(!tbl){ show('scr-select'); }
+else {
+  document.title = 'Shoot Out Ref T'+tbl;
+  ref = db.ref('matches/table-'+tbl);
+  buildSetup();
+  ref.on('value', function(snap){
+    S = snap.val();
+    if(!S){ show('scr-setup'); return; }
+    if(S.sport !== 'shootout'){
+      if(S.status==='active'){
+        show('scr-other');
+        g('oth-sport').textContent = S.sport || 'snooker';
+        g('oth-match').textContent = (S.player1&&S.player1.name)+' v '+(S.player2&&S.player2.name)+' · '+(S.matchId||'');
+        g('oth-link').href = (S.sport==='billiards'?'billiards-referee.html':'referee.html')+'?table='+tbl;
+      } else show('scr-setup');
+      return;
+    }
+    if(S.status==='finished'){ renderOver(); show('scr-over'); return; }
+    show('scr-live');
+    render();
+  });
+}
+function replaceOther(){
+  if(!confirm('This deletes the live match on Table '+tbl+'. Continue?')) return;
+  ref.remove();
+}
+
+/* push the whole match, remembering the previous state for undo */
+function commit(s, noHist){
+  if(!noHist && S){
+    hist.push({ st: clone(S), clk: SO.pause(S.so.clk) });
+    if(hist.length > HMAX) hist.shift();
+  }
+  S = s; render();
+  write('matches/table-'+tbl, s);
+}
+function ev(s, t, txt, sub){ s.so.ev = { t:t, txt:txt, sub:sub||'', ts:SO.now() }; }
+
+/* record how long the shot that just ended took */
+function closeShot(s, who, fullMs){
+  if(!s.so.started || !s.so.clk || !s.so.clk.running) return;
+  var t = SO.times(s), st = s.so.stats['p'+who];
+  st.shots++; st.ms += Math.round(fullMs || t.sEl);
+}
+
+function render(){
+  if(!S || !S.so) return;
+  var s = S, c = SO.cfgOf(s);
+  g('lv-hdr').textContent = (s.tournament||'') + ' · Frame '+s.currentFrame+' / Bo'+s.bestOf + (s.so.decider?' · DECIDER':'');
+  g('ck-f-n').textContent = s.currentFrame;
+  [1,2].forEach(function(n){
+    var p = s['player'+n];
+    g('pn'+n).textContent = p.name; g('ps'+n).textContent = p.score; g('pf'+n).textContent = p.frames;
+    g('pe'+n).textContent = (s.so.ext&&s.so.ext['p'+n])||0;
+    g('pt'+n).textContent = (s.so.stats&&s.so.stats['p'+n].tf)||0;
+    g('pc'+n).className = 'pc'+(s.turn===n?' at':'');
+  });
+  var balls = s.breakBalls || [];
+  g('brk').innerHTML = (s.currentBreak ? 'Break <b>'+s.currentBreak+'</b>' : '<span>No break</span>') +
+    balls.slice(-8).map(function(b){ return '<span class="bb b-'+b.color+'">'+b.value+'</span>'; }).join('');
+  var reds = Math.max(0, s.redsRemaining||0), left = SO.ptsLeft(s), d = s.player1.score - s.player2.score;
+  g('in-reds').textContent = reds; g('in-left').textContent = left;
+  g('in-diff').innerHTML = d===0 ? 'Tied' : '<b>'+short(s, d>0?1:2)+'</b> +'+Math.abs(d);
+  g('tf-sub').textContent = '+'+c.penalty+' to '+short(s, s.turn===1?2:1);
+  var e = (s.so.ext&&s.so.ext['p'+s.turn])||0;
+  g('ext-btn').disabled = !c.extCount || e<=0;
+  g('ext-sub').textContent = c.extCount ? (e+' left · +'+c.extSec+'s for '+short(s,s.turn)) : 'not in this format';
+  g('undo-sub').textContent = hist.length ? hist.length+' step'+(hist.length>1?'s':'')+' back' : 'nothing to undo';
+  g('mn-exp').textContent = (s.so.explainer&&s.so.explainer.on) ? '📺 Hide format card' : '📺 Show format to viewers';
+  tick();
+}
+
+/* ══════════ CLOCK LOOP (also detects expiry — only the referee does this) ══════════ */
+var handledShot = null, lastBuzz = -1, frameUpDone = {}, matchUpSent = false;
+function tick(){
+  if(!S || !S.so || S.status!=='active') return;
+  var t = SO.times(S), c = t.cfg;
+  // match + frame cards
+  setCk('ck-m', t.mRem, t.mTot, t.hasMatch, 60000, 30000, S.so.matchUp ? (c.endRule==='finish'?'LAST FRAME':'TIME UP') : null);
+  setCk('ck-f', t.fRem, t.fTot, t.hasFrame, 60000, 15000);
+  // shot
+  var sh = g('shot'), sec = SO.secs(t.sRem), warn = c.warnAt*1000;
+  g('shot-n').textContent = t.running ? sec : (t.started ? sec : SO.secs(t.sDur));
+  g('shot-fill').style.width = (t.sDur ? (t.sRem / t.sDur * 100) : 0) + '%';
+  sh.className = 'shot' + (!t.running ? ' idle' : t.sRem <= warn ? ' danger' : t.sRem <= Math.max(warn*2, 10000) ? ' warn' : '');
+  g('shot-who').textContent = (t.running ? '' : 'PAUSED · ') + pname(S, S.turn);
+  g('shot-ph').textContent = (c.p2On && t.hasFrame)
+    ? (t.phase===1 ? c.shotSec+'s shots now · '+c.p2Sec+'s from '+SO.fmt(c.p2After*1000) : 'FAST PHASE · '+c.p2Sec+'s per shot')
+    : c.shotSec+'s per shot';
+  // play button
+  var pb = g('play');
+  if(t.running){ pb.className='play pause'; pb.textContent='❚❚ PAUSE'; }
+  else { pb.className='play start'; pb.textContent = !t.started ? '▶ START MATCH' : (t.fEl===0 ? '▶ START FRAME '+S.currentFrame : '▶ RESUME'); }
+
+  if(!t.running) return;
+  // warning buzzes
+  if(sec <= c.warnAt && sec > 0 && sec !== lastBuzz){ lastBuzz = sec; vibe(sec<=2?120:50); }
+  // shot clock expired
+  var key = S.so.clk.sStart + ':' + S.so.clk.sDur;
+  if(t.sRem <= 0 && handledShot !== key){ handledShot = key; vibe([300,100,300]); askTimeFoul(true); }
+  // frame clock expired → stop clocks and ask who won
+  if(t.hasFrame && t.fRem <= 0 && !frameUpDone[S.currentFrame]){
+    frameUpDone[S.currentFrame] = true;
+    var s = clone(S); s.so.clk = SO.pause(s.so.clk);
+    ev(s, 'frameup', 'FRAME TIME UP', 'Frame '+s.currentFrame);
+    commit(s, true); vibe([400,150,400]);
+    askFrameOver(true);
+  }
+  // match clock expired
+  if(t.hasMatch && t.mRem <= 0 && !S.so.matchUp && !matchUpSent){
+    matchUpSent = true;
+    var s2 = clone(S); s2.so.matchUp = true;
+    if(c.endRule==='stop'){ s2.so.clk = SO.pause(s2.so.clk); }
+    ev(s2, 'matchup', 'MATCH TIME UP', c.endRule==='finish' ? 'This is the final frame' : 'Play stops now');
+    commit(s2, true); vibe([400,150,400,150,400]);
+    if(c.endRule==='stop') askFrameOver(true, true);
+  }
+}
+function setCk(id, rem, tot, on, warnMs, dangerMs, label){
+  var el = g(id); if(!on){ el.className='ck off'; g(id+'-v').textContent='NO LIMIT'; g(id+'-b').style.width='0'; return; }
+  el.className = 'ck ' + SO.level(rem, tot, warnMs, dangerMs);
+  g(id+'-v').textContent = label || SO.fmt(rem);
+  g(id+'-b').style.width = (tot ? rem/tot*100 : 0) + '%';
+}
+setInterval(tick, 100);
+
+/* ══════════ ACTIONS ══════════ */
+function togglePlay(){
+  if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s), t = SO.times(s);
+  if(t.running){
+    s.so.clk = SO.pause(s.so.clk);
+    ev(s, 'pause', 'PAUSED', '');
+  } else {
+    if(s.so.matchUp && c.endRule==='stop' && !s.so.decider){ askFrameOver(true, true); return; }
+    var fresh = t.fEl === 0;
+    s.so.clk = SO.resume(s.so.clk, c);
+    if(fresh){ s.so.clk = SO.resetShot(s.so.clk, c); s.frameStartTime = SO.now(); }
+    if(!s.so.started){ s.so.started = true; s.matchStartTime = SO.now(); }
+    if(s.so.explainer && s.so.explainer.on) s.so.explainer = { on:false, ts:SO.now() };
+    ev(s, fresh ? 'go' : 'resume', fresh ? 'FRAME '+s.currentFrame : 'RESUMED', fresh ? pname(s, s.turn)+' to break' : '');
+  }
+  vibe(60); commit(s, true);
+}
+
+function pot(color, val){
+  if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s), pl = 'player'+s.turn;
+  closeShot(s, s.turn);
+  s[pl].score += val;
+  s[pl].currentBreak = (s[pl].currentBreak||0) + val;
+  s.currentBreak = s[pl].currentBreak;
+  s.breakPlayer = s.turn;
+  s.breakBalls = (s.breakBalls||[]).concat([{ color:color, value:val }]);
+  if(color==='red') s.redsRemaining = Math.max(0, (s.redsRemaining||0) - 1);
+  if(s.currentBreak > (s['bestBreak'+s.turn]||0)) s['bestBreak'+s.turn] = s.currentBreak;
+  s.so.clk = SO.resetShot(s.so.clk, c);
+  g('foulrow').classList.remove('open');
+  vibe(35); commit(s);
+}
+
+function swapTurn(s){
+  s.player1.currentBreak = 0; s.player2.currentBreak = 0;
+  s.currentBreak = 0; s.breakBalls = [];
+  s.turn = s.turn===1 ? 2 : 1; s.breakPlayer = s.turn;
+}
+function endVisit(){
+  if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s);
+  closeShot(s, s.turn); swapTurn(s);
+  s.so.clk = SO.resetShot(s.so.clk, c);
+  vibe([25,25,25]); commit(s);
+}
+function toggleFoul(){ g('foulrow').classList.toggle('open'); }
+function foul(v){
+  if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s), opp = s.turn===1?2:1;
+  closeShot(s, s.turn);
+  s['player'+opp].score += v; swapTurn(s);
+  s.so.clk = SO.resetShot(s.so.clk, c);
+  ev(s, 'foul', 'FOUL', '+'+v+' to '+short(s, opp));
+  g('foulrow').classList.remove('open');
+  vibe([80,40,80]); commit(s);
+}
+
+function askTimeFoul(auto){
+  if(!S) return;
+  var c = SO.cfgOf(S), who = S.turn, opp = who===1?2:1;
+  modal(
+    '<h3 style="color:var(--red)">⏱ '+(auto?'Shot time expired':'Time foul')+'</h3>'+
+    '<p><b style="color:#fff">'+SO.esc(pname(S,who))+'</b> ran out of shot time. Time foul gives <b style="color:#fff">+'+c.penalty+'</b> to '+SO.esc(pname(S,opp))+' and ball in hand.</p>'+
+    '<button class="big red" onclick="timeFoul()">Apply time foul (+'+c.penalty+')</button>'+
+    (auto ? '<button class="big" onclick="closeSheets();resetShotOnly()">No foul — shot was played in time</button>' : '<button class="big" onclick="closeSheets()">Cancel</button>')
+  );
+}
+function timeFoul(){
+  closeSheets(); if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s), who = s.turn, opp = who===1?2:1;
+  closeShot(s, who, s.so.clk.sDur);
+  s.so.stats['p'+who].tf++;
+  s['player'+opp].score += c.penalty; swapTurn(s);
+  s.so.clk = SO.resetShot(s.so.clk, c);
+  ev(s, 'timefoul', 'TIME FOUL', short(s,who)+' · +'+c.penalty+' to '+short(s,opp)+' · ball in hand');
+  vibe([120,60,120]); commit(s);
+}
+function useExtension(){
+  if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s), k = 'p'+s.turn;
+  if(!c.extCount || !s.so.ext || s.so.ext[k] <= 0) return;
+  s.so.ext[k]--;
+  s.so.clk.sDur = (s.so.clk.sDur || c.shotSec*1000) + c.extSec*1000;
+  handledShot = null;
+  ev(s, 'ext', 'EXTENSION', short(s, s.turn)+' · +'+c.extSec+'s');
+  vibe(80); commit(s);
+}
+function resetShotOnly(){
+  if(!S) return;
+  var s = clone(S); s.so.clk = SO.resetShot(s.so.clk, SO.cfgOf(s)); handledShot = null;
+  commit(s, true);
+}
+function setTurn(n){
+  if(!S || S.turn===n) return;
+  var s = clone(S); swapTurn(s); s.turn = n; s.breakPlayer = n;
+  s.so.clk = SO.resetShot(s.so.clk, SO.cfgOf(s));
+  commit(s);
+}
+function adj(k, secs){
+  if(!S) return;
+  var s = clone(S); s.so.clk = SO.adjust(s.so.clk, k, secs*1000);
+  if(k==='m' && secs>0 && s.so.matchUp && SO.times(s).mRem > 0){ s.so.matchUp = false; matchUpSent = false; }
+  if(k==='f' && secs>0) frameUpDone[s.currentFrame] = false;
+  if(k==='s') handledShot = null;
+  commit(s, true);
+}
+
+/* ── frame over ── */
+function askFrameOver(auto, matchStop){
+  if(!S) return;
+  var p1 = S.player1.score, p2 = S.player2.score, lead = p1>p2?1:p2>p1?2:0;
+  var head = matchStop ? 'Match time up' : auto ? 'Frame time up' : 'Frame over?';
+  var msg = lead ? SO.esc(pname(S,lead))+' leads '+Math.max(p1,p2)+'–'+Math.min(p1,p2)+'.' : 'Scores are level '+p1+'–'+p2+'. Re-spot the black, then pick the winner.';
+  if(matchStop) msg += ' Award this frame, then the match is decided on frames (level = deciding frame).';
+  modal('<h3>🏁 '+head+'</h3><p>'+msg+'</p>'+
+    [1,2].map(function(n){ return '<button class="big '+(lead===n?'green':'')+'" onclick="award('+n+')">'+SO.esc(pname(S,n))+' wins frame '+S.currentFrame+'</button>'; }).join('')+
+    (matchStop ? '<button class="big" onclick="award(0)">Don\'t count this frame</button>' : '')+
+    '<button class="big" onclick="closeSheets()">'+(auto?'Not yet — keep the clocks paused':'Cancel')+'</button>');
+}
+function award(n){
+  closeSheets(); if(!S) return;
+  var s = clone(S), c = SO.cfgOf(s);
+  closeShot(s, s.turn);
+  if(n){
+    s['player'+n].frames++;
+    s.so.frames = (s.so.frames||[]).concat([{ f:s.currentFrame, w:n, a:s.player1.score, b:s.player2.score, ms:Math.round(SO.times(s).fEl) }]);
+  }
+  var f1 = s.player1.frames, f2 = s.player2.frames, need = Math.ceil(s.bestOf/2);
+  // reset the table for the next frame
+  s.player1.score = 0; s.player2.score = 0; s.player1.currentBreak = 0; s.player2.currentBreak = 0;
+  s.currentBreak = 0; s.breakBalls = []; s.redsRemaining = c.reds;
+  s.bestBreak1 = 0; s.bestBreak2 = 0;
+  s.frameBreaker = s.frameBreaker===1 ? 2 : 1; s.turn = s.frameBreaker; s.breakPlayer = s.turn;
+  s.so.clk = SO.newFrameClk(s.so.clk);
+  s.so.ext = { p1:c.extCount, p2:c.extCount };
+  var winner = 0;
+  if(f1 >= need) winner = 1; else if(f2 >= need) winner = 2;
+  else if(s.so.matchUp){ if(f1 !== f2) winner = f1>f2?1:2; else s.so.decider = true; }
+  if(winner){
+    s.status = 'finished'; s.matchWinner = winner;
+    ev(s, 'win', pname(s,winner), 'WINS '+Math.max(f1,f2)+'–'+Math.min(f1,f2));
+    db.ref('match_registry/'+s.matchId).update({ status:'finished', winner:winner, score:f1+'-'+f2, endTime:SO.now() });
+  } else {
+    s.currentFrame++;
+    if(n) ev(s, 'frame', short(s,n)+' WINS FRAME '+(s.currentFrame-1), 'Frames '+f1+'–'+f2 + (s.so.decider?' · DECIDING FRAME NEXT':''));
+    else ev(s, 'frame', 'FRAME NOT COUNTED', 'Frames '+f1+'–'+f2 + (s.so.decider?' · DECIDING FRAME NEXT':''));
+  }
+  vibe([100,50,100,50,100]); commit(s);
+}
+
+function undo(){
+  if(!hist.length || !S) return;
+  var h = hist.pop(), s = h.st;
+  // keep the clocks running as they are, unless the undo crosses a frame/match boundary
+  if(s.currentFrame === S.currentFrame && s.status === S.status){ s.so.clk = S.so.clk; s.so.matchUp = S.so.matchUp; }
+  else s.so.clk = h.clk;
+  s.so.ev = { t:'undo', txt:'', sub:'', ts:SO.now() };
+  handledShot = null; vibe(60); commit(s, true);
+}
+
+function modal(html){ g('modal-body').innerHTML = html; closeSheets(); openSheet('sh-modal'); }
+
+/* ── menu ── */
+function toggleExplainer(){
+  var s = clone(S), on = !(s.so.explainer && s.so.explainer.on);
+  s.so.explainer = { on:on, ts:SO.now() }; closeSheets(); commit(s, true);
+}
+function fillNames(){ g('ed-p1').value = S.player1.name; g('ed-p2').value = S.player2.name; }
+function saveNames(){
+  var a = g('ed-p1').value.trim(), b = g('ed-p2').value.trim(); if(!a||!b) return;
+  var s = clone(S); s.player1.name = a; s.player2.name = b; closeSheets(); commit(s, true);
+}
+function resetFrame(){
+  if(!confirm('Reset this frame\'s scores and reds? Clocks keep running.')) return;
+  var s = clone(S), c = SO.cfgOf(s);
+  s.player1.score = 0; s.player2.score = 0; s.player1.currentBreak = 0; s.player2.currentBreak = 0;
+  s.currentBreak = 0; s.breakBalls = []; s.redsRemaining = c.reds;
+  closeSheets(); commit(s);
+}
+function abandon(){
+  if(!confirm('Abandon and delete this match? This cannot be undone.')) return;
+  closeSheets(); hist = []; ref.remove();
+}
+
+/* ══════════ FINISHED ══════════ */
+function renderOver(){
+  var s = S, w = s.matchWinner, st = (s.so&&s.so.stats)||{p1:{},p2:{}};
+  g('ov-mid').textContent = s.matchId || '';
+  g('ov-name').textContent = pname(s, w);
+  g('ov-score').textContent = s.player1.frames+' – '+s.player2.frames;
+  function avg(p){ return p.shots ? (p.ms/p.shots/1000).toFixed(1)+'s' : '–'; }
+  var rows = [['Avg shot time', avg(st.p1), avg(st.p2)], ['Shots', st.p1.shots||0, st.p2.shots||0], ['Time fouls', st.p1.tf||0, st.p2.tf||0]];
+  (s.so.frames||[]).forEach(function(f){ rows.push(['Frame '+f.f+' · '+SO.fmt(f.ms), (f.w===1?'✔ ':'')+f.a, (f.w===2?'✔ ':'')+f.b]); });
+  g('ov-stats').innerHTML = '<tr><th></th><th>'+SO.esc(short(s,1))+'</th><th>'+SO.esc(short(s,2))+'</th></tr>' +
+    rows.map(function(r){ return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>'; }).join('');
+}
+function newMatch(){ hist = []; frameUpDone = {}; matchUpSent = false; ref.remove(); }
+</script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(function(){});</script>
+</body>
+</html>
