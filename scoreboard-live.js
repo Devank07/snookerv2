@@ -10,8 +10,47 @@
 (function (w) {
   var TYPES = {
     'shot-clock': 1, 'shot-bar': 1, 'shot-flash': 1,
-    'match-clock': 1, 'frame-clock': 1, 'match-bar': 1, 'frame-bar': 1, 'ext-dots': 1
+    'match-clock': 1, 'frame-clock': 1, 'match-bar': 1, 'frame-bar': 1, 'ext-dots': 1, 'sponsor': 1
   };
+  /* elements whose text can be shrunk to fit their box */
+  var TEXT_TYPES = { 'player-name': 1, 'state': 1, 'tournament': 1, 'referee': 1, 'custom-text': 1, 'break-who': 1,
+    'frame-num': 1, 'best-of': 1, 'score-plain': 1, 'score-box-3d': 1, 'frames': 1, 'break-val': 1, 'break-p1': 1, 'break-p2': 1,
+    'match-clock': 1, 'frame-clock': 1, 'shot-clock': 1, 'reds-left': 1, 'pts-remaining': 1 };
+
+  /* "Show when" rules — the same answer in the builder preview and on OBS */
+  var WHEN = [
+    ['always', 'Always'], ['break', 'Only during a break'], ['no-break', 'Only when there is no break'],
+    ['at-table', 'Only when this player is at the table'], ['not-at-table', 'Only when this player is NOT at the table'],
+    ['leading', 'Only when this player is leading'], ['shotclock', 'Only when the shot clock is on'],
+    ['decider', 'Only in the deciding frame'], ['finished', 'Only when the match is over'], ['playing', 'Only while the match is being played']
+  ];
+  function visible(el, m) {
+    if (!el || el.hidden) return false;
+    m = m || {};
+    var p1 = m.player1 || {}, p2 = m.player2 || {}, need = Math.ceil((m.bestOf || 1) / 2);
+    switch (el.showWhen || 'always') {
+      case 'break': return (m.currentBreak || 0) > 0;
+      case 'no-break': return (m.currentBreak || 0) === 0;
+      case 'at-table': return !!el.player && el.player == m.turn;
+      case 'not-at-table': return !!el.player && el.player != m.turn;
+      case 'leading': var a = el.player == 1 ? p1 : p2, b = el.player == 1 ? p2 : p1; return (a.score || 0) > (b.score || 0);
+      case 'shotclock': return !!(m.so || m.shotClockEnabled);
+      case 'decider': return !!((m.so && m.so.decider) || (need > 1 && (p1.frames || 0) === need - 1 && (p2.frames || 0) === need - 1));
+      case 'finished': return m.status === 'finished';
+      case 'playing': return m.status !== 'finished';
+    }
+    return true;
+  }
+
+  /* Shrink text that would overflow its box (keeps long names inside the design) */
+  function fit(box) {
+    var t = box && box.firstElementChild; if (!t) return;
+    if (t.dataset.fs === undefined) t.dataset.fs = t.style.fontSize || '';   // the size the design asked for
+    t.style.fontSize = t.dataset.fs;
+    if (!box.clientWidth || t.scrollWidth <= t.clientWidth + 1) return;
+    var size = parseFloat(getComputedStyle(t).fontSize), min = size * 0.45;
+    while (t.scrollWidth > t.clientWidth + 1 && size > min) { size *= 0.94; t.style.fontSize = size + 'px'; }
+  }
 
   function now() { return w.SO ? w.SO.now() : Date.now(); }
 
@@ -115,6 +154,12 @@
         return { html: '<div style="width:' + (tot ? rem / tot * 100 : 0).toFixed(2) + '%;height:100%;border-radius:inherit;background:' +
           pick(el, l5, el.color || (isM ? '#5fb8ff' : '#59e08a')) + ';' + (el.anchor === 'right' ? 'margin-left:auto;' : '') + '"></div>' };
       }
+      case 'sponsor': {
+        var imgs = el.images || [];
+        if (!imgs.length) return { html: '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.35);font:700 12px \'Barlow Condensed\',sans-serif;letter-spacing:2px;border:1px dashed rgba(255,255,255,.25);">SPONSOR LOGOS</div>' };
+        var every = Math.max(2, +el.interval || 6) * 1000, idx = Math.floor(now() / every) % imgs.length;
+        return { html: '<img src="' + imgs[idx] + '" style="width:100%;height:100%;object-fit:contain;animation:sbFade .7s ease;">' };
+      }
       case 'ext-dots': {
         if (!cs.extCount) return { hide: true };
         var left = cs.ext['p' + el.player] || 0, d = '', sz = el.dotSize || 12, c = el.color || '#f0c040';
@@ -138,5 +183,14 @@
     if (r.html !== undefined && div._lastHtml !== r.html) { div.innerHTML = r.html; div._lastHtml = r.html; }
   }
 
-  w.SBLive = { TYPES: TYPES, isLive: function (t) { return !!TYPES[t]; }, clockState: clockState, demoState: demoState, render: render, paint: paint };
+  // fade used by the sponsor rotator
+  if (!document.getElementById('sblive-css')) {
+    var st = document.createElement('style'); st.id = 'sblive-css';
+    st.textContent = '@keyframes sbFade{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  w.SBLive = { TYPES: TYPES, TEXT_TYPES: TEXT_TYPES, WHEN: WHEN, isLive: function (t) { return !!TYPES[t]; },
+    isText: function (t) { return !!TEXT_TYPES[t]; }, visible: visible, fit: fit,
+    clockState: clockState, demoState: demoState, render: render, paint: paint };
 })(window);
