@@ -1,0 +1,142 @@
+/* ═══════════════════════════════════════════════════════════════
+   UPBSA.TV — LIVE CLOCK ELEMENTS for builder designs
+   Shared by builder.html (preview) and overlay.html (on stream), so
+   what you design is exactly what OBS shows.
+
+   Works for Shoot Out matches (match / frame / shot clocks from
+   shootout-core.js) and for normal snooker (shot clock + elapsed
+   frame / match time).
+   ═══════════════════════════════════════════════════════════════ */
+(function (w) {
+  var TYPES = {
+    'shot-clock': 1, 'shot-bar': 1, 'shot-flash': 1,
+    'match-clock': 1, 'frame-clock': 1, 'match-bar': 1, 'frame-bar': 1, 'ext-dots': 1
+  };
+
+  function now() { return w.SO ? w.SO.now() : Date.now(); }
+
+  /* Everything the clock elements need, for any kind of match */
+  function clockState(m) {
+    if (m && m.so && w.SO) {
+      var t = w.SO.times(m), c = t.cfg;
+      return {
+        so: true, live: t.running && t.started, hasShot: true,
+        sRem: t.sRem, sDur: t.sDur, warn: c.warnAt * 1000,
+        hasMatch: t.hasMatch, mRem: t.mRem, mTot: t.mTot, matchUp: !!m.so.matchUp, endRule: c.endRule,
+        hasFrame: t.hasFrame, fRem: t.fRem, fTot: t.fTot,
+        extCount: c.extCount, ext: m.so.ext || {}
+      };
+    }
+    var n = now(), on = !!(m && m.shotClockEnabled && m.shotClockStarted);
+    var dur = ((m && m.shotClockDuration) || 60) * 1000;
+    return {
+      so: false, live: on, hasShot: on,
+      sRem: on ? Math.max(0, dur - (n - m.shotClockStarted)) : dur, sDur: dur, warn: 10000,
+      hasMatch: !!(m && m.matchStartTime), mEl: m && m.matchStartTime ? n - m.matchStartTime : 0,
+      hasFrame: !!(m && m.frameStartTime), fEl: m && m.frameStartTime ? n - m.frameStartTime : 0,
+      extCount: 0, ext: {}
+    };
+  }
+
+  /* fixed numbers for the builder preview */
+  function demoState() {
+    return { so: true, live: true, hasShot: true, sRem: 12400, sDur: 20000, warn: 5000,
+      hasMatch: true, mRem: 1122000, mTot: 1800000, matchUp: false, endRule: 'finish',
+      hasFrame: true, fRem: 375000, fTot: 600000, extCount: 1, ext: { p1: 1, p2: 0 } };
+  }
+
+  function mmss(ms, up) {
+    var s = up ? Math.floor(ms / 1000) : Math.ceil(ms / 1000); s = Math.max(0, s);
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (h ? h + ':' + ('0' + m).slice(-2) : ('0' + m).slice(-2)) + ':' + ('0' + x).slice(-2);
+  }
+  function lvl(rem, warnMs, dangerMs) { return rem <= dangerMs ? 'danger' : rem <= warnMs ? 'warn' : 'ok'; }
+  function pick(el, l, base) { return l === 'danger' ? (el.dangerColor || '#ff3b2f') : l === 'warn' ? (el.warnColor || '#f5a623') : (base || el.color || '#ffffff'); }
+  /* red flash strength 0..1 — one flash per second, two per second in the last 2 */
+  function pulse(rem, warnMs) {
+    if (rem <= 0) return 0.8;
+    if (rem > warnMs) return 0;
+    var period = rem <= 2000 ? 500 : 1000;
+    return Math.pow((rem % period) / period, 2.2);
+  }
+
+  function textWrap(el) {
+    var al = el.align || 'center', jc = al === 'left' ? 'flex-start' : al === 'right' ? 'flex-end' : 'center';
+    return 'width:100%;height:100%;display:flex;align-items:center;justify-content:' + jc + ';overflow:hidden;padding:0 6px;line-height:1;' +
+      "font-family:'" + (el.fontFamily || 'Bebas Neue') + "',sans-serif;font-size:" + (el.fontSize || 40) + 'px;font-weight:' + (el.fontWeight || 400) +
+      ';text-transform:' + (el.textTransform || 'none') + ';letter-spacing:' + (el.letterSpacing || 0) + 'px;white-space:nowrap;font-variant-numeric:tabular-nums;';
+  }
+
+  /* Returns { html, hide, flash } for one element */
+  function render(el, m, cs) {
+    var turn = m && m.turn, at = el.player == turn;
+    switch (el.type) {
+      case 'shot-clock': {
+        if (!cs.hasShot) return { hide: true };
+        var sec = Math.ceil(cs.sRem / 1000), l = cs.live ? lvl(cs.sRem, Math.max(cs.warn * 2, 10000), cs.warn) : 'ok';
+        return { html: '<div style="' + textWrap(el) + 'color:' + pick(el, l) + ';">' + sec + (el.showUnit === false || el.showUnit === 'no' ? '' : 's') + '</div>' };
+      }
+      case 'shot-bar': {
+        if (!cs.hasShot) return { hide: true };
+        var frac = at && cs.live && cs.sDur ? cs.sRem / cs.sDur : 1;
+        var l2 = at && cs.live ? lvl(cs.sRem, Math.max(cs.warn * 2, 10000), cs.warn) : 'ok';
+        var anchor = el.anchor || (el.player == 1 ? 'right' : 'left');
+        var col = pick(el, l2, el.color || '#2ecc71');
+        return { html: '<div style="width:' + (Math.max(0, Math.min(1, frac)) * 100).toFixed(2) + '%;height:100%;background:' + col +
+          ';' + (anchor === 'right' ? 'margin-left:auto;' : '') + 'opacity:' + (at ? 1 : 0.2) + ';border-radius:inherit;' +
+          (l2 === 'danger' ? 'box-shadow:0 0 14px ' + col + ';' : '') + '"></div>' };
+      }
+      case 'shot-flash': {
+        var on = at && cs.live && cs.hasShot;
+        return { html: '', flash: on ? pulse(cs.sRem, cs.warn) * (el.maxOpacity === undefined ? 0.75 : el.maxOpacity) : 0 };
+      }
+      case 'match-clock': {
+        if (!cs.hasMatch) return { hide: true };
+        if (cs.so) {
+          var up = cs.matchUp ? (cs.endRule === 'finish' ? 'LAST FRAME' : 'TIME UP') : null;
+          var l3 = up ? 'danger' : lvl(cs.mRem, 60000, 30000);
+          return { html: '<div style="' + textWrap(el) + 'color:' + pick(el, l3) + ';">' + (up || mmss(cs.mRem)) + '</div>' };
+        }
+        return { html: '<div style="' + textWrap(el) + 'color:' + (el.color || '#fff') + ';">' + mmss(cs.mEl, true) + '</div>' };
+      }
+      case 'frame-clock': {
+        if (!cs.hasFrame) return { hide: true };
+        if (cs.so) {
+          var l4 = cs.fRem <= 0 ? 'danger' : lvl(cs.fRem, 60000, 15000);
+          return { html: '<div style="' + textWrap(el) + 'color:' + pick(el, l4) + ';">' + (cs.fRem <= 0 ? 'TIME UP' : mmss(cs.fRem)) + '</div>' };
+        }
+        return { html: '<div style="' + textWrap(el) + 'color:' + (el.color || '#fff') + ';">' + mmss(cs.fEl, true) + '</div>' };
+      }
+      case 'match-bar': case 'frame-bar': {
+        var isM = el.type === 'match-bar', has = isM ? cs.hasMatch : cs.hasFrame;
+        if (!has || !cs.so) return { hide: true };
+        var rem = isM ? (cs.matchUp ? 0 : cs.mRem) : cs.fRem, tot = isM ? cs.mTot : cs.fTot;
+        var l5 = isM ? (cs.matchUp ? 'danger' : lvl(rem, 60000, 30000)) : lvl(rem, 60000, 15000);
+        return { html: '<div style="width:' + (tot ? rem / tot * 100 : 0).toFixed(2) + '%;height:100%;border-radius:inherit;background:' +
+          pick(el, l5, el.color || (isM ? '#5fb8ff' : '#59e08a')) + ';' + (el.anchor === 'right' ? 'margin-left:auto;' : '') + '"></div>' };
+      }
+      case 'ext-dots': {
+        if (!cs.extCount) return { hide: true };
+        var left = cs.ext['p' + el.player] || 0, d = '', sz = el.dotSize || 12, c = el.color || '#f0c040';
+        for (var i = 0; i < cs.extCount; i++) d += '<div style="width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;border:2px solid ' + c + ';background:' + (i < left ? c : 'transparent') + ';flex-shrink:0;"></div>';
+        var jc = (el.align || 'center') === 'left' ? 'flex-start' : el.align === 'right' ? 'flex-end' : 'center';
+        return { html: '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:' + jc + ';gap:5px;">' + d + '</div>' };
+      }
+    }
+    return { html: '' };
+  }
+
+  /* Paint into an element's div (overlay calls this every frame) */
+  function paint(div, el, m, cs) {
+    var r = render(el, m, cs);
+    div.style.visibility = r.hide ? 'hidden' : '';
+    if (el.type === 'shot-flash') {
+      div.style.background = el.color || '#ff2a1a';
+      div.style.opacity = String(r.flash || 0);
+      return;
+    }
+    if (r.html !== undefined && div._lastHtml !== r.html) { div.innerHTML = r.html; div._lastHtml = r.html; }
+  }
+
+  w.SBLive = { TYPES: TYPES, isLive: function (t) { return !!TYPES[t]; }, clockState: clockState, demoState: demoState, render: render, paint: paint };
+})(window);

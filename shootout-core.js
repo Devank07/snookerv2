@@ -19,7 +19,7 @@
    so.matchUp, so.decider, so.explainer:{on,ts}
    ═══════════════════════════════════════════════════════════════ */
 (function (w) {
-  firebase.initializeApp({
+  if (!firebase.apps.length) firebase.initializeApp({
     apiKey: "AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
     authDomain: "snooker-scorer-56573.firebaseapp.com",
     databaseURL: "https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
