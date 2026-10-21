@@ -11,6 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="referee"></script>
 <script src="shootout-core.js"></script>
 <style>
 :root{
@@ -524,7 +526,7 @@ function createMatch(){
       }
     };
     db.ref('matches/table-'+tbl).set(m);
-    db.ref('match_registry/'+mid).set({ matchId:mid, sport:'shootout', status:'active', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo, p1:p1, p1state:m.player1.state, p2:p2, p2state:m.player2.state, firstBreak:sel.brk, startTime:t, format:cfg });
+    db.ref('match_registry/'+mid).set({ matchId:mid, tableKey:'table-'+tbl, sport:'shootout', status:'active', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo, p1:p1, p1state:m.player1.state, p2:p2, p2state:m.player2.state, firstBreak:sel.brk, startTime:t, format:cfg });
   });
 }
 
@@ -798,7 +800,7 @@ function award(n){
   if(winner){
     s.status = 'finished'; s.matchWinner = winner;
     ev(s, 'win', pname(s,winner), 'WINS '+Math.max(f1,f2)+'–'+Math.min(f1,f2));
-    db.ref('match_registry/'+s.matchId).update({ status:'finished', winner:winner, score:f1+'-'+f2, endTime:SO.now() });
+    db.ref('match_registry/'+s.matchId).update({ tableKey:'table-'+tbl, status:'finished', winner:winner, score:f1+'-'+f2, endTime:SO.now() });
   } else {
     s.currentFrame++;
     if(n) ev(s, 'frame', short(s,n)+' WINS FRAME '+(s.currentFrame-1), 'Frames '+f1+'–'+f2 + (s.so.decider?' · DECIDING FRAME NEXT':''));

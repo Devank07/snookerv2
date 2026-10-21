@@ -13,6 +13,8 @@
 <title>Player Registry — CueSports India</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="admin"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0c1a11;color:#e8f4e0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:60px;}
@@ -442,6 +444,7 @@ firebase.initializeApp({
 });
 var db = firebase.database();
 var playersRef = db.ref('players');
+playersRef.on('value',function(s){ var n=Object.keys(s.val()||{}).length; db.ref('meta/playerCount').once('value',function(c){ if(c.val()!==n) db.ref('meta/playerCount').set(n); }); });
 
 // ── STATES ──
 var STATES = [

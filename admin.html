@@ -305,8 +305,9 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
       <div class="sr" onclick="location.href='dashboard.html'"><div class="sr-ic">⚡</div><div><div class="sr-nm">Full Dashboard</div><div class="sr-sb">Desktop control centre</div></div><div class="sr-ar">›</div></div>
       <div class="sr" id="sr-ctr"><div class="sr-ic">🔢</div><div><div class="sr-nm">Match Counter</div><div class="sr-sb" id="ctr-sub">Loading...</div></div></div>
       <div class="sr" id="sr-conn"><div class="sr-ic">🌐</div><div><div class="sr-nm">Connection</div><div class="sr-sb" id="conn-sub">Checking...</div></div></div>
-      <div class="sh">Session</div>
-      <div class="sr" onclick="doLogout()"><div class="sr-ic">🚪</div><div><div class="sr-nm">Lock Admin Panel</div><div class="sr-sb">Clear session, show PIN again</div></div><div class="sr-ar">›</div></div>
+      <div class="sh">Security</div>
+      <div class="sr" onclick="UA.openPinManager()"><div class="sr-ic">🔐</div><div><div class="sr-nm">Referee PINs &amp; Staff</div><div class="sr-sb">Table PINs, sign out referees, who can use admin pages</div></div><div class="sr-ar">›</div></div>
+      <div class="sr" onclick="doLogout()"><div class="sr-ic">🚪</div><div><div class="sr-nm">Sign out</div><div class="sr-sb">Sign this device out of the admin pages</div></div><div class="sr-ar">›</div></div>
     </div>
 
   </div><!-- /scroll -->
@@ -338,50 +339,13 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="admin"></script>
 <script>
-// ═══ PIN ═══
-var PIN = '7252';
-var AKEY = 'upbsa_adm';
-var buf = '';
-
-function pk(k){
-  if(buf.length>=4) return;
-  buf+=k; dots();
-  if(buf.length===4) setTimeout(chk,120);
-}
-function pdel(){ buf=buf.slice(0,-1); dots(); }
-function dots(){
-  for(var i=0;i<4;i++){
-    var d=document.getElementById('d'+i);
-    if(!d) return;
-    d.className='pg-dot'+(i<buf.length?' on':'');
-  }
-}
-function chk(){
-  if(buf===PIN){
-    localStorage.setItem(AKEY,Date.now()+'');
-    document.getElementById('pin-gate').style.display='none';
-    document.getElementById('app-shell').style.display='block';
-  } else {
-    for(var i=0;i<4;i++){ var d=document.getElementById('d'+i); if(d) d.className='pg-dot err'; }
-    if(navigator.vibrate) navigator.vibrate([80,40,80]);
-    setTimeout(function(){ buf=''; dots(); },600);
-  }
-}
-function doLogout(){
-  localStorage.removeItem(AKEY);
-  document.getElementById('app-shell').style.display='none';
-  document.getElementById('pin-gate').style.display='flex';
-  buf=''; dots();
-}
-// Auto-unlock if session valid (30 days)
-(function(){
-  var ts=localStorage.getItem(AKEY);
-  if(ts&&(Date.now()-parseInt(ts))<30*24*60*60*1000){
-    document.getElementById('pin-gate').style.display='none';
-    document.getElementById('app-shell').style.display='block';
-  }
-})();
+// ═══ ACCESS ═══ (staff sign-in is handled by upbsa-auth.js + the database rules)
+function doLogout(){ if(window.UA) UA.signOut(); }
+document.getElementById('pin-gate').style.display='none';
+document.getElementById('app-shell').style.display='block';
 
 // ═══ FIREBASE ═══
 firebase.initializeApp({

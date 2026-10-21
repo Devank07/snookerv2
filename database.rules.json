@@ -1,0 +1,63 @@
+{
+  "rules": {
+    ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+    ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+
+    "matches": {
+      ".read": true,
+      "$table": {
+        ".write": "auth != null && root.child('secret/pins').child($table).exists() && root.child('refPass').child($table).child(auth.uid).child('pin').val() === root.child('secret/pins').child($table).val()"
+      }
+    },
+
+    "match_registry": {
+      ".read": true,
+      "$mid": {
+        ".write": "auth != null && newData.exists() && newData.child('tableKey').isString() && (!data.exists() || data.child('tableKey').val() === newData.child('tableKey').val()) && root.child('secret/pins').child(newData.child('tableKey').val()).exists() && root.child('refPass').child(newData.child('tableKey').val()).child(auth.uid).child('pin').val() === root.child('secret/pins').child(newData.child('tableKey').val()).val()"
+      }
+    },
+
+    "meta": {
+      ".read": true,
+      "matchCounter": {
+        ".write": "auth != null && newData.isNumber() && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
+      }
+    },
+
+    "design":          { ".read": true },
+    "tournaments":     { ".read": true },
+    "tournament":      { ".read": true },
+    "live":            { ".read": true },
+    "match_history":   { ".read": true },
+    "stats_overlay":   { ".read": true },
+    "intro_config":    { ".read": true },
+    "intro_countdown": {
+      ".read": true,
+      ".write": "newData.child('running').val() === false"
+    },
+
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && auth.token.email != null && !root.child('admins').exists() && newData.val() === true"
+      }
+    },
+
+    "refPass": {
+      "$table": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (newData.child('pin').isString() && newData.child('pin').val().length <= 12 && newData.child('at').val() === now && (((!data.exists() || data.child('at').val() < now - 600000) && newData.child('n').val() === 1) || (data.exists() && data.child('at').val() >= now - 600000 && data.child('at').val() < now - 1500 && newData.child('n').val() === data.child('n').val() + 1 && newData.child('n').val() <= 10))))"
+        }
+      }
+    },
+
+    "refSeen": {
+      "$table": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && newData.val() === now && root.child('secret/pins').child($table).exists() && root.child('refPass').child($table).child(auth.uid).child('pin').val() === root.child('secret/pins').child($table).val()"
+        }
+      }
+    }
+  }
+}

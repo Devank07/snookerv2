@@ -434,7 +434,7 @@ var lm={};
 for(var i=1;i<=16;i++){
   (function(n){db.ref('matches/table-'+n).on('value',function(s){lm[n]=s.val();updateStats();});})(i);
 }
-db.ref('players').once('value',function(s){var el=document.getElementById('s-players');if(el)el.textContent=Object.keys(s.val()||{}).length;});
+db.ref('meta/playerCount').once('value',function(s){var el=document.getElementById('s-players');if(el&&s.val()!=null)el.textContent=s.val();});
 db.ref('match_history').once('value',function(s){var el=document.getElementById('s-matches');if(el)el.textContent=Object.keys(s.val()||{}).length;});
 db.ref('tournaments').once('value',function(s){var el=document.getElementById('s-tournaments');if(el)el.textContent=Object.keys(s.val()||{}).length;});
 function updateStats(){

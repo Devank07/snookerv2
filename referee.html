@@ -823,6 +823,8 @@ select.su-in{appearance:none;-webkit-appearance:none;background-image:linear-gra
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="referee"></script>
 <script>
 // Online/offline status
 window.addEventListener('online', function(){
@@ -1338,7 +1340,7 @@ function startMatchFromRemote() {
     // Write to Firebase
     db.ref('matches/table-' + tbl).set(matchData);
     db.ref('match_registry/' + matchId).set({
-      matchId: matchId, sport: 'snooker', status: 'active',
+      matchId: matchId, sport: 'snooker', status: 'active', tableKey: 'table-' + tbl,
       tableNumber: +tbl, tournament: tourn, bestOf: setupBO,
       p1: p1n, p1state: p1s, p2: p2n, p2state: p2s,
       firstBreak: setupBreaker, startTime: now

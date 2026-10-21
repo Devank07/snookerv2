@@ -13,6 +13,8 @@
 <title>Billiards Referee — UPBSA.TV</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="referee"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -611,7 +613,7 @@ function startMatch(){
     mdata.matchId=mid;
     safeSet(matchRef, mdata);
     db.ref('match_registry/'+mid).set({
-      matchId:mid, tournament:'Billiards Match', sport:'billiards',
+      matchId:mid, tableKey:'table-'+tbl, tournament:'Billiards Match', sport:'billiards',
       bestOf:mdata.bestOf||1, tableNumber:+tbl, status:'active',
       p1:p1, p1state:s1, p2:p2, p2state:s2,
       format:fmt, startTime:now
