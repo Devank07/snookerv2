@@ -157,8 +157,12 @@
     var groups = pc.querySelectorAll('.prop-group'), beh = null;
     groups.forEach(function (gp) { var t = gp.querySelector('.prop-group-title'); if (t && /Behaviour/i.test(t.textContent)) beh = gp; });
     var html = atUI(el);
+    if (el.type === 'player-name' || el.type === 'score-plain')
+      html = '<div class="prop-group"><div class="prop-row"><label class="bt-check"><input type="checkbox" id="bt-shadow" ' + (el.shadow === false ? '' : 'checked') + '> Soft shadow behind the text</label></div></div>' + html;
     if (beh) beh.insertAdjacentHTML('beforebegin', html); else { var del = pc.querySelector('.prop-del'); if (del) del.insertAdjacentHTML('beforebegin', html); }
     wireAt(el);
+    var sh = $('bt-shadow');
+    if (sh) sh.addEventListener('change', function () { pushUndo(); if (sh.checked) delete el.shadow; else el.shadow = false; render(); });
   };
 
   /* ════════════ BETTER CONTROLS: scrub, sliders, swatches ════════════ */

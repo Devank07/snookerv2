@@ -927,6 +927,7 @@
       render(); if (rerenderProps || k === 'showWhen' || k === 'anim') refreshProps();
     },
     bulk: function (k, v) { if (v === '') return; var els = selEls(); if (!els.length) return; if (!BT._bulkUndo) { pushUndo(); BT._bulkUndo = setTimeout(function () { BT._bulkUndo = null; }, 800); } els.forEach(function (e) { if (k !== 'color' || SBLive.isText(e.type)) e[k] = v; }); render(); },
+    layerBox: layerBox, demoData: scenarioData,
     z: zOrder, align: alignSel, distribute: distribute, matchSize: matchSize, duplicate: duplicate, mirror: mirrorSel, mirrorLayout: mirrorLayout,
     flag: setFlag, playAnim: playAnimOne, playAnims: playAnims, preview: openPreview, closePreview: closePreview, drawPreview: function () { if ($('pv-modal').classList.contains('open')) drawPreview(); },
     scenario: setScenario, tab: showTab, layer: function (l) { activateLayer(l); selIds = []; selectedId = null; render(); _showPropsEmpty(); renderList(); },
