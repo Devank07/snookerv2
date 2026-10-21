@@ -10,12 +10,63 @@
 (function (w) {
   var TYPES = {
     'shot-clock': 1, 'shot-bar': 1, 'shot-flash': 1,
-    'match-clock': 1, 'frame-clock': 1, 'match-bar': 1, 'frame-bar': 1, 'ext-dots': 1, 'sponsor': 1
+    'match-clock': 1, 'frame-clock': 1, 'match-bar': 1, 'frame-bar': 1, 'ext-dots': 1, 'sponsor': 1, 'smart-text': 1
   };
   /* elements whose text can be shrunk to fit their box */
   var TEXT_TYPES = { 'player-name': 1, 'state': 1, 'tournament': 1, 'referee': 1, 'custom-text': 1, 'break-who': 1,
     'frame-num': 1, 'best-of': 1, 'score-plain': 1, 'score-box-3d': 1, 'frames': 1, 'break-val': 1, 'break-p1': 1, 'break-p2': 1,
-    'match-clock': 1, 'frame-clock': 1, 'shot-clock': 1, 'reds-left': 1, 'pts-remaining': 1 };
+    'match-clock': 1, 'frame-clock': 1, 'shot-clock': 1, 'reds-left': 1, 'pts-remaining': 1, 'smart-text': 1 };
+
+  /* ── Smart text: one element, any wording, live values in {braces} ── */
+  var TOKENS = [
+    ['Players', ['p1.name', 'p1.first', 'p1.surname', 'p1.state', 'p1.score', 'p1.frames', 'p1.break',
+                 'p2.name', 'p2.first', 'p2.surname', 'p2.state', 'p2.score', 'p2.frames', 'p2.break']],
+    ['Match', ['frame', 'bestOf', 'firstTo', 'tournament', 'referee', 'table', 'matchId']],
+    ['Live', ['atTable', 'atSurname', 'leader', 'lead', 'break', 'breakPlayer', 'reds', 'ptsLeft']],
+    ['Clocks', ['matchClock', 'frameClock', 'shotClock']]
+  ];
+  function firstOf(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
+  function surnameOf(n) { var p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p.slice(1).join(' ') : (p[0] || ''); }
+  function tokenValues(m, cs) {
+    m = m || {}; cs = cs || {};
+    var p1 = m.player1 || {}, p2 = m.player2 || {}, t = {};
+    [[1, p1], [2, p2]].forEach(function (x) {
+      var n = x[0], p = x[1];
+      t['p' + n + '.name'] = p.name || ''; t['p' + n + '.first'] = firstOf(p.name); t['p' + n + '.surname'] = surnameOf(p.name);
+      t['p' + n + '.state'] = p.state || ''; t['p' + n + '.score'] = p.score || 0; t['p' + n + '.frames'] = p.frames || 0; t['p' + n + '.break'] = p.currentBreak || 0;
+    });
+    var at = m.turn === 2 ? p2 : p1, d = (p1.score || 0) - (p2.score || 0), reds = Math.max(0, m.redsRemaining == null ? 15 : m.redsRemaining);
+    t.frame = m.currentFrame || 1; t.bestOf = m.bestOf || 1; t.firstTo = Math.ceil((m.bestOf || 1) / 2);
+    t.tournament = m.tournament || ''; t.referee = m.referee || ''; t.table = m.tableNumber || ''; t.matchId = m.matchId || '';
+    t.atTable = at.name || ''; t.atSurname = surnameOf(at.name);
+    t.leader = d > 0 ? surnameOf(p1.name) : d < 0 ? surnameOf(p2.name) : 'LEVEL'; t.lead = Math.abs(d);
+    t['break'] = m.currentBreak || 0; t.breakPlayer = m.breakPlayer === 2 ? (p2.name || '') : (p1.name || '');
+    t.reds = reds; t.ptsLeft = reds * 8 + 27;
+    t.matchClock = cs.so ? (cs.matchUp ? (cs.endRule === 'finish' ? 'LAST FRAME' : 'TIME UP') : (cs.hasMatch ? mmss(cs.mRem) : '')) : (cs.hasMatch ? mmss(cs.mEl, true) : '');
+    t.frameClock = cs.so ? (cs.hasFrame ? (cs.fRem <= 0 ? 'TIME UP' : mmss(cs.fRem)) : '') : (cs.hasFrame ? mmss(cs.fEl, true) : '');
+    t.shotClock = cs.hasShot ? Math.ceil(cs.sRem / 1000) : '';
+    return t;
+  }
+  function escH(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fillTemplate(tpl, m, cs) {
+    var t = tokenValues(m, cs);
+    return String(tpl == null ? '' : tpl).replace(/\{\s*([a-zA-Z0-9.]+)\s*\}/g, function (all, k) { return k in t ? escH(t[k]) : escH(all); });
+  }
+
+  /* ── "When this player is at the table" style overrides, for any element ── */
+  var AT_KEYS = ['color', 'bgColor', 'bgOpacity', 'borderColor', 'borderWidth', 'glowColor', 'glowSize', 'opacity'];
+  function effective(el, m) {
+    var a = el && el.at;
+    if (!a || !a.on) return el;
+    var who = el.player || a.player || 0;
+    if (!who || !m || who != m.turn || m.status === 'finished') return el;
+    var e = {}; for (var k in el) e[k] = el[k];
+    AT_KEYS.forEach(function (key) { if (a[key] !== undefined && a[key] !== '') e[key] = a[key]; });
+    if (a.color) e.activeColor = a.color;
+    if (a.bgColor) { delete e.bgTop; delete e.bgBot; if (a.bgOpacity === undefined && !(e.bgOpacity > 0)) e.bgOpacity = 100; }
+    if (a.glowColor && a.glowSize === undefined && !e.glowSize) e.glowSize = 18;
+    return e;
+  }
 
   /* "Show when" rules — the same answer in the builder preview and on OBS */
   var WHEN = [
@@ -160,6 +211,10 @@
         var every = Math.max(2, +el.interval || 6) * 1000, idx = Math.floor(now() / every) % imgs.length;
         return { html: '<img src="' + imgs[idx] + '" style="width:100%;height:100%;object-fit:contain;animation:sbFade .7s ease;">' };
       }
+      case 'smart-text': {
+        var al = el.align || 'center';
+        return { html: '<div style="' + textWrap(el) + 'color:' + (el.color || '#ffffff') + ';">' + (fillTemplate(el.template, m, cs) || '&nbsp;') + '</div>' };
+      }
       case 'ext-dots': {
         if (!cs.extCount) return { hide: true };
         var left = cs.ext['p' + el.player] || 0, d = '', sz = el.dotSize || 12, c = el.color || '#f0c040';
@@ -180,7 +235,10 @@
       div.style.opacity = String(r.flash || 0);
       return;
     }
-    if (r.html !== undefined && div._lastHtml !== r.html) { div.innerHTML = r.html; div._lastHtml = r.html; }
+    if (r.html !== undefined && div._lastHtml !== r.html) {
+      div.innerHTML = r.html; div._lastHtml = r.html;
+      if (TEXT_TYPES[el.type] && el.fit !== false && div.isConnected) fit(div);   // live text keeps fitting as it changes
+    }
   }
 
   // fade used by the sponsor rotator
@@ -192,5 +250,6 @@
 
   w.SBLive = { TYPES: TYPES, TEXT_TYPES: TEXT_TYPES, WHEN: WHEN, isLive: function (t) { return !!TYPES[t]; },
     isText: function (t) { return !!TEXT_TYPES[t]; }, visible: visible, fit: fit,
+    TOKENS: TOKENS, tokenValues: tokenValues, fillTemplate: fillTemplate, effective: effective, AT_KEYS: AT_KEYS,
     clockState: clockState, demoState: demoState, render: render, paint: paint };
 })(window);

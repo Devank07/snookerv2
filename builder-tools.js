@@ -43,7 +43,13 @@
     if (!el.label && el.player && /Name|Score|Frames|Frame Dots|State|Shot Timer|Red Flash|Extensions/.test(n)) n = 'P' + el.player + ' ' + n;
     return n;
   }
-  function inField(e) { var t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); }
+  // only real typing fields keep shortcuts for themselves — sliders, colour squares and checkboxes don't
+  var TYPING = { text: 1, number: 1, search: 1, email: 1, url: 1, password: 1, tel: 1 };
+  function inField(e) {
+    var t = e.target; if (!t) return false;
+    if (t.tagName === 'INPUT') return !!TYPING[(t.type || 'text').toLowerCase()];
+    return t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable;
+  }
   function maxZ(L) { return L.elements.reduce(function (m, e) { return Math.max(m, e.zIndex || 1); }, 0); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function activateLayer(name) {
@@ -629,7 +635,7 @@
     if (SBLive.isLive(el.type)) {
       if (el.type === 'shot-flash') { var r = SBLive.render(el, m, SBLive.demoState()); d.style.background = el.color || '#ff2a1a'; d.style.opacity = r.flash || 0; }
       else { var r2 = SBLive.render(el, m, SBLive.demoState()); if (r2.hide) d.style.visibility = 'hidden'; d.innerHTML = r2.html || ''; }
-    } else { var c = _getElContent(el); if (el.type === 'rect-slant') c = null; if (c !== null) d.innerHTML = c; }
+    } else { var c = getElContent(el); if (c !== null) d.innerHTML = c; }
     if (pvAnim) {
       if (el.anim === 'pop') d.classList.add('a-pop'); if (el.anim === 'flash') d.classList.add('a-flash'); if (el.anim === 'slide') d.classList.add('a-slide');
     }
@@ -935,6 +941,7 @@
     colLive: function (inp) { if (!inp._undo) { pushUndo(); inp._undo = true; } var nv = inp.value.toLowerCase(); replaceColour(colOld, nv); colOld = nv; inp.dataset.old = nv; },
     colPrompt: function (c) { var nv = prompt('Replace ' + c + ' everywhere in this design with:', c); if (!nv || nv === c) return; pushUndo(); replaceColour(c, nv.trim()); },
     _clearSel: function () { selIds = []; },
+    select: function (ids) { setSel(ids); },
     get selection() { return selIds.slice(); }
   };
 
@@ -946,6 +953,15 @@
 /* undo / redo also clear the multi-selection */
 (function () {
   var _u = undo, _r = redo;
-  undo = function () { _u(); if (window.BT) BT._clearSel && BT._clearSel(); };
-  redo = function () { _r(); if (window.BT) BT._clearSel && BT._clearSel(); };
+  // keep whatever is still there selected, so the properties panel doesn't go blank
+  function keepSel(fn) {
+    var keep = window.BT ? BT.selection : [];
+    fn();
+    if (!window.BT) return;
+    BT._clearSel();
+    var ok = keep.filter(function (id) { return !!findEl(id); });
+    if (ok.length) BT.select(ok);
+  }
+  undo = function () { keepSel(_u); };
+  redo = function () { keepSel(_r); };
 })();
