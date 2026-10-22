@@ -72,6 +72,21 @@
           ".write": "($kind === 'obs' || $kind === 'board') && newData.val() === now"
         }
       }
+    },
+    "secret": {
+      "pins": {
+        "$table": {
+          ".read": "auth != null && root.child('secret/boardKeys').child($table).exists() && root.child('boardPass').child($table).child(auth.uid).val() === root.child('secret/boardKeys').child($table).val()"
+        }
+      }
+    },
+    "boardPass": {
+      "$table": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (newData.isString() && newData.val().length >= 16 && newData.val() === root.child('secret/boardKeys').child($table).val()))"
+        }
+      }
     }
   }
 }

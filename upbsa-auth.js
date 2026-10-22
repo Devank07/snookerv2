@@ -3,6 +3,7 @@
    <script src="upbsa-auth.js" data-mode="admin"></script>     staff pages (email + password)
    <script src="upbsa-auth.js" data-mode="referee"></script>   referee remotes (table PIN, no account)
    data-when="edit"  → only lock when the page is opened with ?edit=1
+   data-mode="board" → venue boards: nothing locked; UA.boardPin() reads the table PIN when opened with the board link
    The real protection is the database rules (database.rules.json); this file
    is the friendly front door that signs people in so the rules let them write. */
 (function (w, d) {
@@ -17,8 +18,24 @@
   var HASHPIN = null;
   (function () { var m = /(?:^|[#&])pin=(\d{4,8})/.exec(location.hash || ''); if (m) { HASHPIN = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } } })();
 
-  var UA = w.UA = { mode: MODE, ready: false, user: null, openPinManager: openPinManager, signOut: signOut };
+  var BOARD = MODE === 'board'; if (BOARD) MODE = '';
+  var UA = w.UA = { mode: MODE, ready: false, user: null, openPinManager: openPinManager, signOut: signOut, boardPin: boardPin };
   if (!w.firebase || !firebase.database) return;
+
+  /* ── venue board: its board link (#key=…) lets it read the table PIN to show on screen ── */
+  function boardPin(t, cb) {
+    var key = null, m = /(?:^|[#&])key=([A-Za-z0-9_-]{16,64})/.exec(location.hash || '');
+    try { if (m) { key = m[1]; localStorage.setItem('upbsa_bk_' + t, key); } else key = localStorage.getItem('upbsa_bk_' + t); } catch (e) { if (m) key = m[1]; }
+    if (!key || !firebase.auth) return cb(null);
+    var a = firebase.auth(), db = firebase.database(), started = false;
+    function go(u) {
+      if (started) return; started = true;
+      db.ref('boardPass/table-' + t + '/' + u.uid).set(key).then(function () {
+        db.ref('secret/pins/table-' + t).on('value', function (s) { cb(s.val() || null); }, function () { cb(null); });
+      }, function () { cb(null); });
+    }
+    a.onAuthStateChanged(function (u) { if (u) go(u); else a.signInAnonymously().catch(function () { cb(null); }); });
+  }
 
   var Q = firebase.database.Query.prototype, R = firebase.database.Reference.prototype;
   var o = { on: Q.on, off: Q.off, once: Q.once, set: R.set, update: R.update, remove: R.remove, transaction: R.transaction };

@@ -63,7 +63,7 @@ a{color:inherit;}
 .msg.red{background:rgba(231,76,60,.14);color:#ffb3aa;}
 .msg.amber{background:rgba(245,166,35,.12);color:#ffd08a;}
 .acts{display:flex;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--line);flex-wrap:wrap;}
-.acts a,.acts button{flex:1;min-width:70px;height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font:700 12px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
+.acts a,.acts button{flex:1;min-width:60px;height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font:700 12px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
 .acts a:hover,.acts button:hover{border-color:rgba(240,192,64,.5);}
 .legend{padding:0 20px 30px;color:var(--dim);font-size:13px;line-height:1.6;}
 .legend b{color:var(--text);}
@@ -84,7 +84,7 @@ a{color:inherit;}
 </div>
 <div class="grid" id="grid"></div>
 <div class="legend">
-  <b>Referee</b> — the scoring phone checks in every 30 s while the remote is open. <b>OBS</b> / <b>Board</b> — the stream overlay and the venue screen check in every 20 s.
+  <b>Board link</b> — open it once on each venue screen: between matches the screen shows a big scan-to-score QR with the table PIN. <b>Referee</b> — the scoring phone checks in every 30 s while the remote is open. <b>OBS</b> / <b>Board</b> — the stream overlay and the venue screen check in every 20 s.
   A table turns <span style="color:#ff9d92">red</span> when a live match has no referee phone for 2 minutes, and <span style="color:#ffc770">amber</span> when the score hasn't moved for 10 minutes or the table has no PIN.
 </div>
 <div id="toast"></div>
@@ -123,6 +123,15 @@ db.ref('matches').on('value', function(s){
 db.ref('refSeen').on('value', function(s){ REF = s.val() || {}; draw(); });
 db.ref('seen').on('value', function(s){ SEEN = s.val() || {}; draw(); });
 db.ref('secret/pins').on('value', function(s){ PINS = s.val() || {}; draw(); });
+var BK = {};
+db.ref('secret/boardKeys').on('value', function(s){ BK = s.val() || {}; });
+function boardKey(k){
+  if(BK[k]) return Promise.resolve(BK[k]);
+  var a = new Uint8Array(18); crypto.getRandomValues(a);
+  var key = btoa(String.fromCharCode.apply(null, a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return db.ref('secret/boardKeys/' + k).set(key).then(function(){ BK[k] = key; return key; });
+}
+function boardUrl(n, key){ return location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + 'scoreboard.html?table=' + n + '#key=' + key; }
 
 function tables(){
   var set = {}; [1,2,3,4,5,6].forEach(function(n){ set[n] = 1; });
@@ -166,9 +175,9 @@ function tile(n){
   h += '<div class="health"><div class="hc"><div class="hl">Referee' + (rf.phones > 1 ? ' · ' + rf.phones + ' phones' : '') + '</div><div class="hv"><span class="dot ' + dotR + '"></span>' + refTxt + '</div></div>';
   h += '<div class="hc"><div class="hl">OBS</div><div class="hv"><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span>' + (obsOn ? 'on air' : sn.obs ? 'last ' + ago(t - sn.obs) : 'not open') + '</div></div>';
   h += '<div class="hc"><div class="hl">Board</div><div class="hv"><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span>' + (brdOn ? 'showing' : sn.board ? 'last ' + ago(t - sn.board) : 'not open') + '</div></div></div>';
-  var boardPg = m && (m.sport === 'shootout' || m.so) ? 'shootout-board.html' : 'scoreboard.html';
   h += '<div class="acts"><a href="go.html?t=' + n + '" target="_blank" title="Open the referee remote (asks for the PIN)">📱 Remote</a>' +
-       '<a href="' + boardPg + '?table=' + n + '" target="_blank">🖥 Board</a>' +
+       '<button data-board="' + n + '" title="Open the venue board for this table (shows the scan-to-score QR between matches)">🖥 Board</button>' +
+       '<button data-boardcopy="' + n + '" title="Copy the venue board link — open it once on the venue screen">📋 Board link</button>' +
        '<button data-copy="overlay.html?table=' + n + '" title="Copy the OBS browser-source link">📋 OBS link</button>' +
        '<a href="table-cards.html" target="_blank">🖨 Card</a></div>';
   return h + '</div>';
@@ -191,6 +200,10 @@ function render(){
   document.title = (alerts ? '(' + alerts + ') ' : '') + 'Control Room — UPBSA.TV';
 }
 document.addEventListener('click', function(e){
+  var bo = e.target.closest('[data-board]');
+  if(bo){ var n = bo.dataset.board, win = window.open('about:blank', '_blank'); boardKey('table-' + n).then(function(key){ if(win) win.location.href = boardUrl(n, key); }); return; }
+  var bc = e.target.closest('[data-boardcopy]');
+  if(bc){ var n2 = bc.dataset.boardcopy; boardKey('table-' + n2).then(function(key){ var u = boardUrl(n2, key); try { navigator.clipboard.writeText(u).then(function(){ toast('Board link copied — open it on the venue screen'); }, function(){ prompt('Venue board link', u); }); } catch(er){ prompt('Venue board link', u); } }); return; }
   var b = e.target.closest('[data-copy]'); if(!b) return;
   var url = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + b.dataset.copy;
   try { navigator.clipboard.writeText(url); toast('OBS link copied'); } catch(er){ prompt('OBS link', url); }
