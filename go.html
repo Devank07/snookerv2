@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050a06">
+<title>Table Remote — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;background:radial-gradient(ellipse at top,#143322,#050a06 70%) fixed;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
+.wrap{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 20px;text-align:center;}
+.brand{font:900 14px 'Barlow Condensed',sans-serif;letter-spacing:6px;color:#f0c040;}
+h1{font:900 46px 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:6px 0 4px;}
+.sub{font-size:14px;color:rgba(232,244,224,.6);margin-bottom:26px;line-height:1.45;}
+.spin{width:36px;height:36px;margin:14px auto;border-radius:50%;border:3px solid rgba(240,192,64,.2);border-top-color:#f0c040;animation:s .8s linear infinite;}@keyframes s{to{transform:rotate(360deg)}}
+.opts{display:none;flex-direction:column;gap:12px;}
+.opt{display:flex;align-items:center;gap:16px;padding:18px;border-radius:16px;border:1px solid rgba(240,192,64,.25);background:rgba(240,192,64,.07);color:#fff;text-decoration:none;text-align:left;}
+.opt:active{transform:scale(.98);background:rgba(240,192,64,.18);}
+.opt .i{font-size:30px;width:40px;text-align:center;}
+.opt b{display:block;font:900 24px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;}
+.opt span{font-size:13px;color:rgba(232,244,224,.6);}
+.err{color:#ff8a7a;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:1px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">UPBSA.TV · REFEREE</div>
+  <h1 id="ttl">Table</h1>
+  <div class="sub" id="sub">Opening the remote for this table…</div>
+  <div class="spin" id="spin"></div>
+  <div class="opts" id="opts">
+    <a class="opt" data-p="referee.html"><div class="i">🔴</div><div><b>Snooker</b><span>Reds &amp; colours, break tracking</span></div></a>
+    <a class="opt" data-p="billiards-referee.html"><div class="i">🎱</div><div><b>Billiards</b><span>Points up, frames or time</span></div></a>
+    <a class="opt" data-p="shootout-referee.html"><div class="i">⏱️</div><div><b>Shoot Out</b><span>Match, frame &amp; shot clocks</span></div></a>
+  </div>
+</div>
+<script>
+/* QR table cards land here: go.html?t=3#pin=123456
+   It opens the right remote for whatever is on the table, carrying the PIN along. */
+(function(){
+  var q = new URLSearchParams(location.search), t = parseInt(q.get('t') || q.get('table'), 10);
+  var g = function(id){ return document.getElementById(id); };
+  if(!(t > 0)){ g('ttl').textContent = 'No table'; g('sub').innerHTML = '<span class="err">This card has no table number. Ask the organiser for a new one.</span>'; g('spin').style.display='none'; return; }
+  g('ttl').textContent = 'Table ' + t; document.title = 'Table ' + t + ' — UPBSA.TV';
+  var hash = location.hash || '';
+  try { history.replaceState(null, '', location.pathname + location.search); } catch(e){}
+  function go(page){ location.replace(page + '?table=' + t + hash); }
+  [].forEach.call(document.querySelectorAll('.opt'), function(a){ a.href = '#'; a.addEventListener('click', function(e){ e.preventDefault(); go(a.dataset.p); }); });
+  function choose(msg){ g('spin').style.display = 'none'; g('sub').textContent = msg; g('opts').style.display = 'flex'; }
+  var done = false, timer = setTimeout(function(){ if(!done){ done = true; choose('No connection yet — pick the game to open its remote.'); } }, 5000);
+  try {
+    firebase.initializeApp({
+      apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+      authDomain:"snooker-scorer-56573.firebaseapp.com",
+      databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:"snooker-scorer-56573",
+      storageBucket:"snooker-scorer-56573.firebasestorage.app",
+      messagingSenderId:"774218957368",
+      appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+    });
+    firebase.database().ref('matches/table-' + t).once('value').then(function(s){
+      if(done) return; done = true; clearTimeout(timer);
+      var m = s.val();
+      if(!m || !m.player1){ choose('No match on this table yet. Pick the game:'); return; }
+      if(m.sport === 'billiards') go('billiards-referee.html');
+      else if(m.sport === 'shootout' || m.so) go('shootout-referee.html');
+      else go('referee.html');
+    }, function(){ if(!done){ done = true; clearTimeout(timer); choose('Pick the game to open its remote:'); } });
+  } catch(e){ choose('Pick the game to open its remote:'); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR Table Cards — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="admin"></script>
+<script src="qrcode.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0b1610;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 18px;background:#08100a;border-bottom:1px solid rgba(240,192,64,.3);}
+.bar h1{font:900 22px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:#f0c040;text-transform:uppercase;margin-right:8px;}
+.bar input[type=text]{height:38px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;padding:0 10px;font:500 14px 'Inter',sans-serif;min-width:240px;}
+.bar label{font-size:13px;color:rgba(232,244,224,.75);display:flex;align-items:center;gap:6px;cursor:pointer;}
+.btn{height:38px;padding:0 16px;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font:700 14px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
+.btn.gold{background:#f0c040;border-color:#f0c040;color:#0b0b0b;}
+.note{padding:10px 18px;font-size:13px;color:rgba(232,244,224,.65);line-height:1.5;}
+.note b{color:#f0c040;}
+.warn{color:#ff9d92;}
+.picks{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 10px;}
+.pick{padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1px;cursor:pointer;user-select:none;}
+.pick.on{background:#f0c040;color:#0b0b0b;border-color:#f0c040;}
+.pick.nopin{opacity:.45;cursor:not-allowed;}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,105mm);gap:6mm;justify-content:center;padding:18px;}
+.card{width:105mm;height:148mm;background:#fff;color:#0b0b0b;border-radius:4mm;padding:7mm 7mm 6mm;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;border:0.6mm solid #0b0b0b;}
+.card .top{width:100%;display:flex;justify-content:space-between;align-items:center;font:900 11pt 'Barlow Condensed',sans-serif;letter-spacing:3px;}
+.card .top i{font-style:normal;color:#b8860b;}
+.card .ev{font:600 8.5pt 'Inter',sans-serif;color:#555;margin-top:1mm;min-height:4mm;text-align:center;}
+.card .tn{font:900 40pt/0.95 'Barlow Condensed',sans-serif;letter-spacing:1px;margin-top:2mm;}
+.card .tn small{display:block;font:800 11pt 'Barlow Condensed',sans-serif;letter-spacing:6px;color:#b8860b;}
+.card .qr{width:68mm;height:68mm;margin:3mm 0 2mm;}
+.card .qr svg{width:100%;height:100%;display:block;}
+.card .how{font:800 13pt 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;}
+.card .how2{font:500 8pt 'Inter',sans-serif;color:#555;text-align:center;margin-top:1mm;line-height:1.35;}
+.card .pin{margin-top:auto;display:flex;align-items:center;gap:3mm;font:600 8pt 'Inter',sans-serif;color:#555;}
+.card .pin b{font:900 16pt 'Barlow Condensed',sans-serif;letter-spacing:4px;color:#0b0b0b;}
+.card .stripe{position:absolute;left:0;right:0;bottom:0;height:2.2mm;background:linear-gradient(90deg,#f0c040,#b8860b);}
+.empty{padding:40px 18px;text-align:center;color:rgba(232,244,224,.6);}
+@media print{
+  @page{size:A4;margin:8mm;}
+  body{background:#fff;}
+  .bar,.note,.picks{display:none!important;}
+  .sheet{padding:0;gap:4mm;grid-template-columns:repeat(2,105mm);}
+  .card{break-inside:avoid;page-break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>QR table cards</h1>
+  <input type="text" id="ev" placeholder="Event name on the cards (optional)">
+  <label><input type="checkbox" id="showpin" checked> Print the PIN on the card</label>
+  <span style="flex:1"></span>
+  <a class="btn" href="admin.html">← Admin</a>
+  <button class="btn gold" onclick="window.print()">🖨 Print</button>
+</div>
+<div class="note">Place one card on each table. The referee scans it with the phone camera and the remote for that table opens, already unlocked. Anyone holding the card can score on that table, so collect the cards after the event. <b>Changing a table's PIN makes its old card stop working</b> — print a new one.</div>
+<div class="picks" id="picks"></div>
+<div class="sheet" id="sheet"><div class="empty">Loading…</div></div>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+var BASE = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '');
+var pins = {}, picked = {};
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function link(n, pin){ return BASE + 'go.html?t=' + n + '#pin=' + pin; }
+function qrSvg(text){ var q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
+try { g('ev').value = localStorage.getItem('upbsa_card_event') || ''; g('showpin').checked = localStorage.getItem('upbsa_card_pin') !== '0'; } catch(e){}
+function tables(){ return Object.keys(pins).map(function(k){ return parseInt(k.replace('table-',''),10); }).filter(function(n){ return n>0; }).sort(function(a,b){return a-b;}); }
+function drawPicks(){
+  var all = {}; [1,2,3,4,5,6].concat(tables()).forEach(function(n){ all[n]=1; });
+  g('picks').innerHTML = Object.keys(all).map(Number).sort(function(a,b){return a-b;}).map(function(n){
+    var has = !!pins['table-'+n];
+    return '<div class="pick'+(has&&picked[n]?' on':'')+(has?'':' nopin')+'" data-n="'+n+'" title="'+(has?'Click to include or leave out':'No PIN set — set one in Admin → Security')+'">T'+n+'</div>';
+  }).join('');
+  [].forEach.call(document.querySelectorAll('.pick'), function(p){ p.onclick = function(){ var n=+p.dataset.n; if(!pins['table-'+n]) return; picked[n]=!picked[n]; drawPicks(); draw(); }; });
+}
+function draw(){
+  var ev = g('ev').value.trim(), sp = g('showpin').checked;
+  var list = tables().filter(function(n){ return picked[n]; });
+  if(!list.length){ g('sheet').innerHTML = '<div class="empty">'+(tables().length?'Pick at least one table above.':'<span class="warn">No table PINs yet.</span> Set them in Admin → Settings → Referee PINs &amp; Staff, then come back.')+'</div>'; return; }
+  g('sheet').innerHTML = list.map(function(n){
+    var pin = pins['table-'+n];
+    return '<div class="card"><div class="top"><span>UPBSA<i>.TV</i></span><span>REFEREE</span></div>'+
+      '<div class="ev">'+esc(ev)+'</div>'+
+      '<div class="tn"><small>TABLE</small>'+n+'</div>'+
+      '<div class="qr">'+qrSvg(link(n,pin))+'</div>'+
+      '<div class="how">Scan with your phone camera</div>'+
+      '<div class="how2">Opens the scoring remote for Table '+n+'.<br>Nothing to install, no login.</div>'+
+      (sp?'<div class="pin">Asked for a PIN? <b>'+esc(pin)+'</b></div>':'<div class="pin">&nbsp;</div>')+
+      '<div class="stripe"></div></div>';
+  }).join('');
+}
+g('ev').addEventListener('input', function(){ try{ localStorage.setItem('upbsa_card_event', g('ev').value); }catch(e){} draw(); });
+g('showpin').addEventListener('change', function(){ try{ localStorage.setItem('upbsa_card_pin', g('showpin').checked?'1':'0'); }catch(e){} draw(); });
+db.ref('secret/pins').once('value').then(function(s){
+  pins = s.val() || {}; tables().forEach(function(n){ picked[n] = true; });
+  drawPicks(); draw();
+}, function(){ g('sheet').innerHTML = '<div class="empty warn">Could not read the table PINs — this account needs staff access.</div>'; });
+</script>
+</body>
+</html>

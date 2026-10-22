@@ -391,5 +391,9 @@ function frame(){
 }
 requestAnimationFrame(frame);
 </script>
+<script>/* heartbeat for the control room: this screen is on and showing table N */
+(function(){var t=new URLSearchParams(location.search).get('table')||'1';if(!t)return;
+function b(){try{firebase.database().ref('seen/table-'+t+'/board').set(firebase.database.ServerValue.TIMESTAMP).catch(function(){});}catch(e){}}
+setTimeout(b,3000);setInterval(b,20000);})();</script>
 </body>
 </html>

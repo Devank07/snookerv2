@@ -14,6 +14,8 @@
   var TABLE = params.get('table');
   if (MODE === 'referee' && !TABLE) MODE = '';           // table picker screen — nothing to lock yet
   var TK = TABLE ? 'table-' + TABLE : null;
+  var HASHPIN = null;
+  (function () { var m = /(?:^|[#&])pin=(\d{4,8})/.exec(location.hash || ''); if (m) { HASHPIN = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } } })();
 
   var UA = w.UA = { mode: MODE, ready: false, user: null, openPinManager: openPinManager, signOut: signOut };
   if (!w.firebase || !firebase.database) return;
@@ -106,8 +108,13 @@
     if (!t) { t = d.createElement('div'); t.id = 'ua-toast'; d.body.appendChild(t); }
     t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(function () { t.style.display = 'none'; }, 4000);
   }
+  var beat = null;
   function setReady() {
     if (UA.ready) return;
+    if (MODE === 'referee' && !beat) beat = setInterval(function () {   // tells the control room this phone is alive
+      if (d.visibilityState === 'hidden' || !UA.ready) return;
+      probe().then(function (ok) { if (!ok && navigator.onLine) lostAccess(); });
+    }, 30000);
     UA.ready = true; readyRes();
     var p = pending; pending = [];
     p.forEach(function (x) { o.on.apply(x[0], x[1]); });
@@ -223,7 +230,7 @@
         }
         return o.set.call(ref, { pin: pin, n: n, at: firebase.database.ServerValue.TIMESTAMP }).then(probe).then(function (ok) {
           if (ok) { lost = false; m.className = 'ua-msg ok'; m.textContent = 'Unlocked ✓'; setTimeout(setReady, 250); }
-          else fail(n >= 10 ? 'Wrong PIN — too many tries, wait 10 min' : 'Wrong PIN');
+          else fail(n >= 10 ? 'Wrong PIN — too many tries, wait 10 min' : 'Wrong PIN — if you scanned a card, it may be an old one');
         }, function () { fail('Too many tries — wait a few minutes'); });
       }).catch(function () { fail('No connection — try again'); });
     }
@@ -241,6 +248,7 @@
       else if (e.key === 'Enter') submit();
     });
     draw();
+    if (HASHPIN) { pin = HASHPIN; HASHPIN = null; draw(); m.className = 'ua-msg ok'; m.textContent = 'Checking table card…'; submit(); }
   }
 
   /* ════════════ PIN MANAGER (for the admin panel) ════════════ */
@@ -251,10 +259,11 @@
     var box = d.getElementById('ua-pm'); if (box) box.remove();
     box = d.createElement('div'); box.id = 'ua-pm';
     box.innerHTML = '<div class="ua-pm-box"><div class="ua-pm-h"><b>Security</b><button class="ua-x" id="ua-pm-x">×</button></div>' +
-      '<p class="ua-pm-note">Referees open the remote link and type the PIN for their table — no account needed. Changing a PIN or pressing <b>Sign out</b> locks every phone on that table straight away.</p>' +
+      '<p class="ua-pm-note">Referees open the remote link and type the PIN for their table — no account needed. Changing a PIN or pressing <b>Sign out</b> locks every phone on that table straight away (printed QR cards for that table stop working too — print new ones).</p>' +
       '<div class="ua-sec">Table PINs</div><div id="ua-pm-t"><div class="ua-spin"></div></div>' +
       '<button class="ua-sm" id="ua-pm-add" style="margin-top:4px">+ Add table</button>' +
       '<button class="ua-sm" id="ua-pm-all" style="margin:4px 0 0 6px">New PINs for every table</button>' +
+      '<button class="ua-sm gold" id="ua-pm-qr" style="margin:4px 0 0 6px">🖨 Print QR table cards</button>' +
       '<div class="ua-sec">Staff (can use admin pages)</div><div id="ua-pm-s"></div>' +
       '<div style="display:flex;gap:6px;margin-top:6px"><input class="ua-in" id="ua-pm-id" placeholder="Paste a staff member\'s ID" style="margin:0;height:40px;font-size:13px"><button class="ua-sm gold" id="ua-pm-sa">Add</button></div>' +
       '<p class="ua-pm-note" style="margin-top:10px">To add a helper: create their account in Firebase → Authentication → Users, they sign in once on any admin page and it shows their ID to paste here.</p>' +
@@ -312,6 +321,7 @@
         b.onclick = function () { if (!confirm('Remove this staff account?')) return; o.remove.call(db.ref('admins/' + b.dataset.u)).then(load); };
       });
     }
+    d.getElementById('ua-pm-qr').onclick = function () { w.open('table-cards.html', '_blank'); };
     d.getElementById('ua-pm-add').onclick = function () { var n = (tables[tables.length - 1] || 0) + 1; tables.push(n); drawTables(); };
     d.getElementById('ua-pm-all').onclick = function () {
       if (!confirm('Make new PINs for every table? All referee phones will need the new PIN.')) return;

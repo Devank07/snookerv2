@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050a06">
+<title>Control Room — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js" data-mode="admin"></script>
+<style>
+:root{--bg:#050a06;--panel:#0b1610;--panel2:#102018;--line:rgba(255,255,255,.08);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;--amber:#f5a623;--blue:#5fb8ff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:radial-gradient(ellipse at top,#10261a,var(--bg) 60%) fixed;color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+a{color:inherit;}
+.top{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:12px 20px;background:rgba(5,10,6,.92);backdrop-filter:blur(6px);border-bottom:1px solid rgba(240,192,64,.25);}
+.top h1{font:900 24px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;}
+.top h1 i{font-style:normal;color:var(--gold);}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1px;}
+.pill b{font:400 20px 'Bebas Neue',sans-serif;letter-spacing:1px;}
+.pill.red{border-color:rgba(231,76,60,.6);color:#ff9d92;background:rgba(231,76,60,.12);}
+.pill.amber{border-color:rgba(245,166,35,.55);color:#ffc770;}
+.clock{font:400 26px 'Bebas Neue',sans-serif;letter-spacing:2px;color:var(--dim);}
+.sp{flex:1;}
+.tbtn{height:36px;padding:0 13px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font:700 13px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.tbtn.on{background:var(--gold);color:#0b0b0b;border-color:var(--gold);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;padding:18px 20px 40px;}
+.tile{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .3s,box-shadow .3s;}
+.tile.alert-red{border-color:rgba(231,76,60,.75);box-shadow:0 0 0 1px rgba(231,76,60,.4),0 0 24px rgba(231,76,60,.18);animation:pulse 1.6s ease-in-out infinite;}
+.tile.alert-amber{border-color:rgba(245,166,35,.6);}
+@keyframes pulse{50%{box-shadow:0 0 0 1px rgba(231,76,60,.15),0 0 6px rgba(231,76,60,.05);}}
+.th{display:flex;align-items:center;gap:10px;padding:12px 14px 8px;}
+.tno{font:400 34px/1 'Bebas Neue',sans-serif;letter-spacing:1px;}
+.tno small{font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:3px;color:var(--dim);display:block;margin-bottom:-2px;}
+.badge{padding:3px 8px;border-radius:6px;font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;}
+.b-live{background:rgba(46,204,113,.15);color:#59e08a;}
+.b-live:before{content:'● ';animation:blink 1.2s steps(2) infinite;}@keyframes blink{50%{opacity:.25}}
+.b-done{background:rgba(95,184,255,.14);color:var(--blue);}
+.b-idle{background:rgba(255,255,255,.06);color:var(--dim);}
+.b-sport{background:rgba(240,192,64,.12);color:var(--gold);}
+.meta{margin-left:auto;text-align:right;font:700 13px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:var(--dim);line-height:1.25;}
+.score{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:6px 14px 10px;}
+.pl{min-width:0;}
+.pl.r{text-align:right;}
+.nm{font:800 20px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nm .at{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);margin:0 6px 3px;vertical-align:middle;}
+.pts{font:400 40px/1 'Bebas Neue',sans-serif;}
+.pts .brk{font:700 13px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:var(--gold);margin:0 6px;vertical-align:middle;}
+.fr{text-align:center;font:400 30px/1 'Bebas Neue',sans-serif;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid var(--line);}
+.fr small{display:block;font:700 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:var(--dim);}
+.idle-msg{padding:16px 14px 18px;color:var(--dim);font-size:14px;}
+.health{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);}
+.hc{padding:9px 12px;border-right:1px solid var(--line);min-width:0;}
+.hc:last-child{border-right:0;}
+.hl{font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.hv{font:600 13px 'Inter',sans-serif;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;}
+.ok{background:var(--green);box-shadow:0 0 6px var(--green);}.bad{background:var(--red);box-shadow:0 0 6px var(--red);}.warn{background:var(--amber);}.off{background:rgba(255,255,255,.2);}
+.msgs{padding:0 14px;}
+.msg{margin:0 0 8px;padding:7px 10px;border-radius:8px;font:600 13px 'Inter',sans-serif;}
+.msg.red{background:rgba(231,76,60,.14);color:#ffb3aa;}
+.msg.amber{background:rgba(245,166,35,.12);color:#ffd08a;}
+.acts{display:flex;gap:6px;padding:10px 12px 12px;border-top:1px solid var(--line);flex-wrap:wrap;}
+.acts a,.acts button{flex:1;min-width:70px;height:34px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font:700 12px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
+.acts a:hover,.acts button:hover{border-color:rgba(240,192,64,.5);}
+.legend{padding:0 20px 30px;color:var(--dim);font-size:13px;line-height:1.6;}
+.legend b{color:var(--text);}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Control <i>Room</i></h1>
+  <span class="pill" id="p-live"><b>0</b> live</span>
+  <span class="pill" id="p-alert"><b>0</b> alerts</span>
+  <span class="sp"></span>
+  <span class="clock" id="clock">--:--:--</span>
+  <button class="tbtn" id="snd" title="Play a sound when a table needs attention">🔕 Sound off</button>
+  <a class="tbtn" href="table-cards.html" target="_blank">🖨 QR cards</a>
+  <button class="tbtn" onclick="UA.openPinManager()">🔐 PINs</button>
+  <a class="tbtn" href="admin.html">← Admin</a>
+</div>
+<div class="grid" id="grid"></div>
+<div class="legend">
+  <b>Referee</b> — the scoring phone checks in every 30 s while the remote is open. <b>OBS</b> / <b>Board</b> — the stream overlay and the venue screen check in every 20 s.
+  A table turns <span style="color:#ff9d92">red</span> when a live match has no referee phone for 2 minutes, and <span style="color:#ffc770">amber</span> when the score hasn't moved for 10 minutes or the table has no PIN.
+</div>
+<div id="toast"></div>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database();
+var M = {}, REF = {}, SEEN = {}, PINS = {}, offset = 0;
+var changed = {}, sig = {}, opened = Date.now(), prevRed = {};
+var REF_OK = 75e3, REF_ALERT = 120e3, SCREEN_OK = 60e3, QUIET = 10 * 60e3;
+function g(id){ return document.getElementById(id); }
+function now(){ return Date.now() + offset; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function ago(ms){ if(ms < 0) ms = 0; var s = Math.round(ms/1000); if(s < 60) return s + 's ago'; var m = Math.round(s/60); if(m < 60) return m + ' min ago'; var h = Math.round(m/60); return h < 48 ? h + ' h ago' : Math.round(h/24) + ' days ago'; }
+function toast(t){ var e = g('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(function(){ e.style.display = 'none'; }, 2200); }
+
+/* ── data ── */
+db.ref('.info/serverTimeOffset').on('value', function(s){ offset = s.val() || 0; });
+db.ref('matches').on('value', function(s){
+  M = s.val() || {};
+  Object.keys(M).forEach(function(k){
+    var m = M[k] || {}, p1 = m.player1 || {}, p2 = m.player2 || {};
+    var x = [p1.score, p2.score, p1.frames, p2.frames, m.currentBreak, m.turn, m.status, m.currentFrame].join('|');
+    if(sig[k] !== undefined && sig[k] !== x) changed[k] = now();
+    sig[k] = x;
+  });
+  draw();
+});
+db.ref('refSeen').on('value', function(s){ REF = s.val() || {}; draw(); });
+db.ref('seen').on('value', function(s){ SEEN = s.val() || {}; draw(); });
+db.ref('secret/pins').on('value', function(s){ PINS = s.val() || {}; draw(); });
+
+function tables(){
+  var set = {}; [1,2,3,4,5,6].forEach(function(n){ set[n] = 1; });
+  Object.keys(M).concat(Object.keys(PINS)).concat(Object.keys(REF)).forEach(function(k){ var n = parseInt(String(k).replace('table-',''), 10); if(n > 0) set[n] = 1; });
+  return Object.keys(set).map(Number).sort(function(a,b){ return a-b; });
+}
+function lastRef(k){ var r = REF[k] || {}, best = 0, phones = 0, t = now(); Object.keys(r).forEach(function(u){ if(r[u] > best) best = r[u]; if(t - r[u] < REF_OK) phones++; }); return { at: best, phones: phones }; }
+function sportName(m){ return m.sport === 'billiards' ? 'Billiards' : (m.sport === 'shootout' || m.so) ? 'Shoot Out' : 'Snooker'; }
+function state(m){ if(!m || !m.player1) return 'idle'; return m.status === 'finished' ? 'done' : 'live'; }
+
+/* ── one tile ── */
+function tile(n){
+  var k = 'table-' + n, m = M[k], st = state(m), t = now();
+  var rf = lastRef(k), sn = SEEN[k] || {}, msgs = [];
+  var refOn = rf.at && t - rf.at < REF_OK, obsOn = sn.obs && t - sn.obs < SCREEN_OK, brdOn = sn.board && t - sn.board < SCREEN_OK;
+  if(st === 'live'){
+    if(!PINS[k]) msgs.push(['amber', 'No PIN set — referees can\'t score once the security rules are on']);
+    if(!refOn && (!rf.at || t - rf.at > REF_ALERT)) msgs.push(['red', rf.at ? 'Referee phone offline for ' + ago(t - rf.at).replace(' ago','') : 'No referee phone has connected']);
+    var since = changed[k] || opened;
+    if(t - since > QUIET) msgs.push(['amber', 'Score hasn\'t moved for ' + ago(t - since).replace(' ago','') + (changed[k] ? '' : '+')]);
+  }
+  var lvl = msgs.some(function(x){ return x[0] === 'red'; }) ? 'red' : msgs.length ? 'amber' : '';
+  var h = '<div class="tile' + (lvl ? ' alert-' + lvl : '') + '" data-k="' + k + '"><div class="th"><div class="tno"><small>TABLE</small>' + n + '</div>';
+  h += st === 'live' ? '<span class="badge b-live">Live</span>' : st === 'done' ? '<span class="badge b-done">Finished</span>' : '<span class="badge b-idle">Empty</span>';
+  if(m && m.player1) h += '<span class="badge b-sport">' + sportName(m) + '</span>';
+  if(m && m.player1) h += '<div class="meta">Frame ' + esc(m.currentFrame || 1) + '<br>Best of ' + esc(m.bestOf || '–') + '</div>';
+  h += '</div>';
+  if(m && m.player1){
+    var p1 = m.player1 || {}, p2 = m.player2 || {}, live = st === 'live', brk = m.currentBreak || 0;
+    var at1 = live && m.turn === 1, at2 = live && m.turn === 2;
+    h += '<div class="score"><div class="pl"><div class="nm">' + esc(p1.name || 'Player 1') + (at1 ? '<span class="at" title="At the table"></span>' : '') + '</div><div class="pts">' + esc(p1.score || 0) + (at1 && brk ? '<span class="brk">BREAK ' + brk + '</span>' : '') + '</div></div>';
+    h += '<div class="fr">' + esc(p1.frames || 0) + ' – ' + esc(p2.frames || 0) + '<small>FRAMES</small></div>';
+    h += '<div class="pl r"><div class="nm">' + (at2 ? '<span class="at" title="At the table"></span>' : '') + esc(p2.name || 'Player 2') + '</div><div class="pts">' + (at2 && brk ? '<span class="brk">BREAK ' + brk + '</span>' : '') + esc(p2.score || 0) + '</div></div></div>';
+    if(st === 'done' && m.matchWinner) h += '<div class="idle-msg" style="padding-top:0">Winner: <b>' + esc((m.matchWinner === 2 ? p2 : p1).name || '') + '</b> — ready for the next match.</div>';
+  } else {
+    h += '<div class="idle-msg">' + (PINS[k] ? 'No match yet. The referee scans the table card to start one.' : 'No match and no PIN yet.') + '</div>';
+  }
+  if(msgs.length) h += '<div class="msgs">' + msgs.map(function(x){ return '<div class="msg ' + x[0] + '">' + (x[0] === 'red' ? '⚠ ' : '') + esc(x[1]) + '</div>'; }).join('') + '</div>';
+  var refTxt = refOn ? 'seen ' + ago(t - rf.at) : rf.at ? 'last ' + ago(t - rf.at) : 'not yet';
+  var dotR = refOn ? 'ok' : (st === 'live' ? 'bad' : 'off');
+  h += '<div class="health"><div class="hc"><div class="hl">Referee' + (rf.phones > 1 ? ' · ' + rf.phones + ' phones' : '') + '</div><div class="hv"><span class="dot ' + dotR + '"></span>' + refTxt + '</div></div>';
+  h += '<div class="hc"><div class="hl">OBS</div><div class="hv"><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span>' + (obsOn ? 'on air' : sn.obs ? 'last ' + ago(t - sn.obs) : 'not open') + '</div></div>';
+  h += '<div class="hc"><div class="hl">Board</div><div class="hv"><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span>' + (brdOn ? 'showing' : sn.board ? 'last ' + ago(t - sn.board) : 'not open') + '</div></div></div>';
+  var boardPg = m && (m.sport === 'shootout' || m.so) ? 'shootout-board.html' : 'scoreboard.html';
+  h += '<div class="acts"><a href="go.html?t=' + n + '" target="_blank" title="Open the referee remote (asks for the PIN)">📱 Remote</a>' +
+       '<a href="' + boardPg + '?table=' + n + '" target="_blank">🖥 Board</a>' +
+       '<button data-copy="overlay.html?table=' + n + '" title="Copy the OBS browser-source link">📋 OBS link</button>' +
+       '<a href="table-cards.html" target="_blank">🖨 Card</a></div>';
+  return h + '</div>';
+}
+
+var drawT = 0;
+function draw(){
+  if(drawT) return; drawT = requestAnimationFrame(function(){ drawT = 0; render(); });
+}
+function render(){
+  var list = tables(), live = 0, alerts = 0, html = '', reds = {};
+  list.forEach(function(n){ var t = tile(n); html += t; if(/b-live/.test(t)) live++; if(/alert-/.test(t)) alerts++; if(/alert-red/.test(t)) reds[n] = 1; });
+  g('grid').innerHTML = html;
+  g('p-live').innerHTML = '<b>' + live + '</b> live';
+  g('p-alert').innerHTML = '<b>' + alerts + '</b> alert' + (alerts === 1 ? '' : 's');
+  g('p-alert').className = 'pill' + (Object.keys(reds).length ? ' red' : alerts ? ' amber' : '');
+  var fresh = Object.keys(reds).some(function(n){ return !prevRed[n]; });
+  prevRed = reds;
+  if(fresh) beep();
+  document.title = (alerts ? '(' + alerts + ') ' : '') + 'Control Room — UPBSA.TV';
+}
+document.addEventListener('click', function(e){
+  var b = e.target.closest('[data-copy]'); if(!b) return;
+  var url = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + b.dataset.copy;
+  try { navigator.clipboard.writeText(url); toast('OBS link copied'); } catch(er){ prompt('OBS link', url); }
+});
+
+/* ── sound ── */
+var soundOn = false, ac = null;
+try { soundOn = localStorage.getItem('upbsa_cr_sound') === '1'; } catch(e){}
+function sndBtn(){ g('snd').textContent = soundOn ? '🔔 Sound on' : '🔕 Sound off'; g('snd').classList.toggle('on', soundOn); }
+g('snd').onclick = function(){ soundOn = !soundOn; try{ localStorage.setItem('upbsa_cr_sound', soundOn ? '1' : '0'); }catch(e){} sndBtn(); if(soundOn) beep(true); };
+function beep(force){
+  if(!soundOn && !force) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .22].forEach(function(dt){ var o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.value = 880; gn.gain.setValueAtTime(.0001, ac.currentTime + dt); gn.gain.exponentialRampToValueAtTime(.25, ac.currentTime + dt + .02); gn.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dt + .18); o.connect(gn); gn.connect(ac.destination); o.start(ac.currentTime + dt); o.stop(ac.currentTime + dt + .2); });
+  } catch(e){}
+}
+sndBtn();
+setInterval(function(){ var d = new Date(now()); g('clock').textContent = d.toLocaleTimeString('en-GB'); render(); }, 1000);
+</script>
+</body>
+</html>
