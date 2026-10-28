@@ -16,7 +16,7 @@
   if (MODE === 'referee' && !TABLE) MODE = '';           // table picker screen — nothing to lock yet
   var TK = TABLE ? 'table-' + TABLE : null;
   var HASHPIN = null;
-  (function () { var m = /(?:^|[#&])pin=(\d{4,8})/.exec(location.hash || ''); if (m) { HASHPIN = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } } })();
+  (function () { var m = /(?:^|[#&])pin=(\d{4})(?!\d)/.exec(location.hash || ''); if (m) { HASHPIN = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } } })();
 
   var BOARD = MODE === 'board'; if (BOARD) MODE = '';
   var UA = w.UA = { mode: MODE, ready: false, user: null, openPinManager: openPinManager, signOut: signOut, boardPin: boardPin };
@@ -226,9 +226,9 @@
       '<button class="ua-k" data-k="del" aria-label="Delete">⌫</button><button class="ua-k" data-k="0">0</button><button class="ua-k go" data-k="ok" id="ua-ok" disabled>✓</button></div>');
     var dots = d.getElementById('ua-dots'), m = d.getElementById('ua-m'), okB = d.getElementById('ua-ok'), busy = false;
     function draw() {
-      var n = Math.max(4, pin.length), h = '';
-      for (var i = 0; i < Math.min(n, 8); i++) h += '<div class="ua-dot' + (i < pin.length ? ' on' : '') + '"></div>';
-      dots.innerHTML = h; dots.classList.remove('ua-err'); okB.disabled = pin.length < 4;
+      var h = '';
+      for (var i = 0; i < 4; i++) h += '<div class="ua-dot' + (i < pin.length ? ' on' : '') + '"></div>';
+      dots.innerHTML = h; dots.classList.remove('ua-err'); okB.disabled = pin.length !== 4;
     }
     function fail(msg) {
       m.className = 'ua-msg'; m.textContent = msg; dots.classList.add('ua-err', 'ua-shake');
@@ -236,7 +236,7 @@
       setTimeout(function () { dots.classList.remove('ua-shake'); pin = ''; draw(); busy = false; }, 700);
     }
     function submit() {
-      if (busy || pin.length < 4) return; busy = true; m.textContent = '';
+      if (busy || pin.length !== 4) return; busy = true; m.textContent = '';
       var uid = auth.currentUser.uid, ref = db.ref('refPass/' + TK + '/' + uid);
       o.once.call(ref, 'value').then(function (s) {
         var v = s.val(), now = Date.now() + offset, n = 1;
@@ -254,13 +254,13 @@
     d.getElementById('ua-gate').querySelectorAll('.ua-k').forEach(function (b) {
       b.addEventListener('click', function () {
         var k = b.dataset.k;
-        if (k === 'del') pin = pin.slice(0, -1); else if (k === 'ok') return submit(); else if (pin.length < 8) pin += k;
-        draw();
+        if (k === 'del') pin = pin.slice(0, -1); else if (k === 'ok') return submit(); else if (pin.length < 4) pin += k;
+        draw(); if (pin.length === 4) setTimeout(submit, 120);
       });
     });
     d.addEventListener('keydown', function kd(e) {
       if (!d.getElementById('ua-dots')) return d.removeEventListener('keydown', kd);
-      if (/^[0-9]$/.test(e.key) && pin.length < 8) { pin += e.key; draw(); }
+      if (/^[0-9]$/.test(e.key) && pin.length < 4) { pin += e.key; draw(); if (pin.length === 4) setTimeout(submit, 120); }
       else if (e.key === 'Backspace') { pin = pin.slice(0, -1); draw(); }
       else if (e.key === 'Enter') submit();
     });
@@ -269,7 +269,7 @@
   }
 
   /* ════════════ PIN MANAGER (for the admin panel) ════════════ */
-  function rnd() { var a = new Uint32Array(1); (w.crypto || w.msCrypto).getRandomValues(a); return String(a[0] % 1000000).padStart(6, '0'); }
+  function rnd() { var a = new Uint32Array(1); (w.crypto || w.msCrypto).getRandomValues(a); return String(a[0] % 10000).padStart(4, '0'); }
   function openPinManager() {
     if (!db || MODE !== 'admin' || !UA.ready) return;
     addCss();
@@ -306,17 +306,17 @@
     function drawTables() {
       d.getElementById('ua-pm-t').innerHTML = tables.map(function (n) {
         var k = 'table-' + n, a = active(k);
-        return '<div class="ua-row" data-k="' + k + '"><div class="t">T' + n + '</div><input inputmode="numeric" maxlength="8" value="' + esc(pins[k] || '') + '" placeholder="no PIN — locked">' +
+        return '<div class="ua-row" data-k="' + k + '"><div class="t">T' + n + '</div><input inputmode="numeric" maxlength="4" value="' + esc(pins[k] || '') + '" placeholder="no PIN — locked">' +
           '<div class="ua-acts"><button class="ua-sm" data-a="new" title="Make a new random PIN">🎲</button><button class="ua-sm gold" data-a="save">Save</button></div>' +
-          '<div class="s">' + (pins[k] ? (a ? a + ' referee phone' + (a > 1 ? 's' : '') + ' signed in today · <a href="#" data-a="out" style="color:#ff9d92">sign them out</a>' : 'No referee signed in yet') : 'Set a PIN so a referee can score on this table') + '</div></div>';
+          '<div class="s">' + (pins[k] && String(pins[k]).length !== 4 ? '<span style="color:#ffc770">Old ' + String(pins[k]).length + '-digit PIN — press 🎲 then Save to make a 4-digit one</span>' : pins[k] ? (a ? a + ' referee phone' + (a > 1 ? 's' : '') + ' signed in today · <a href="#" data-a="out" style="color:#ff9d92">sign them out</a>' : 'No referee signed in yet') : 'Set a PIN so a referee can score on this table') + '</div></div>';
       }).join('');
       d.querySelectorAll('#ua-pm-t .ua-row').forEach(function (row) {
         var k = row.dataset.k, inp = row.querySelector('input');
-        inp.addEventListener('input', function () { inp.value = inp.value.replace(/\D/g, '').slice(0, 8); });
+        inp.addEventListener('input', function () { inp.value = inp.value.replace(/\D/g, '').slice(0, 4); });
         row.querySelector('[data-a=new]').onclick = function () { inp.value = rnd(); };
         row.querySelector('[data-a=save]').onclick = function () {
           var v = inp.value.trim();
-          if (v && v.length < 4) { toast('PIN must be 4 to 8 digits'); return; }
+          if (v && v.length !== 4) { toast('PIN must be exactly 4 digits'); return; }
           var up = {}; up['secret/pins/' + k] = v || null;
           if (pins[k] && v !== pins[k]) { up['refPass/' + k] = null; up['refSeen/' + k] = null; }   // old phones must use the new PIN
           o.update.call(db.ref(), up).then(function () { pins[k] = v || undefined; if (up['refSeen/' + k] === null) delete seen[k]; drawTables(); flash(k, v ? 'Saved ✓' : 'PIN removed — table locked'); });
