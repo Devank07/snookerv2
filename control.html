@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028c"></script>
 <script src="bracket-core.js?v=20261028e"></script>
+<script src="yt-live.js?v=20261028f"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
@@ -71,6 +72,11 @@ a{color:inherit;}
 .legend b{color:var(--text);}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
 /* layout v2 */
+.mng .ytl{height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,0,0,.45);background:rgba(255,0,0,.12);color:#ff8f8f;font:700 12px 'Inter',sans-serif;display:inline-flex;align-items:center;text-decoration:none;margin-right:auto;}
+#ytset.on{border-color:rgba(255,0,0,.55);color:#ffb3b3;background:rgba(255,0,0,.12);}
+#yt-pop{position:fixed;top:70px;right:20px;z-index:30;width:380px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
+#yt-pop .pl{display:block;font:700 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:10px 0 5px;}
+#yt-pop .pin{width:100%;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;padding:0 11px;font:500 14px 'Inter',sans-serif;}
 .sum{margin:16px 20px 0;padding:14px 16px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(240,192,64,.07),rgba(240,192,64,.02));border:1px solid rgba(240,192,64,.22);}
 .sum-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
 .sum-t{font:900 16px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--gold);}
@@ -139,6 +145,7 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <span class="pill" id="p-alert"><b>0</b> alerts</span>
   <span class="sp"></span>
   <span class="clock" id="clock">--:--:--</span>
+  <button class="tbtn" id="ytset" title="YouTube channel and live streams">▶ <span id="yt-n">YouTube</span></button>
   <button class="tbtn" id="tblset" title="How many tables the venue has">⚙ <span id="tblset-n">6</span> tables</button>
   <button class="tbtn" id="snd" title="Play a sound when a table needs attention">🔕 Sound off</button>
   <a class="tbtn" href="table-cards.html" target="_blank">🖨 Print QR cards</a>
@@ -194,6 +201,12 @@ db.ref('matches').on('value', function(s){
 });
 db.ref('refSeen').on('value', function(s){ REF = s.val() || {}; draw(); });
 var BAT = {}, REG = {}, BRK = {}, scope = 'today';
+var YTA = {}, YTM = {}, YTC = {}, ytStat = '';
+db.ref('live/youtube').on('value', function(s){ YTA = s.val() || {}; ytLabel(); draw(); });
+db.ref('live/streams').on('value', function(s){ YTM = s.val() || {}; ytLabel(); draw(); });
+db.ref('settings/youtube').on('value', function(s){ YTC = s.val() || {}; });
+function ytFor(n){ var k = 'table-' + n; if(YTM[k] && YTM[k].id) return { id:YTM[k].id, manual:true }; var hit = null; ((YTA && YTA.live) || []).forEach(function(x){ if(!hit && (x.table || YT.tableOf(x.title)) === n) hit = x; }); return hit; }
+function ytLabel(){ var n = YT.streams(YTA, YTM).length; var e = g('yt-n'); if(e) e.textContent = n ? n + ' live on YouTube' : 'YouTube'; var b = g('ytset'); if(b) b.classList.toggle('on', !!n); }
 db.ref('refBat').on('value', function(s){ BAT = s.val() || {}; draw(); });
 db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; drawSum(); });
 db.ref('breaks').on('value', function(s){ BRK = s.val() || {}; drawSum(); });
@@ -261,7 +274,10 @@ function tile(n){
        '<span class="chip"><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span><b>OBS</b>' + (obsOn ? 'on air' : sn.obs ? ago(t - sn.obs) : 'off') + '</span>' +
        '<span class="chip"><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span><b>Board</b>' + (brdOn ? 'showing' : sn.board ? ago(t - sn.board) : 'off') + '</span></div>';
   h += acts(n);
-  h += '<div class="mng">' + (st === 'live' ? '<button data-end="' + n + '" title="Mark this match as finished">End match</button>' : '') +
+  var yv = ytFor(n);
+  h += '<div class="mng">' + (yv ? '<a class="ytl" href="https://youtu.be/' + yv.id + '" target="_blank" title="' + (yv.manual ? 'Stream link set by hand' : 'Found on your channel') + '">▶ On YouTube</a>' : '') +
+       '<button data-yt="' + n + '" title="Link a YouTube live stream to this table">' + (YTM['table-' + n] ? 'Change stream' : 'Stream link') + '</button>' +
+       (st === 'live' ? '<button data-end="' + n + '" title="Mark this match as finished">End match</button>' : '') +
        '<button class="danger" data-clear="' + n + '" title="Save the result to history and free the table">Clear table</button></div>';
   return h + '</div>';
 }
@@ -321,6 +337,12 @@ function clearTable(n){
   return db.ref().update(up);
 }
 document.addEventListener('click', function(e){
+  var yb = e.target.closest('[data-yt]');
+  if(yb){ var tn = +yb.dataset.yt, cur = YTM['table-' + tn];
+    var v = prompt('YouTube link for the stream of Table ' + tn + ' (leave empty to remove):', cur && cur.id ? 'https://youtu.be/' + cur.id : '');
+    if(v === null) return; var id = YT.idFrom(v);
+    if(v.trim() && !id){ toast('That doesn\'t look like a YouTube video link'); return; }
+    db.ref('live/streams/table-' + tn).set(id ? { id:id, title:'Table ' + tn, at:Date.now() } : null).then(function(){ toast(id ? 'Table ' + tn + ' stream linked' : 'Stream link removed'); }); return; }
   var ce = e.target.closest('[data-clear]');
   if(ce){ var n = +ce.dataset.clear, m = M['table-' + n] || {}, p1 = (m.player1||{}).name || 'Player 1', p2 = (m.player2||{}).name || 'Player 2';
     var msg = m.status === 'finished' ? 'Clear Table ' + n + '?\n\n' + p1 + ' v ' + p2 + ' is saved to match history and the table becomes free for the next match.'
@@ -390,6 +412,31 @@ function summaryText(){
 }
 document.querySelectorAll('[data-scope]').forEach(function(b){ b.onclick = function(){ scope = b.dataset.scope; document.querySelectorAll('[data-scope]').forEach(function(x){ x.classList.toggle('on', x === b); }); drawSum(); }; });
 g('sum-copy').onclick = function(){ var t = summaryText(); try { navigator.clipboard.writeText(t).then(function(){ toast('Summary copied'); }, function(){ prompt('Summary', t); }); } catch(e){ prompt('Summary', t); } };
+
+/* ── YouTube ── */
+var ytPoll = window.YT ? YT.poll(db, function(st, at, info){ ytStat = st === 'ok' ? 'Checked just now — ' + ((info && info.live.length) || 0) + ' live' : st === 'error' ? 'Check failed: ' + info : st === 'nokey' ? 'Auto-detect is off (no API key)' : st === 'fresh' ? 'Checked ' + Math.round((Date.now() - at) / 1000) + ' s ago' : ''; var e = document.getElementById('yt-stat'); if(e) e.textContent = ytStat; }) : null;
+g('ytset').onclick = function(){
+  var old = document.getElementById('yt-pop'); if(old){ old.remove(); return; }
+  var p = document.createElement('div'); p.id = 'yt-pop'; p.className = 'pop';
+  p.innerHTML = '<div class="tp-h">YouTube</div>' +
+    '<label class="pl">Your channel</label><input id="yt-ch" class="pin" placeholder="@upbsa" value="' + esc(YTC.handle || YT.DEFAULT) + '">' +
+    '<label class="pl">YouTube API key <span style="color:var(--dim);font-weight:500">(optional — finds your live streams by itself)</span></label><input id="yt-key" class="pin" type="password" placeholder="Not set">' +
+    '<div class="tp-note" id="yt-stat">' + esc(ytStat || '') + '</div>' +
+    '<div class="tp-note">Live now: ' + (YT.streams(YTA, YTM).map(function(x){ return '<a href="https://youtu.be/' + x.id + '" target="_blank" style="color:var(--gold)">' + esc(x.title || x.id) + '</a>' + (x.table ? ' (T' + x.table + ')' : ''); }).join(' · ') || 'nothing') + '</div>' +
+    '<div class="tp-note">Without a key, use <b>Stream link</b> on each table. With a key, streams are found every 2 minutes; put “Table 3” in a stream\'s title to tie it to a table.</div>' +
+    '<div class="tp-acts"><button id="yt-now">Check now</button><button id="yt-cancel">Close</button><button id="yt-save" class="gold">Save</button></div>';
+  document.body.appendChild(p);
+  db.ref('secret/ytKey').once('value').then(function(s){ if(s.val()) g('yt-key').placeholder = '•••••••• (saved — type to replace)'; });
+  g('yt-cancel').onclick = function(){ p.remove(); };
+  g('yt-now').onclick = function(){ if(ytPoll) ytPoll.now(); toast('Checking YouTube…'); };
+  g('yt-save').onclick = function(){
+    var hv = g('yt-ch').value.trim(), h = YT.handle(hv), cid = /UC[\w-]{22}/.exec(hv), key = g('yt-key').value.trim();
+    if(hv && !h && !cid){ toast('Enter your channel like @upbsa or paste its link'); return; }
+    var up = { 'settings/youtube/handle': h || null }; if(cid) up['settings/youtube/channelId'] = cid[0]; else if(h && h !== YTC.handle) up['settings/youtube/channelId'] = null;
+    if(key) up['secret/ytKey'] = key;
+    db.ref().update(up).then(function(){ toast('YouTube settings saved'); p.remove(); if(key && ytPoll) setTimeout(ytPoll.now, 400); });
+  };
+};
 
 /* ── number of tables ── */
 UPT.on(function(c){ g('tblset-n').textContent = c; draw(); });
