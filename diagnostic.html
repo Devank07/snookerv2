@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="backup.js?v=20261028h"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;}
@@ -376,7 +377,7 @@ db.ref('design').on('value', function(snap){
   var data = snap.val();
   var rows = document.getElementById('theme-rows');
   if(!data){
-    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No design theme set. Open design.html and click "Apply to OBS".</div></div>';
+    rows.innerHTML='<div class="status-row"><div class="dot warn"></div><div class="status-label" style="color:rgba(232,244,224,0.35)">No design theme set. Open the Builder and press "Save &amp; put live".</div></div>';
     return;
   }
   var html = '';
@@ -530,6 +531,10 @@ function fullTournamentReset(){
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+<script>/* a copy of everything is saved before anything destructive */
+(function(){ var names=['clearAllMatches','clearRegistry','clearHistory','resetCounter','fullTournamentReset']; names.forEach(function(n){ var LBL={"doReset": "Tournament Reset", "clearAllMatches": "Clear all matches", "clearRegistry": "Clear registry", "clearHistory": "Clear history", "resetCounter": "Reset match counter", "fullTournamentReset": "Full tournament reset"}, f=window[n]; if(typeof f!=='function'||!window.BACKUP) return;
+  window[n]=function(){ var a=arguments, self=this; BACKUP.snapshot('Before '+(LBL[n]||n)).then(function(){ f.apply(self,a); }, function(){ if(confirm('Could not save a backup first. Continue anyway?')) f.apply(self,a); }); }; }); })();
 </script>
 </body>
 </html>

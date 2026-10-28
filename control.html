@@ -72,6 +72,9 @@ a{color:inherit;}
 .legend b{color:var(--text);}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
 /* layout v2 */
+#mo-pop{position:fixed;top:70px;right:20px;z-index:30;width:360px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
+.mo-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(255,255,255,.03);margin-top:8px;cursor:pointer;font-size:12px;color:var(--dim);}
+.mo-row input{width:18px;height:18px;margin-top:2px;accent-color:#f0c040;}.mo-row b{display:block;color:var(--text);font-size:14px;margin-bottom:2px;}
 .mng .ytl{height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,0,0,.45);background:rgba(255,0,0,.12);color:#ff8f8f;font:700 12px 'Inter',sans-serif;display:inline-flex;align-items:center;text-decoration:none;margin-right:auto;}
 #ytset.on{border-color:rgba(255,0,0,.55);color:#ffb3b3;background:rgba(255,0,0,.12);}
 #yt-pop{position:fixed;top:70px;right:20px;z-index:30;width:380px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
@@ -145,6 +148,7 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <span class="pill" id="p-alert"><b>0</b> alerts</span>
   <span class="sp"></span>
   <span class="clock" id="clock">--:--:--</span>
+  <button class="tbtn" id="moset" title="Cards the OBS overlay shows by itself">🎬 Moments</button>
   <button class="tbtn" id="ytset" title="YouTube channel and live streams">▶ <span id="yt-n">YouTube</span></button>
   <button class="tbtn" id="tblset" title="How many tables the venue has">⚙ <span id="tblset-n">6</span> tables</button>
   <button class="tbtn" id="snd" title="Play a sound when a table needs attention">🔕 Sound off</button>
@@ -412,6 +416,23 @@ function summaryText(){
 }
 document.querySelectorAll('[data-scope]').forEach(function(b){ b.onclick = function(){ scope = b.dataset.scope; document.querySelectorAll('[data-scope]').forEach(function(x){ x.classList.toggle('on', x === b); }); drawSum(); }; });
 g('sum-copy').onclick = function(){ var t = summaryText(); try { navigator.clipboard.writeText(t).then(function(){ toast('Summary copied'); }, function(){ prompt('Summary', t); }); } catch(e){ prompt('Summary', t); } };
+
+/* ── stream moments (cards the OBS overlay shows by itself) ── */
+var MOM = {};
+db.ref('settings/moments').on('value', function(s){ MOM = s.val() || {}; });
+g('moset').onclick = function(){
+  var old = document.getElementById('mo-pop'); if(old){ old.remove(); return; }
+  var p = document.createElement('div'); p.id = 'mo-pop'; p.className = 'pop';
+  var row = function(k, t, sub){ return '<label class="mo-row"><input type="checkbox" data-k="' + k + '"' + (MOM[k] !== false ? ' checked' : '') + '><span><b>' + t + '</b>' + sub + '</span></label>'; };
+  p.innerHTML = '<div class="tp-h">Stream moments</div><div class="tp-note">The OBS overlay shows these by itself, triggered by the referee\'s taps.</div>' +
+    row('intro', 'Match intro', 'Players, round and best-of when a match starts (8 s)') +
+    row('frame', 'Frame result', 'Who won the frame, points, match score, best breaks (7 s)') +
+    row('after', 'After the match', 'Who the winner plays next in the bracket, or champion (11 s)') +
+    '<div class="tp-acts"><button id="mo-close">Close</button></div>';
+  document.body.appendChild(p);
+  p.querySelectorAll('[data-k]').forEach(function(c){ c.onchange = function(){ db.ref('settings/moments/' + c.dataset.k).set(c.checked).then(function(){ toast((c.checked ? 'On: ' : 'Off: ') + c.parentNode.querySelector('b').textContent); }); }; });
+  g('mo-close').onclick = function(){ p.remove(); };
+};
 
 /* ── YouTube ── */
 var ytPoll = window.YT ? YT.poll(db, function(st, at, info){ ytStat = st === 'ok' ? 'Checked just now — ' + ((info && info.live.length) || 0) + ' live' : st === 'error' ? 'Check failed: ' + info : st === 'nokey' ? 'Auto-detect is off (no API key)' : st === 'fresh' ? 'Checked ' + Math.round((Date.now() - at) / 1000) + ' s ago' : ''; var e = document.getElementById('yt-stat'); if(e) e.textContent = ytStat; }) : null;

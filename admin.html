@@ -340,6 +340,7 @@ html,body{max-width:none;}
         <a href="players.html" class="tt"><div class="tt-ic">👤</div><div class="tt-nm">Players</div><div class="tt-s">Registry</div><span class="tt-b tb-a">Admin</span></a>
         <a href="draw-entry.html" class="tt"><div class="tt-ic">✍️</div><div class="tt-nm">Enter a Draw</div><div class="tt-s">Type a draw by hand</div><span class="tt-b tb-a">Admin</span></a>
         <a href="schedule.html" class="tt"><div class="tt-ic">📋</div><div class="tt-nm">Schedule</div><div class="tt-s">Full timeline</div><span class="tt-b tb-a">Admin</span></a>
+        <div class="tt" onclick="BACKUP.panel()"><div class="tt-ic">🗄️</div><div class="tt-nm">Backups</div><div class="tt-s">Download / restore</div><span class="tt-b tb-a">Admin</span></div>
         <a href="diagnostic.html" class="tt"><div class="tt-ic">🔧</div><div class="tt-nm">Diagnostic</div><div class="tt-s">System health</div><span class="tt-b tb-a">Admin</span></a>
       </div>
       <div class="sh">Broadcast</div>
@@ -350,7 +351,6 @@ html,body{max-width:none;}
         <a href="bracket-overlay.html?table=1&bg=1" class="tt"><div class="tt-ic">🏆</div><div class="tt-nm">Bracket Overlay</div><div class="tt-s">Draw on stream</div><span class="tt-b tb-o">OBS</span></a>
         <a href="stats-control.html" class="tt"><div class="tt-ic">📊</div><div class="tt-nm">Stats</div><div class="tt-s">Overlay stats</div><span class="tt-b tb-o">OBS</span></a>
         <a href="intro.html?edit=1" class="tt"><div class="tt-ic">🎬</div><div class="tt-nm">Intro</div><div class="tt-s">Pre-match</div><span class="tt-b tb-o">OBS</span></a>
-        <a href="design.html" class="tt"><div class="tt-ic">🖌️</div><div class="tt-nm">Theme</div><div class="tt-s">Quick adjust</div><span class="tt-b tb-o">OBS</span></a>
       </div>
     </div>
 
@@ -365,6 +365,7 @@ html,body{max-width:none;}
       <div class="sh">Match day</div>
       <div class="sr" onclick="location.href='control.html'"><div class="sr-ic">🛰️</div><div><div class="sr-nm">Control Room</div><div class="sr-sb">Every table live: scores, referee phones, OBS &amp; boards, alerts</div></div><div class="sr-ar">›</div></div>
       <div class="sr" onclick="location.href='table-cards.html'"><div class="sr-ic">🖨️</div><div><div class="sr-nm">QR Table Cards</div><div class="sr-sb">Print a card per table — referees scan to score</div></div><div class="sr-ar">›</div></div>
+      <div class="sr" onclick="BACKUP.panel()"><div class="sr-ic">🗄️</div><div><div class="sr-nm">Backups</div><div class="sr-sb">Download everything, saved copies, restore</div></div><div class="sr-ar">›</div></div>
       <div class="sh">Security</div>
       <div class="sr" onclick="UA.openPinManager()"><div class="sr-ic">🔐</div><div><div class="sr-nm">Referee PINs &amp; Staff</div><div class="sr-sb">Table PINs, sign out referees, who can use admin pages</div></div><div class="sr-ar">›</div></div>
       <div class="sr" onclick="doLogout()"><div class="sr-ic">🚪</div><div><div class="sr-nm">Sign out</div><div class="sr-sb">Sign this device out of the admin pages</div></div><div class="sr-ar">›</div></div>
@@ -402,6 +403,7 @@ html,body{max-width:none;}
 <script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="backup.js?v=20261028h"></script>
 <script>
 // ═══ ACCESS ═══ (staff sign-in is handled by upbsa-auth.js + the database rules)
 function doLogout(){ if(window.UA) UA.signOut(); }
@@ -596,6 +598,10 @@ function confirmLoad(){
 function flive(mid){if(!mid)return null;return Object.values(LM).find(function(m){return m&&m.matchId===mid;})||null;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 UPT.on(function(){ if(typeof ra==='function') ra(); });
+</script>
+<script>/* a copy of everything is saved before anything destructive */
+(function(){ var names=['doReset']; names.forEach(function(n){ var LBL={"doReset": "Tournament Reset", "clearAllMatches": "Clear all matches", "clearRegistry": "Clear registry", "clearHistory": "Clear history", "resetCounter": "Reset match counter", "fullTournamentReset": "Full tournament reset"}, f=window[n]; if(typeof f!=='function'||!window.BACKUP) return;
+  window[n]=function(){ var a=arguments, self=this; BACKUP.snapshot('Before '+(LBL[n]||n)).then(function(){ f.apply(self,a); }, function(){ if(confirm('Could not save a backup first. Continue anyway?')) f.apply(self,a); }); }; }); })();
 </script>
 </body>
 </html>

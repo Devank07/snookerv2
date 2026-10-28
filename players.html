@@ -175,7 +175,7 @@ footer{text-align:center;padding:40px 0 0;font-size:0.65rem;color:rgba(232,244,2
 <div class="topbar">
   <div class="logo" style="color:#f0c040;"><img src="upbsa-logo.jpg" alt="UPBSA" style="height:28px;width:28px;border-radius:50%;object-fit:cover;border:1px solid rgba(240,192,64,0.4);margin-right:6px;">🎱 CueSports India<small>Player Registry</small></div>
   <div class="topbar-links">
-    <a href="setup.html" class="tlink">Tournament</a>
+    <a href="tournament.html" class="tlink">Tournament</a>
     <a href="dashboard.html" class="tlink">Dashboard</a>
     <a href="players.html" class="tlink active">Players</a>
     <a href="scoreboard.html" class="tlink">Scoreboard</a>
@@ -444,7 +444,7 @@ firebase.initializeApp({
 });
 var db = firebase.database();
 var playersRef = db.ref('players');
-playersRef.on('value',function(s){ var n=Object.keys(s.val()||{}).length; db.ref('meta/playerCount').once('value',function(c){ if(c.val()!==n) db.ref('meta/playerCount').set(n); }); });
+playersRef.on('value',function(s){ var all=s.val()||{}, pn={}; Object.keys(all).forEach(function(k){ var p=all[k]; if(p&&p.name) pn[k]={n:p.name,s:p.state||''}; }); db.ref('meta/playerNames').once('value',function(c){ if(JSON.stringify(c.val()||{})!==JSON.stringify(pn)) db.ref('meta/playerNames').set(pn); }); var n=Object.keys(s.val()||{}).length; db.ref('meta/playerCount').once('value',function(c){ if(c.val()!==n) db.ref('meta/playerCount').set(n); }); });
 
 // ── STATES ──
 var STATES = [

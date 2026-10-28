@@ -235,6 +235,7 @@
             up[path + '/result'] = { f1: v.f1, f2: v.f2, w: v.w, at: now }; up[path + '/status'] = 'done';
           }
           var rg = v.matchId && ctx.reg[v.matchId];
+          if (rg && v.status === 'live' && rg.status === 'pending') { up['match_registry/' + v.matchId + '/status'] = 'active'; if (v.table) up['match_registry/' + v.matchId + '/tableNumber'] = v.table; up['match_registry/' + v.matchId + '/startTime'] = now; }
           if (rg && (v.status === 'done' || v.status === 'bye') && rg.status !== 'finished' && rg.status !== 'walkover' && v.winner) {
             var rp = 'match_registry/' + v.matchId + '/';
             up[rp + 'status'] = v.status === 'bye' ? 'walkover' : 'finished'; up[rp + 'winner'] = v.winner.name;

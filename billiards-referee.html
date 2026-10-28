@@ -19,6 +19,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028d" data-mode="referee"></script>
 <script src="ref-app.js?v=20261028d"></script>
+<script src="next-match.js?v=20261028h"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -611,12 +612,14 @@ function startMatch(){
     mdata.timerStarted=null;
     mdata.currentFrame=1; mdata.bestOf=1;
   }
-  // Get sequential match ID
-  db.ref('meta/matchCounter').transaction(function(v){return (v||0)+1;},function(e,ok,snap){
+  // Get sequential match ID (or keep the scheduled match's ID)
+  var NMp = window.NM ? NM.take() : null;
+  if (NMp && NMp.tournament) mdata.tournament = NMp.tournament;
+  (NMp ? NM.fake(NMp) : db.ref('meta/matchCounter')).transaction(function(v){return (v||0)+1;},function(e,ok,snap){
     var mid=ok?'UPBSA-'+String(snap.val()).padStart(4,'0'):'B-'+Date.now();
     mdata.matchId=mid;
     safeSet(matchRef, mdata);
-    db.ref('match_registry/'+mid).set({
+    (NMp ? NM.noop : db.ref('match_registry/'+mid)).set({
       matchId:mid, tableKey:'table-'+tbl, tournament:'Billiards Match', sport:'billiards',
       bestOf:mdata.bestOf||1, tableNumber:+tbl, status:'active',
       p1:p1, p1state:s1, p2:p2, p2state:s2,

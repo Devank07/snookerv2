@@ -829,6 +829,7 @@ select.su-in{appearance:none;-webkit-appearance:none;background-image:linear-gra
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028d" data-mode="referee"></script>
 <script src="ref-app.js?v=20261028d"></script>
+<script src="next-match.js?v=20261028h"></script>
 <script>
 // Online/offline status
 window.addEventListener('online', function(){
@@ -1307,8 +1308,10 @@ function startMatchFromRemote() {
   }
   err.style.display = 'none';
 
-  // Generate match ID
-  db.ref('meta/matchCounter').transaction(function(cur) {
+  // Generate match ID (or keep the scheduled match's ID so its bracket updates)
+  var NMp = window.NM ? NM.take() : null;
+  if (NMp && NMp.tournament && tourn === 'Match') tourn = NMp.tournament;
+  (NMp ? NM.fake(NMp) : db.ref('meta/matchCounter')).transaction(function(cur) {
     return (cur || 0) + 1;
   }, function(error, committed, snap) {
     var num = snap.val() || 1;
@@ -1343,7 +1346,7 @@ function startMatchFromRemote() {
     };
     // Write to Firebase
     db.ref('matches/table-' + tbl).set(matchData);
-    db.ref('match_registry/' + matchId).set({
+    (NMp ? NM.noop : db.ref('match_registry/' + matchId)).set({
       matchId: matchId, sport: 'snooker', status: 'active', tableKey: 'table-' + tbl,
       tableNumber: +tbl, tournament: tourn, bestOf: setupBO,
       p1: p1n, p1state: p1s, p2: p2n, p2state: p2s,

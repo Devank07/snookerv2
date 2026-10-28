@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028d" data-mode="referee"></script>
 <script src="ref-app.js?v=20261028d"></script>
+<script src="next-match.js?v=20261028h"></script>
 <script src="shootout-core.js?v=20261028b"></script>
 <style>
 :root{
@@ -508,7 +509,8 @@ function createMatch(){
   var refName = g('su-ref').value.trim(); if(refName) localStorage.setItem('refName', refName);
   var tourn = g('su-tourn').value.trim() || 'Shoot Out';
   cfg.reds = sel.reds;
-  db.ref('meta/matchCounter').transaction(function(c){ return (c||0)+1; }, function(e, ok, snap){
+  var NMp = window.NM ? NM.take() : null;
+  (NMp ? NM.fake(NMp) : db.ref('meta/matchCounter')).transaction(function(c){ return (c||0)+1; }, function(e, ok, snap){
     var num = (snap && snap.val()) || Date.now()%10000;
     var mid = 'UPBSA-' + String(num).padStart(4,'0');
     var t = SO.now();
@@ -530,7 +532,7 @@ function createMatch(){
       }
     };
     db.ref('matches/table-'+tbl).set(m);
-    db.ref('match_registry/'+mid).set({ matchId:mid, tableKey:'table-'+tbl, sport:'shootout', status:'active', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo, p1:p1, p1state:m.player1.state, p2:p2, p2state:m.player2.state, firstBreak:sel.brk, startTime:t, format:cfg });
+    (NMp ? NM.noop : db.ref('match_registry/'+mid)).set({ matchId:mid, tableKey:'table-'+tbl, sport:'shootout', status:'active', tableNumber:+tbl, tournament:tourn, bestOf:sel.bo, p1:p1, p1state:m.player1.state, p2:p2, p2state:m.player2.state, firstBreak:sel.brk, startTime:t, format:cfg });
   });
 }
 
