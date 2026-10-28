@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261028e"></script>
+<script src="bracket-core.js?v=20261028g"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#050a06;--card:#0d1b12;--card2:#102218;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.12);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--faint:rgba(232,244,224,.32);--gold:#f0c040;--green:#2ecc71;--blue:#5fb8ff;
@@ -144,7 +144,11 @@ table.st tr.hl td{background:rgba(95,184,255,.12);}
 .ytcta .sp{flex:1;}
 .watchbtn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;background:#ff0033;color:#fff;font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
 .ytbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:10px 14px;border-radius:12px;background:rgba(255,0,51,.1);border:1px solid rgba(255,0,51,.35);font:700 14px 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;}
-.ytbar a{color:#fff;}
+.ytbar a{color:#fff;padding:5px 12px;border-radius:999px;background:#ff0033;font-size:13px;letter-spacing:1px;}
+.mr-yt{grid-column:1/-1;justify-self:center;margin-top:4px;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;background:#ff0033;color:#fff;font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;}
+.bk-yt{display:inline-flex;align-items:center;gap:4px;height:16px;padding:0 7px;border-radius:999px;background:#ff0033;color:#fff!important;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;text-decoration:none;}
+.lc-yt{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;background:#ff0033;color:#fff;font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;}
+.lc-yt:hover{background:#ff1a47;}
 @media (max-width:980px){.watch{grid-template-columns:1fr;}}
 @media (max-width:760px){.ytb span{display:none;}.ytb{padding:0 10px;}}
 @media (max-width:760px){
@@ -167,7 +171,6 @@ table.st tr.hl td{background:rgba(95,184,255,.12);}
   <a class="ytb" id="ytb" href="https://www.youtube.com/@upbsa" target="_blank" rel="noopener" title="UPBSA.TV on YouTube"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg><span id="ytb-t">YouTube</span></a>
   <span class="clock" id="clock"></span>
 </div>
-<div class="wrap" id="watch" style="display:none;padding-bottom:0"></div>
 <div class="wrap" id="view"></div>
 <script>
 firebase.initializeApp({
@@ -212,12 +215,12 @@ function liveCard(k, m){
   var draw = w && T[w.tid].draw[w.ck], vm = null;
   if(draw){ Object.keys(draw.matches || {}).some(function(x){ if(draw.matches[x].matchId === m.matchId){ vm = draw.matches[x]; return true; } }); }
   var ys = live && streamForTable(n);
-  return '<a class="lc' + (live ? ' live' : '') + '" href="' + href + '"><div class="lc-h"><span>Table ' + n + '</span>' + (live ? '<span class="lv">Live</span>' : '<span class="badge done">Finished</span>') + (ys ? '<span class="watchbtn" data-watch="' + ys.id + '">▶ Watch</span>' : '') +
+  return '<a class="lc' + (live ? ' live' : '') + '" href="' + href + '"><div class="lc-h"><span>Table ' + n + '</span>' + (live ? '<span class="lv">Live</span>' : '<span class="badge done">Finished</span>') + '' +
     '<span class="sp"></span><span>' + (vm && vm.roundName ? esc(vm.roundName) + ' · ' : '') + 'Frame ' + esc(m.currentFrame || 1) + ' · BO' + esc(m.bestOf || '') + '</span></div>' +
     '<div class="lc-ev">' + esc(m.tournament || '') + (w ? ' · ' + esc(T[w.tid].draw[w.ck].catName || '') : '') + '</div>' +
     '<div class="lc-b"><div class="lc-p"><div class="lc-n">' + esc(p1.name || 'Player 1') + (at1 ? '<span class="at"></span>' : '') + '</div><div class="lc-st">' + esc(p1.state || '') + '</div><div class="lc-pts">' + esc(p1.score || 0) + (at1 && brk ? '<small>BREAK ' + brk + '</small>' : '') + '</div></div>' +
     '<div class="lc-fr">' + esc(p1.frames || 0) + '–' + esc(p2.frames || 0) + '<small>FRAMES</small></div>' +
-    '<div class="lc-p r"><div class="lc-n">' + (at2 ? '<span class="at"></span>' : '') + esc(p2.name || 'Player 2') + '</div><div class="lc-st">' + esc(p2.state || '') + '</div><div class="lc-pts">' + (at2 && brk ? '<small>BREAK ' + brk + '</small>' : '') + esc(p2.score || 0) + '</div></div></div></a>';
+    '<div class="lc-p r"><div class="lc-n">' + (at2 ? '<span class="at"></span>' : '') + esc(p2.name || 'Player 2') + '</div><div class="lc-st">' + esc(p2.state || '') + '</div><div class="lc-pts">' + (at2 && brk ? '<small>BREAK ' + brk + '</small>' : '') + esc(p2.score || 0) + '</div></div></div>' + (ys ? '<span class="lc-yt" data-yt="' + streamUrl(ys.id) + '" title="Opens the live stream on YouTube">▶ Go to livestream</span>' : '') + '</a>';
 }
 function pageLive(){
   var keys = Object.keys(M).filter(function(k){ return M[k] && M[k].player1; }).sort(function(a,b){ return parseInt(a.replace('table-',''),10) - parseInt(b.replace('table-',''),10); });
@@ -259,7 +262,9 @@ function mrow(v){
   var sc = v.status === 'done' || v.status === 'live' ? esc(v.f1) + ' – ' + esc(v.f2) : v.status === 'bye' ? 'W/O' : 'v';
   var sm = v.status === 'live' ? 'LIVE' + (v.table ? ' · T' + v.table : '') : v.status === 'done' ? 'FINAL' : v.datetime ? esc(BK.fmtTime(v.datetime)) : v.table ? 'TABLE ' + v.table : (v.bo ? 'BO' + v.bo : '');
   var nm = function(p){ return BK.isBye(p) ? 'BYE' : BK.isTbd(p) ? (p && p.name && !/^tbd$/i.test(p.name) ? p.name : 'TBD') : p.name; };
-  return '<div class="mr' + cl + (hl(v.p1 && v.p1.name) || hl(v.p2 && v.p2.name) ? ' hl' : '') + '"><span class="a ' + a + '">' + esc(nm(v.p1)) + '</span><span class="sc">' + sc + '<small>' + sm + '</small></span><span class="b ' + b + '">' + esc(nm(v.p2)) + '</span></div>';
+  var yu = v.status === 'live' ? tableStream(v.table) : '';
+  return '<div class="mr' + cl + (hl(v.p1 && v.p1.name) || hl(v.p2 && v.p2.name) ? ' hl' : '') + '"><span class="a ' + a + '">' + esc(nm(v.p1)) + '</span><span class="sc">' + sc + '<small>' + sm + '</small></span><span class="b ' + b + '">' + esc(nm(v.p2)) + '</span>' +
+    (yu ? '<a class="mr-yt" href="' + yu + '" target="_blank" rel="noopener">▶ Go to livestream</a>' : '') + '</div>';
 }
 function stTable(rows, adv, showGroupCol){
   return '<table class="st"><thead><tr><th>#</th><th>Player</th><th>P</th><th>W</th><th>L</th><th>Frames</th><th>+/−</th></tr></thead><tbody>' +
@@ -284,7 +289,7 @@ function pageEvent(r){
     return '<a class="tab' + (x === c ? ' on' : '') + '" href="#e/' + r.tid + '/' + x.key + '">' + (live ? '<span class="dotl"></span>' : '') + esc(x.name) + '</a>'; }).join('') + '</div>';
   var md = c.d ? BK.model(t, c.key, ctx()) : null;
   if(!md) return h + '<div class="empty" style="margin-top:18px">The draw for ' + esc(c.name) + ' hasn\'t been made yet.</div>';
-  var sl = streams(); if(sl.length) h += '<div class="ytbar"><span style="color:#ff6b86">● Live on YouTube</span>' + sl.map(function(x){ return '<a href="#live/' + x.id + '">' + esc(x.title || ('Table ' + x.table)) + ' ›</a>'; }).join(' ') + '</div>';
+  var sl = streams(); if(sl.length) h += '<div class="ytbar"><span style="color:#ff6b86">● Live on YouTube</span>' + sl.map(function(x){ return '<a href="' + streamUrl(x.id) + '" target="_blank" rel="noopener">▶ ' + esc(x.table ? 'Table ' + x.table : (x.title || 'Live stream')) + '</a>'; }).join(' ') + '</div>';
   if(md.champion) h += '<div class="champ"><span class="tr">🏆</span><div><span>' + esc(c.name) + ' champion</span><b>' + esc(md.champion.name) + '</b></div></div>';
   var stages = md.stages, sel = r.st != null ? +r.st : (stageSel[c.key] != null ? stageSel[c.key] : (function(){   // open on the stage that's being played
     var pick = 0; stages.forEach(function(s, i){ var any = (s.kind === 'ko' ? [].concat.apply([], s.rounds.map(function(x){ return x.matches; })) : s.kind === 'groups' ? [].concat.apply([], s.groups.map(function(x){ return x.matches; })) : s.matches)
@@ -314,37 +319,18 @@ function pageResults(){
   }).join('') + '</div>';
 }
 
-/* ── watch live on YouTube (kept outside the page redraws so the video never restarts) ── */
-var watchKey = '';
-function drawWatch(r){
-  var box = g('watch'), sl = streams(), on = r.page === 'live';
-  var anyTable = Object.keys(M).some(function(k){ return M[k] && M[k].player1 && M[k].status !== 'finished'; });
-  var chUrl = window.YT ? YT.channelUrl(YC) : 'https://www.youtube.com/@upbsa';
-  var b = g('ytb'); b.href = chUrl; b.classList.toggle('live', sl.length > 0); g('ytb-t').textContent = sl.length ? 'Live on YouTube' : 'YouTube';
-  if(!on){ box.style.display = 'none'; return; }
-  box.style.display = '';
-  var want = r.tid && sl.some(function(x){ return x.id === r.tid; }) ? r.tid : (watching && sl.some(function(x){ return x.id === watching; }) ? watching : (sl[0] && sl[0].id) || '');
-  var key, html;
-  if(want){ watching = want; key = 'v:' + want; }
-  else if(anyTable && YC.channelId){ key = 'c:' + YC.channelId; }
-  else key = 'none';
-  if(key !== watchKey){
-    watchKey = key;
-    if(key === 'none') html = '<div class="ytcta"><div><b>Watch UPBSA.TV on YouTube</b><span>Live matches are streamed on our channel — they show up right here when we\'re live.</span></div><span class="sp"></span><a class="wl-sub" style="padding:0 18px;margin:0" href="' + esc(chUrl) + '?sub_confirmation=1" target="_blank" rel="noopener">▶ Subscribe</a></div>';
-    else html = '<div class="watch"><div class="player"><iframe src="' + (key[0] === 'v' ? YT.embed(want, true) : YT.embedChannel(YC.channelId)) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Live on YouTube"></iframe></div><div class="wlist" id="wlist"></div></div>';
-    box.innerHTML = html;
-  }
-  var wl = g('wlist');
-  if(wl){
-    var items = sl.map(function(x){ return '<div class="wi' + (x.id === watching ? ' on' : '') + '" data-watch="' + x.id + '">' + (x.thumb ? '<img src="' + esc(x.thumb) + '" alt="">' : '<div class="ph">▶</div>') + '<div><b>' + esc(x.title || 'Live stream') + '</b><span>' + (x.table ? 'Table ' + x.table : 'Live') + (x.viewers ? ' · ' + x.viewers.toLocaleString() + ' watching' : '') + '</span></div></div>'; }).join('');
-    wl.innerHTML = '<div class="wl-h">' + (sl.length ? sl.length + ' live on YouTube' : 'Live on YouTube') + '</div>' + (items || '<div class="wi" style="cursor:default"><div class="ph">▶</div><div><b>Main stream</b><span>Whatever we\'re streaming now</span></div></div>') +
-      '<a class="wl-sub" href="' + esc(chUrl) + '?sub_confirmation=1" target="_blank" rel="noopener">Subscribe on YouTube</a>';
-  }
+/* ── YouTube: a "go to livestream" button on every match that's being streamed ── */
+function streamUrl(id){ return 'https://www.youtube.com/watch?v=' + id; }
+function tableStream(n){ var x = n && streamForTable(+n); return x ? streamUrl(x.id) : ''; }
+BK.watchUrl = function(v){ return v && v.status === 'live' ? tableStream(v.table) : ''; };   // used by the bracket boxes
+function topButton(){
+  var sl = streams(), b = g('ytb'), ch = window.YT ? YT.channelUrl(YC) : 'https://www.youtube.com/@upbsa';
+  b.href = sl.length === 1 ? streamUrl(sl[0].id) : sl.length ? ch + '/streams' : ch;
+  b.classList.toggle('live', sl.length > 0); g('ytb-t').textContent = sl.length ? 'Live on YouTube' : 'YouTube';
 }
-document.addEventListener('click', function(e){
-  var w = e.target.closest('[data-watch]'); if(!w) return;
-  e.preventDefault(); e.stopPropagation(); watching = w.dataset.watch;
-  if(route().page !== 'live') location.hash = '#live/' + watching; else { watchKey = ''; draw(); window.scrollTo({ top:0, behavior:'smooth' }); }
+document.addEventListener('click', function(e){   // buttons inside cards that are links themselves
+  var w = e.target.closest('[data-yt]'); if(!w) return;
+  e.preventDefault(); e.stopPropagation(); window.open(w.dataset.yt, '_blank', 'noopener');
 }, true);
 
 /* ── draw ── */
@@ -353,7 +339,7 @@ function render(){ if(raf) return; raf = requestAnimationFrame(function(){ raf =
 function draw(){
   var r = route(), y = window.scrollY, active = document.activeElement && document.activeElement.id === 'find', pos = active ? document.activeElement.selectionStart : 0;
   var sx = 0, sw = document.querySelector('#stage .bk-wrap'); if(sw) sx = sw.scrollLeft;
-  nav(r.page); drawWatch(r);
+  nav(r.page); topButton();
   var html = r.page === 'events' ? pageEvents() : r.page === 'results' ? pageResults() : r.page === 'e' ? pageEvent(r) : pageLive();
   g('view').innerHTML = html;
   if(r.page === 'e' && r.st != null && T[r.tid]) stageSel[r.ck] = +r.st;

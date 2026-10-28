@@ -331,6 +331,8 @@
     else if (v.status === 'bye') a.push('<span>Walkover</span>');
     else if (v.table) a.push('<span>Table ' + v.table + '</span>');
     if (v.datetime && v.status === 'pending') { var d = new Date(v.datetime); if (!isNaN(d)) a.push('<span>' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>'); }
+    var yu = BK.watchUrl ? BK.watchUrl(v) : '';
+    if (yu) a.push('<a class="bk-yt" href="' + esc(yu) + '" target="_blank" rel="noopener" title="Watch this match live on YouTube">▶ Livestream</a>');
     a.push('<span class="sp"></span>'); if (v.bo) a.push('<span>BO' + v.bo + '</span>');
     return '<div class="bk-meta">' + a.join('') + '</div>';
   }
