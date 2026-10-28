@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="bracket-core.js?v=20261028e"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:80px;}
@@ -142,6 +143,8 @@ footer{text-align:center;padding:40px 0 0;font-size:0.63rem;color:rgba(232,244,2
   <div class="nav">
     <span class="navlink on" onclick="showPage('list')">Tournaments</span>
     <span class="navlink" onclick="showPage('create')">+ New</span>
+    <a class="navlink" href="draw-entry.html" style="text-decoration:none">✍ Enter a draw by hand</a>
+    <a class="navlink" href="bracket.html#events" target="_blank" style="text-decoration:none">👁 Public page</a>
     <a href="dashboard.html" class="navlink">Dashboard</a>
     <a href="players.html" class="navlink">Players</a>
     <a href="setup.html" class="navlink">Scoring</a>
@@ -257,6 +260,7 @@ footer{text-align:center;padding:40px 0 0;font-size:0.63rem;color:rgba(232,244,2
       <div style="font-size:0.78rem;color:rgba(232,244,224,0.45);">Click any table chip on a match to assign or change the table.</div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-g btn-sm" onclick="generateDraw()">⚡ Generate Draw</button>
+        <a class="btn btn-sm" href="draw-entry.html" style="text-decoration:none">✍ Enter by hand</a>
         <button class="btn btn-b btn-sm" onclick="renderDrawPanel()">↻ Refresh View</button>
       </div>
     </div>
@@ -934,6 +938,9 @@ function saveBO(){
 
 // Init
 renderCatRows();
+
+/* keep tournament draws up to date: results saved, winners moved to the next round */
+if(window.BK) BK.autoSync(firebase.database());
 </script>
 </body>
 </html>

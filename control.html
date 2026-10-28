@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028c"></script>
+<script src="bracket-core.js?v=20261028e"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
@@ -201,13 +202,13 @@ function battery(k){   // freshest phone on this table
 }
 db.ref('seen').on('value', function(s){ SEEN = s.val() || {}; draw(); });
 db.ref('secret/pins').on('value', function(s){ PINS = s.val() || {}; draw(); });
-var BK = {};
-db.ref('secret/boardKeys').on('value', function(s){ BK = s.val() || {}; });
+var BOARDKEYS = {};
+db.ref('secret/boardKeys').on('value', function(s){ BOARDKEYS = s.val() || {}; });
 function boardKey(k){
-  if(BK[k]) return Promise.resolve(BK[k]);
+  if(BOARDKEYS[k]) return Promise.resolve(BOARDKEYS[k]);
   var a = new Uint8Array(18); crypto.getRandomValues(a);
   var key = btoa(String.fromCharCode.apply(null, a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  return db.ref('secret/boardKeys/' + k).set(key).then(function(){ BK[k] = key; return key; });
+  return db.ref('secret/boardKeys/' + k).set(key).then(function(){ BOARDKEYS[k] = key; return key; });
 }
 function boardUrl(n, key){ return location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + 'scoreboard.html?table=' + n + '#key=' + key; }
 
@@ -424,6 +425,9 @@ function beep(force){
 }
 sndBtn();
 setInterval(function(){ var d = new Date(now()); g('clock').textContent = d.toLocaleTimeString('en-GB'); render(); }, 1000);
+
+/* keep tournament draws up to date: results saved, winners moved to the next round */
+if(window.BK) BK.autoSync(firebase.database());
 </script>
 </body>
 </html>

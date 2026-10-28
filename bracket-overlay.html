@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bracket Overlay — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="bracket-core.js?v=20261028e"></script>
+<style>
+/* OBS browser source: 1920 × 1080, transparent.
+   bracket-overlay.html?table=1          follows whatever is on table 1 (bracket of its category)
+   bracket-overlay.html?table=1&view=road  the two players' road to this match
+   bracket-overlay.html?t=<event id>&c=<category key>   a fixed bracket
+   &stage=0|1|2  pick a stage · &bg=1  dark background for testing */
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;color:#e8f4e0;font-family:'Inter',sans-serif;}
+body.bg{background:#1c3a26;}
+#stage{position:absolute;left:60px;top:60px;width:1800px;height:960px;border-radius:24px;background:rgba(5,12,8,.94);border:2px solid rgba(240,192,64,.55);box-shadow:0 30px 80px rgba(0,0,0,.55);overflow:hidden;display:flex;flex-direction:column;opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease;}
+#stage.on{opacity:1;transform:none;}
+.hd{display:flex;align-items:center;gap:20px;padding:26px 40px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+.hd .ev{font:900 22px 'Barlow Condensed',sans-serif;letter-spacing:6px;color:#f0c040;text-transform:uppercase;}
+.hd .ti{font:900 54px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px;}
+.hd .sp{flex:1;}
+.hd .tag{padding:8px 16px;border-radius:10px;background:rgba(240,192,64,.14);color:#f0c040;font:800 22px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;}
+.bd{flex:1;position:relative;}
+#fit{position:absolute;left:50%;top:50%;transform-origin:0 0;}
+.bk-wrap{overflow:visible!important;padding:0!important;}
+.bk-m.now{border-color:#f0c040!important;box-shadow:0 0 0 2px rgba(240,192,64,.6),0 0 40px rgba(240,192,64,.35)!important;}
+/* groups */
+.gg{display:grid;gap:22px;padding:6px;}
+.gcard{border-radius:16px;background:#0d1b12;border:1px solid rgba(255,255,255,.1);overflow:hidden;}
+.gcard h3{padding:14px 18px;font:900 28px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;background:rgba(0,0,0,.3);display:flex;justify-content:space-between;align-items:center;}
+.gcard h3 span{font:700 18px 'Barlow Condensed',sans-serif;color:rgba(232,244,224,.55);letter-spacing:2px;}
+.gcard table{width:100%;border-collapse:collapse;}
+.gcard td,.gcard th{padding:10px 12px;font:700 26px 'Barlow Condensed',sans-serif;text-align:center;border-top:1px solid rgba(255,255,255,.06);}
+.gcard th{font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:rgba(232,244,224,.45);border-top:0;}
+.gcard td:nth-child(2),.gcard th:nth-child(2){text-align:left;text-transform:uppercase;}
+.gcard td:first-child{font:400 30px 'Bebas Neue',sans-serif;color:rgba(232,244,224,.4);width:56px;}
+.gcard tr.q td:first-child{color:#f0c040;} .gcard tr.q td:nth-child(2){box-shadow:inset 4px 0 0 #f0c040;}
+.gcard td.w{font:400 34px 'Bebas Neue',sans-serif;color:#f0c040;}
+.gcard tr.now td{background:rgba(240,192,64,.12);}
+/* road */
+.road{position:absolute;inset:0;display:grid;grid-template-columns:1fr 560px 1fr;gap:40px;padding:40px;align-items:center;}
+.side h4{font:900 46px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin-bottom:6px;}
+.side .stt{font:700 22px 'Barlow Condensed',sans-serif;letter-spacing:3px;color:rgba(232,244,224,.5);text-transform:uppercase;margin-bottom:22px;}
+.side.r{text-align:right;}
+.step{display:flex;align-items:center;gap:16px;padding:14px 18px;margin-bottom:12px;border-radius:14px;background:#0d1b12;border:1px solid rgba(255,255,255,.08);}
+.side.r .step{flex-direction:row-reverse;}
+.step .rn{font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:rgba(232,244,224,.5);text-transform:uppercase;width:150px;}
+.step .op{flex:1;font:700 28px 'Barlow Condensed',sans-serif;text-transform:uppercase;}
+.step .sc{font:400 40px 'Bebas Neue',sans-serif;color:#f0c040;letter-spacing:1px;}
+.step.first{opacity:.55;font-style:italic;}
+.mid{text-align:center;}
+.mid .rnd{font:900 30px 'Barlow Condensed',sans-serif;letter-spacing:8px;color:#f0c040;text-transform:uppercase;}
+.mid .vs{margin:18px 0;font:400 160px/1 'Bebas Neue',sans-serif;}
+.mid .vs small{display:block;font:700 22px 'Barlow Condensed',sans-serif;letter-spacing:4px;color:rgba(232,244,224,.5);}
+.mid .next{margin-top:24px;padding:16px;border-radius:14px;border:1px dashed rgba(240,192,64,.5);font:700 24px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:rgba(232,244,224,.8);}
+.mid .next b{color:#f0c040;}
+.none{font:700 34px 'Barlow Condensed',sans-serif;color:rgba(232,244,224,.6);text-align:center;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+</style>
+</head>
+<body>
+<div id="stage"><div class="hd"><div><div class="ev" id="ev"></div><div class="ti" id="ti">Draw</div></div><span class="sp"></span><span class="tag" id="tag"></span></div><div class="bd" id="bd"><div id="fit"></div></div></div>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var Q = new URLSearchParams(location.search), TBL = Q.get('table'), VIEW = Q.get('view') || 'bracket', STG = Q.get('stage');
+if(Q.get('bg')) document.body.classList.add('bg');
+var db = firebase.database(), esc = BK.esc, T = {}, M = {}, R = {};
+var st = document.createElement('style'); st.textContent = BK.css() + '.bk-p .n{font-size:20px!important}.bk-p .s{font-size:28px!important}.bk-meta{font-size:13px!important;height:22px!important}.bk-rh{font-size:17px!important;height:32px!important}'; document.head.appendChild(st);
+function g(id){ return document.getElementById(id); }
+function locate(){
+  if(Q.get('t')) return { tid:Q.get('t'), ck:Q.get('c'), mid:null };
+  var m = TBL && M['table-' + TBL]; if(!m || !m.matchId) return null;
+  var hit = null;
+  Object.keys(T).some(function(tid){ var d = T[tid].draw || {}; return Object.keys(d).some(function(ck){ var ms = (d[ck] && d[ck].matches) || {}; return Object.keys(ms).some(function(k){ if(ms[k] && ms[k].matchId === m.matchId){ hit = { tid:tid, ck:ck, mid:m.matchId }; return true; } }); }); });
+  return hit;
+}
+function fit(){
+  var f = g('fit'), bd = g('bd'), el = f.firstElementChild; if(!el) return;
+  f.style.transform = 'none';
+  var w = el.scrollWidth || el.offsetWidth, h = el.scrollHeight || el.offsetHeight, s = Math.min((bd.clientWidth - 60) / w, (bd.clientHeight - 40) / h, 1.6);
+  f.style.transform = 'translate(' + (-w * s / 2) + 'px,' + (-h * s / 2) + 'px) scale(' + s + ')';
+}
+function draw(){
+  var loc = locate(), stage = g('stage');
+  if(!loc || !T[loc.tid]){ stage.classList.remove('on'); return; }
+  var t = T[loc.tid], ck = loc.ck || Object.keys(t.draw || {})[0], md = ck && BK.model(t, ck, BK.ctx(M, R));
+  if(!md){ stage.classList.remove('on'); return; }
+  g('ev').textContent = t.name || ''; g('ti').textContent = md.catName || '';
+  var cur = loc.mid ? md.all.filter(function(v){ return v.matchId === loc.mid; })[0] : null;
+  var si = STG != null ? +STG : 0;
+  if(STG == null && cur) md.stages.forEach(function(s, i){ var list = s.kind === 'ko' ? [].concat.apply([], s.rounds.map(function(r){ return r.matches; })) : s.kind === 'groups' ? [].concat.apply([], s.groups.map(function(x){ return x.matches; })) : s.matches; if(list.indexOf(cur) >= 0) si = i; });
+  if(STG == null && !cur) si = md.stages.length - 1;
+  var s = md.stages[Math.min(si, md.stages.length - 1)];
+  if(VIEW === 'road' && cur){ road(md, cur); stage.classList.add('on'); return; }
+  g('tag').textContent = s.title + (cur && cur.roundName ? ' · ' + cur.roundName : '');
+  var h = '';
+  if(s.kind === 'ko') h = BK.renderKO(s, { mw:300, mh:92, gap:60, vgap:18, champion: md.champion && s === md.stages[md.stages.length - 1] ? md.champion : null });
+  else {
+    var gl = s.kind === 'groups' ? s.groups : [{ name:'Standings', advance:s.advance || 1, rows:s.rows }];
+    var cols = gl.length > 4 ? 3 : gl.length > 1 ? 2 : 1, nowNames = cur ? [String(cur.p1.name).toLowerCase(), String(cur.p2.name).toLowerCase()] : [];
+    h = '<div class="gg" style="grid-template-columns:repeat(' + cols + ',' + (cols === 1 ? 900 : cols === 2 ? 760 : 540) + 'px)">' + gl.map(function(gp){
+      return '<div class="gcard"><h3>' + esc(gp.name) + '<span>TOP ' + gp.advance + ' THROUGH</span></h3><table><tr><th>#</th><th>PLAYER</th><th>P</th><th>W</th><th>FRAMES</th></tr>' +
+        gp.rows.map(function(r){ return '<tr class="' + (r.pos <= gp.advance && gp.rows.some(function(x){ return x.P; }) ? 'q' : '') + (nowNames.indexOf(r.name.toLowerCase()) >= 0 ? ' now' : '') + '"><td>' + r.pos + '</td><td>' + esc(r.name) + '</td><td>' + r.P + '</td><td class="w">' + r.W + '</td><td>' + r.FF + '–' + r.FA + '</td></tr>'; }).join('') + '</table></div>'; }).join('') + '</div>';
+  }
+  g('fit').innerHTML = h;
+  if(cur) document.querySelectorAll('.bk-m[data-mid="' + cur.matchId + '"]').forEach(function(e){ e.classList.add('now'); });
+  fit(); stage.classList.add('on');
+}
+function road(md, cur){
+  g('tag').textContent = 'Road to the ' + (md.stages[md.stages.length - 1].kind === 'ko' ? 'final' : 'title');
+  function path(p){
+    var n = String(p && p.name || '').toLowerCase(), out = [];
+    md.all.forEach(function(v){ if(v === cur || (v.status !== 'done' && v.status !== 'bye')) return;
+      var s = String(v.p1 && v.p1.name || '').toLowerCase() === n ? 1 : String(v.p2 && v.p2.name || '').toLowerCase() === n ? 2 : 0; if(!s) return;
+      var op = s === 1 ? v.p2 : v.p1, won = v.w === s;
+      out.push({ rn:v.roundName || v.group || '', op:BK.isBye(op) ? 'BYE' : op.name, sc:v.status === 'bye' ? 'W/O' : (s === 1 ? v.f1 + '–' + v.f2 : v.f2 + '–' + v.f1), won:won }); });
+    return out;
+  }
+  function side(p, cls){ var ps = path(p);
+    return '<div class="side ' + cls + '"><h4>' + esc(p.name) + '</h4><div class="stt">' + esc(p.state || '') + '</div>' + (ps.length ? ps.map(function(x){ return '<div class="step"><span class="rn">' + esc(x.rn) + '</span><span class="op">' + (x.won ? 'beat ' : 'lost to ') + esc(x.op) + '</span><span class="sc">' + esc(x.sc) + '</span></div>'; }).join('') : '<div class="step first"><span class="op">First match of the event</span></div>') + '</div>'; }
+  var nextTxt = '';
+  if(cur.stage === 'ko' || cur.stage === 'part3'){
+    var ko = md.stages[md.stages.length - 1], ri = -1, mi = -1;
+    ko.rounds.forEach(function(r, i){ var j = r.matches.indexOf(cur); if(j >= 0){ ri = i; mi = j; } });
+    if(ri >= 0 && ri < ko.rounds.length - 1){ var nx = ko.rounds[ri + 1].matches[Math.floor(mi / 2)], other = mi % 2 ? nx.p1 : nx.p2;
+      nextTxt = 'Winner plays <b>' + esc(BK.isTbd(other) ? (other.from || 'TBD') : other.name) + '</b> in the ' + esc(ko.rounds[ri + 1].name); }
+    else if(ri === ko.rounds.length - 1) nextTxt = 'Winner is the <b>champion</b>';
+  }
+  var live = cur.status === 'live' ? (cur.f1 + ' – ' + cur.f2) : 'v';
+  g('fit').innerHTML = '';
+  g('bd').innerHTML = '<div class="road">' + side(cur.p1, '') + '<div class="mid"><div class="rnd">' + esc(cur.roundName || '') + '</div><div class="vs">' + esc(live) + '<small>' + (cur.bo ? 'BEST OF ' + cur.bo : '') + '</small></div>' + (nextTxt ? '<div class="next">' + nextTxt + '</div>' : '') + '</div>' + side(cur.p2, 'r') + '</div>';
+}
+var raf = 0; function render(){ if(raf) return; raf = requestAnimationFrame(function(){ raf = 0; if(VIEW !== 'road' && !g('fit')){ g('bd').innerHTML = '<div id="fit"></div>'; } draw(); }); }
+db.ref('tournaments').on('value', function(s){ T = s.val() || {}; render(); });
+db.ref('matches').on('value', function(s){ M = s.val() || {}; render(); });
+db.ref('match_registry').on('value', function(s){ R = s.val() || {}; render(); });
+</script>
+</body>
+</html>
