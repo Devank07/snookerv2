@@ -6,8 +6,9 @@
 <title>Draw Builder — UPBSA.TV</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -356,7 +357,7 @@ function loadTournament(id){
 }
 
 // Watch live match scores
-for(var t=1;t<=6;t++){
+for(var t=1;t<=UPT.MAX;t++){
   (function(tbl){
     db.ref('matches/table-'+tbl).on('value',function(s){
       var m=s.val();
@@ -657,7 +658,7 @@ function showMatchProps(item){
     '</select>'+
     '<label class="fl">Assign to Table</label>'+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">'+
-    [1,2,3,4,5,6].map(function(n){
+    UPT.list().map(function(n){
       return '<button class="btn'+(item.tableNum==n?' gold':'')+'" onclick="assignTable('+n+')">T'+n+'</button>';
     }).join('')+
     '</div>'+

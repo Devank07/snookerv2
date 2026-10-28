@@ -397,8 +397,9 @@ html,body{max-width:none;}
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <script>
 // ═══ ACCESS ═══ (staff sign-in is handled by upbsa-auth.js + the database rules)
 function doLogout(){ if(window.UA) UA.signOut(); }
@@ -416,7 +417,7 @@ firebase.initializeApp({
 var db=firebase.database();
 var LM={}, REG={}, loadM=null, loadT=null;
 
-for(var t=1;t<=16;t++){(function(n){db.ref('matches/table-'+n).on('value',function(s){LM[n]=s.val();ra();});})(t);}
+for(var t=1;t<=UPT.MAX;t++){(function(n){db.ref('matches/table-'+n).on('value',function(s){LM[n]=s.val();ra();});})(t);}
 db.ref('match_registry').on('value',function(s){REG=s.val()||{};ra();});
 db.ref('meta/matchCounter').on('value',function(s){var el=document.getElementById('ctr-sub');if(el)el.textContent='Next: UPBSA-'+String((s.val()||0)+1).padStart(4,'0');});
 db.ref('.info/connected').on('value',function(s){
@@ -470,7 +471,7 @@ function rAlerts(){
 function rHomeTbl(){
   var area=document.getElementById('home-tbl'); if(!area)return;
   var live=[];
-  for(var i=1;i<=6;i++){var m=LM[i];if(m&&m.status==='active')live.push({n:i,m:m});}
+  for(var i=1;i<=UPT.count;i++){var m=LM[i];if(m&&m.status==='active')live.push({n:i,m:m});}
   if(!live.length){area.innerHTML='<div style="text-align:center;padding:20px;color:rgba(232,244,224,.38);font-size:0.8rem;">No live matches</div>';return;}
   area.innerHTML=live.map(function(t){return tCard(t.n,t.m,true);}).join('');
 }
@@ -478,7 +479,7 @@ function rHomeTbl(){
 function rTables(){
   var list=document.getElementById('tbl-list'); if(!list)return;
   var html='';
-  for(var i=1;i<=6;i++) html+=tCard(i,LM[i],false);
+  for(var i=1;i<=UPT.count;i++) html+=tCard(i,LM[i],false);
   list.innerHTML=html;
 }
 
@@ -568,7 +569,7 @@ function openLoadById(id){
 }
 function bGrid(def){
   var g=document.getElementById('lmod-grid');g.innerHTML='';
-  for(var i=1;i<=6;i++){(function(n){
+  for(var i=1;i<=UPT.count;i++){(function(n){
     var occ=LM[n]&&LM[n].status==='active';
     var b=document.createElement('button');
     b.className='to'+(occ?' occ':'')+(n===def?' sel':'');
@@ -592,6 +593,7 @@ function confirmLoad(){
 }
 function flive(mid){if(!mid)return null;return Object.values(LM).find(function(m){return m&&m.matchId===mid;})||null;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+UPT.on(function(){ if(typeof ra==='function') ra(); });
 </script>
 </body>
 </html>

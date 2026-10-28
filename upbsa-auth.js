@@ -293,8 +293,8 @@
     function load() {
       Promise.all([o.once.call(db.ref('secret/pins'), 'value'), o.once.call(db.ref('refSeen'), 'value'), o.once.call(db.ref('matches'), 'value'), o.once.call(db.ref('admins'), 'value')]).then(function (r) {
         pins = r[0].val() || {}; seen = r[1].val() || {};
-        var set = {}; [1, 2, 3, 4, 5, 6].forEach(function (n) { set[n] = 1; });
-        Object.keys(pins).concat(Object.keys(r[2].val() || {})).forEach(function (k) { var n = parseInt(String(k).replace('table-', ''), 10); if (n > 0) set[n] = 1; });
+        var set = {}; (w.UPT ? UPT.list() : [1, 2, 3, 4, 5, 6]).forEach(function (n) { set[n] = 1; });
+        Object.keys(r[2].val() || {}).forEach(function (k) { var n = parseInt(String(k).replace('table-', ''), 10); if (n > 0) set[n] = 1; });
         tables = Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
         drawTables(); drawStaff(r[3].val() || {});
       });

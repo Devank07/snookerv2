@@ -8,8 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
 :root{--bg:#050a06;--panel:#0b1610;--panel2:#102018;--line:rgba(255,255,255,.08);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;--amber:#f5a623;--blue:#5fb8ff;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -69,6 +70,20 @@ a{color:inherit;}
 .legend b{color:var(--text);}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
 /* layout v2 */
+.mng{display:flex;justify-content:flex-end;gap:6px;padding:0 12px 12px;}
+.mng button{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--dim);font:700 12px 'Inter',sans-serif;cursor:pointer;}
+.mng button:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+.mng .danger{color:#ff9d92;border-color:rgba(231,76,60,.35);}
+.mng .danger:hover{background:rgba(231,76,60,.12);color:#ffc2bb;}
+#tbl-pop{position:fixed;top:70px;right:20px;z-index:30;width:300px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
+.tp-h{font:900 16px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;}
+.tp-row{display:grid;grid-template-columns:48px 1fr 48px;gap:8px;}
+.tp-row button{height:48px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font:700 24px 'Inter',sans-serif;cursor:pointer;}
+.tp-row input{height:48px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;text-align:center;font:400 30px 'Bebas Neue',sans-serif;}
+.tp-note{font-size:12px;color:var(--dim);margin:10px 0 12px;line-height:1.45;}
+.tp-acts{display:flex;gap:8px;justify-content:flex-end;}
+.tp-acts button{height:36px;padding:0 16px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font:700 13px 'Inter',sans-serif;cursor:pointer;}
+.tp-acts .gold{background:var(--gold);color:#0b0b0b;border-color:var(--gold);}
 html{background-color:#050a06;}body{background-color:#050a06;}
 .sec{padding:18px 20px 0;font:900 13px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:10px;}
 .sec b{font:400 18px 'Bebas Neue',sans-serif;color:var(--text);letter-spacing:1px;}
@@ -109,6 +124,7 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <span class="pill" id="p-alert"><b>0</b> alerts</span>
   <span class="sp"></span>
   <span class="clock" id="clock">--:--:--</span>
+  <button class="tbtn" id="tblset" title="How many tables the venue has">⚙ <span id="tblset-n">6</span> tables</button>
   <button class="tbtn" id="snd" title="Play a sound when a table needs attention">🔕 Sound off</button>
   <a class="tbtn" href="table-cards.html" target="_blank">🖨 Print QR cards</a>
   <button class="tbtn" onclick="UA.openPinManager()">🔐 PINs</button>
@@ -169,8 +185,8 @@ function boardKey(k){
 function boardUrl(n, key){ return location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + 'scoreboard.html?table=' + n + '#key=' + key; }
 
 function tables(){
-  var set = {}; [1,2,3,4,5,6].forEach(function(n){ set[n] = 1; });
-  Object.keys(M).concat(Object.keys(PINS)).concat(Object.keys(REF)).forEach(function(k){ var n = parseInt(String(k).replace('table-',''), 10); if(n > 0) set[n] = 1; });
+  var set = {}; UPT.list().forEach(function(n){ set[n] = 1; });
+  Object.keys(M).forEach(function(k){ var n = parseInt(String(k).replace('table-',''), 10); if(n > 0 && M[k] && M[k].player1) set[n] = 1; });   // a match on a table beyond the count still shows
   return Object.keys(set).map(Number).sort(function(a,b){ return a-b; });
 }
 function lastRef(k){ var r = REF[k] || {}, best = 0, phones = 0, t = now(); Object.keys(r).forEach(function(u){ if(r[u] > best) best = r[u]; if(t - r[u] < REF_OK) phones++; }); return { at: best, phones: phones }; }
@@ -212,6 +228,8 @@ function tile(n){
        '<span class="chip"><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span><b>OBS</b>' + (obsOn ? 'on air' : sn.obs ? ago(t - sn.obs) : 'off') + '</span>' +
        '<span class="chip"><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span><b>Board</b>' + (brdOn ? 'showing' : sn.board ? ago(t - sn.board) : 'off') + '</span></div>';
   h += acts(n);
+  h += '<div class="mng">' + (st === 'live' ? '<button data-end="' + n + '" title="Mark this match as finished">End match</button>' : '') +
+       '<button class="danger" data-clear="' + n + '" title="Save the result to history and free the table">Clear table</button></div>';
   return h + '</div>';
 }
 
@@ -255,7 +273,29 @@ function render(){
   if(fresh) beep();
   document.title = (alerts ? '(' + alerts + ') ' : '') + 'Control Room — UPBSA.TV';
 }
+function clearTable(n){
+  var k = 'table-' + n, m = M[k];
+  if(!m){ return Promise.resolve(); }
+  var live = m.status !== 'finished', p1 = m.player1 || {}, p2 = m.player2 || {};
+  var up = {}, t = Date.now(), hk = db.ref('match_history').push().key;
+  up['match_history/' + hk] = { matchId: m.matchId || '', tableNumber: n, tournament: m.tournament || '', sport: m.sport || 'snooker',
+    p1: p1.name || '', p1state: p1.state || '', p1frames: p1.frames || 0, p2: p2.name || '', p2state: p2.state || '', p2frames: p2.frames || 0,
+    bestOf: m.bestOf || 0, winner: m.matchWinner ? ((m['player' + m.matchWinner] || {}).name || '') : '', unfinished: live || null,
+    bestBreak1: m.bestBreak1 || 0, bestBreak2: m.bestBreak2 || 0, endTime: t };
+  if(m.matchId){ up['match_registry/' + m.matchId + '/status'] = live ? 'abandoned' : 'finished'; up['match_registry/' + m.matchId + '/p1frames'] = p1.frames || 0; up['match_registry/' + m.matchId + '/p2frames'] = p2.frames || 0; up['match_registry/' + m.matchId + '/endTime'] = t; }
+  up['matches/' + k] = null;
+  return db.ref().update(up);
+}
 document.addEventListener('click', function(e){
+  var ce = e.target.closest('[data-clear]');
+  if(ce){ var n = +ce.dataset.clear, m = M['table-' + n] || {}, p1 = (m.player1||{}).name || 'Player 1', p2 = (m.player2||{}).name || 'Player 2';
+    var msg = m.status === 'finished' ? 'Clear Table ' + n + '?\n\n' + p1 + ' v ' + p2 + ' is saved to match history and the table becomes free for the next match.'
+      : '⚠ Table ' + n + ' is LIVE (' + p1 + ' v ' + p2 + ').\n\nClear it anyway? It is saved to history as unfinished and the referee\'s remote goes back to the start screen.';
+    if(!confirm(msg)) return;
+    clearTable(n).then(function(){ toast('Table ' + n + ' cleared'); }, function(){ toast('Could not clear — check you are signed in as staff'); }); return; }
+  var en = e.target.closest('[data-end]');
+  if(en){ var n3 = +en.dataset.end; if(!confirm('End the match on Table ' + n3 + ' now?\nThe board shows the result, then the scan-to-score screen.')) return;
+    db.ref('matches/table-' + n3 + '/status').set('finished').then(function(){ toast('Match on Table ' + n3 + ' ended'); }); return; }
   var bo = e.target.closest('[data-board]');
   if(bo){ var n = bo.dataset.board, win = window.open('about:blank', '_blank'); boardKey('table-' + n).then(function(key){ if(win) win.location.href = boardUrl(n, key); }); return; }
   var bc = e.target.closest('[data-boardcopy]');
@@ -264,6 +304,26 @@ document.addEventListener('click', function(e){
   var url = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + b.dataset.copy;
   try { navigator.clipboard.writeText(url); toast('OBS link copied'); } catch(er){ prompt('OBS link', url); }
 });
+
+/* ── number of tables ── */
+UPT.on(function(c){ g('tblset-n').textContent = c; draw(); });
+g('tblset').onclick = function(){
+  var old = document.getElementById('tbl-pop'); if(old){ old.remove(); return; }
+  var p = document.createElement('div'); p.id = 'tbl-pop';
+  p.innerHTML = '<div class="tp-h">Tables at this venue</div><div class="tp-row"><button data-d="-1">−</button><input id="tp-n" type="number" min="1" max="' + UPT.MAX + '" value="' + UPT.count + '"><button data-d="1">+</button></div>' +
+    '<div class="tp-note">Used everywhere: Control Room, admin panel, referee hub, schedule, tournament &amp; draw table pickers, PINs and QR cards.</div>' +
+    '<div class="tp-acts"><button id="tp-cancel">Cancel</button><button id="tp-save" class="gold">Save</button></div>';
+  document.body.appendChild(p);
+  var inp = g('tp-n');
+  p.querySelectorAll('[data-d]').forEach(function(b){ b.onclick = function(){ inp.value = Math.max(1, Math.min(UPT.MAX, (+inp.value || 1) + (+b.dataset.d))); }; });
+  g('tp-cancel').onclick = function(){ p.remove(); };
+  g('tp-save').onclick = function(){
+    var n = Math.max(1, Math.min(UPT.MAX, parseInt(inp.value, 10) || 6));
+    var busy = Object.keys(M).filter(function(k){ var x = parseInt(k.replace('table-',''),10); return x > n && M[k] && M[k].player1 && M[k].status !== 'finished'; });
+    if(busy.length && !confirm('There is a live match on ' + busy.join(', ').replace(/table-/g,'Table ') + '. It will keep showing here until it is cleared. Continue?')) return;
+    UPT.set(n).then(function(){ p.remove(); toast('Venue set to ' + n + ' tables'); }, function(){ toast('Could not save — check you are signed in as staff'); });
+  };
+};
 
 /* ── sound ── */
 var soundOn = false, ac = null;

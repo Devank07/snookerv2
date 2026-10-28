@@ -6,8 +6,9 @@
 <title>Tournament Admin — UPBSA.TV</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -435,12 +436,7 @@ button,input,select,textarea{font-family:inherit;}
     <div id="assign-match-info" style="font-size:.82rem;color:var(--text);margin-bottom:12px;padding:8px;background:var(--surface2);border-radius:var(--r);"></div>
     <label class="fl">Select Table</label>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
-      <button class="btn" id="at1" onclick="selectTable(1)">Table 1</button>
-      <button class="btn" id="at2" onclick="selectTable(2)">Table 2</button>
-      <button class="btn" id="at3" onclick="selectTable(3)">Table 3</button>
-      <button class="btn" id="at4" onclick="selectTable(4)">Table 4</button>
-      <button class="btn" id="at5" onclick="selectTable(5)">Table 5</button>
-      <button class="btn" id="at6" onclick="selectTable(6)">Table 6</button>
+      <span id="at-grid" style="display:contents"></span>
     </div>
     <label class="fl">Best Of (this match)</label>
     <select class="fi" id="assign-bo">
@@ -478,7 +474,7 @@ var assignTable = 1;
 var allMatches = {}; // Firebase match data keyed by table
 
 // Listen to all table matches for live scores
-for(var t=1;t<=6;t++){
+for(var t=1;t<=UPT.MAX;t++){
   (function(tbl){
     db.ref('matches/table-'+tbl).on('value',function(s){
       var m = s.val();
@@ -948,13 +944,13 @@ function openAssignModal(matchId,p1,p2){
   var bo=t?t.bestOf:5;
   g('assign-bo').value=bo;
   // Highlight no table
-  [1,2,3,4,5,6].forEach(function(n){g('at'+n).classList.remove('gold');});
+  g('at-grid').innerHTML=UPT.list().map(function(n){return '<button class="btn" id="at'+n+'" onclick="selectTable('+n+')">Table '+n+'</button>';}).join('');
   g('modal-assign').style.display='flex';
 }
 function closeAssignModal(){g('modal-assign').style.display='none';}
 function selectTable(n){
   assignTable=n;
-  [1,2,3,4,5,6].forEach(function(x){g('at'+x).classList.remove('gold');});
+  document.querySelectorAll('#at-grid .btn').forEach(function(b){b.classList.remove('gold');});
   g('at'+n).classList.add('gold');
 }
 

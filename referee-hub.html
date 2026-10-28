@@ -6,6 +6,7 @@
 <title>Referee Hub — UPBSA.TV</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{--bg:#07120d;--bg2:#0a1610;--bg3:#0f1f14;--border:rgba(255,255,255,0.07);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--text:#e8f4e0;--sub:rgba(232,244,224,0.45);}
@@ -176,7 +177,7 @@ var selectedTable = null;
 var liveMatches = {};
 
 // Watch all tables
-for(var t=1;t<=6;t++){
+for(var t=1;t<=UPT.MAX;t++){
   (function(n){
     db.ref('matches/table-'+n).on('value',function(s){
       liveMatches[n]=s.val();
@@ -205,7 +206,7 @@ function selectTable(n){
 function renderTableGrid(){
   var grid = document.getElementById('table-grid');
   var html = '';
-  for(var i=1;i<=6;i++){
+  for(var i=1;i<=UPT.count;i++){
     var m = liveMatches[i];
     var isLive = m && m.status==='active';
     var sport = m && m.sport;
@@ -271,6 +272,7 @@ function goToReferee(){
 
 // Init
 renderTableGrid();
+UPT.on(function(){ renderTableGrid(); });
 </script>
 </body>
 </html>

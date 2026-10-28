@@ -7,8 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -301,7 +302,7 @@ setInterval(function(){
 },1000);
 
 // ── FIREBASE ──
-for(var t=1;t<=16;t++){
+for(var t=1;t<=UPT.MAX;t++){
   (function(n){
     db.ref('matches/table-'+n).on('value',function(s){
       liveMatches[n]=s.val(); renderAll();
@@ -469,7 +470,7 @@ function renderSection(id, matches, isLive){
 function renderTables(){
   var strip=document.getElementById('tables-strip');
   var html='';
-  for(var i=1;i<=6;i++){
+  for(var i=1;i<=UPT.count;i++){
     var m=liveMatches[i];
     var isLive=m&&m.status==='active';
     // Find next pending match for this table
@@ -500,7 +501,7 @@ function openLoadModal(matchId, event){
   document.getElementById('load-modal-sub').textContent=
     (m.p1||'TBD')+' vs '+(m.p2||'TBD')+' · '+(m.tournament||'')+' · BO'+(m.bestOf||'?');
   var grid=document.getElementById('load-tbl-grid'); grid.innerHTML='';
-  for(var i=1;i<=6;i++){
+  for(var i=1;i<=UPT.count;i++){
     (function(n){
       var occ=liveMatches[n]&&liveMatches[n].status==='active';
       var d=document.createElement('div');
@@ -545,6 +546,7 @@ function findLive(matchId){
   return Object.values(liveMatches).find(function(m){return m&&m.matchId===matchId;})||null;
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+UPT.on(function(){ if(typeof renderAll==='function') renderAll(); });
 </script>
 </body>
 </html>

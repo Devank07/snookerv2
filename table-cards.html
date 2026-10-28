@@ -7,9 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="upbsa-auth.js?v=20261028b" data-mode="admin"></script>
-<script src="qrcode.js?v=20261028b"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="qrcode.js?v=20261028c"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0b1610;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
@@ -80,9 +81,9 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){retu
 function link(n, pin){ return BASE + 'go.html?t=' + n + '#pin=' + pin; }
 function qrSvg(text){ var q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
 try { g('ev').value = localStorage.getItem('upbsa_card_event') || ''; g('showpin').checked = localStorage.getItem('upbsa_card_pin') !== '0'; } catch(e){}
-function tables(){ return Object.keys(pins).map(function(k){ return parseInt(k.replace('table-',''),10); }).filter(function(n){ return n>0; }).sort(function(a,b){return a-b;}); }
+function tables(){ return Object.keys(pins).map(function(k){ return parseInt(k.replace('table-',''),10); }).filter(function(n){ return n>0 && n<=UPT.count; }).sort(function(a,b){return a-b;}); }
 function drawPicks(){
-  var all = {}; [1,2,3,4,5,6].concat(tables()).forEach(function(n){ all[n]=1; });
+  var all = {}; UPT.list().forEach(function(n){ all[n]=1; });
   g('picks').innerHTML = Object.keys(all).map(Number).sort(function(a,b){return a-b;}).map(function(n){
     var has = !!pins['table-'+n];
     return '<div class="pick'+(has&&picked[n]?' on':'')+(has?'':' nopin')+'" data-n="'+n+'" title="'+(has?'Click to include or leave out':'No PIN set — set one in Admin → Security')+'">T'+n+'</div>';
@@ -111,6 +112,7 @@ db.ref('secret/pins').once('value').then(function(s){
   pins = s.val() || {}; tables().forEach(function(n){ picked[n] = true; });
   drawPicks(); draw();
 }, function(){ g('sheet').innerHTML = '<div class="empty warn">Could not read the table PINs — this account needs staff access.</div>'; });
+UPT.on(function(){ drawPicks(); draw(); });
 </script>
 </body>
 </html>

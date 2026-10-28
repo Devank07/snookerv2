@@ -1,5 +1,5 @@
 // UPBSA.TV Service Worker
-const CACHE = 'upbsa-tv-v11';
+const CACHE = 'upbsa-tv-v12';
 
 // Files to cache for offline use
 const STATIC_FILES = [
@@ -28,6 +28,7 @@ const STATIC_FILES = [
   './builder-tools2.js',
   './builder-presets.js',
   './upbsa-auth.js',
+  './tables.js',
   './qrcode.js',
   './board-qr.js',
   './go.html',

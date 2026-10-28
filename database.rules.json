@@ -87,6 +87,9 @@
           ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (newData.isString() && newData.val().length >= 16 && newData.val() === root.child('secret/boardKeys').child($table).val()))"
         }
       }
+    },
+    "settings": {
+      ".read": true
     }
   }
 }
