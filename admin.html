@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#000000">
@@ -197,6 +197,59 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
 .st,.qbtn,.tc,.tt,.sr{border-radius:14px;}
 .ta{font-family:var(--cond);font-weight:800;letter-spacing:.06em;font-size:.8rem;}
 .sh,.st-l,.tc-st,.mr-badge,.tt-b{font-size:.68rem !important;}.tab-lb{font-size:.66rem !important;}</style>
+<style id="responsive">/* ── works on any screen: phone → tablet → laptop → TV ── */
+html,body{max-width:none;}
+#app-shell{max-width:480px;margin:0 auto;}
+.tabs{max-width:480px;}
+#home-tbl,#tbl-list{display:grid;grid-template-columns:1fr;gap:10px;}
+.tc{margin-bottom:0;}
+.qgrid .qbtn{min-height:96px;justify-content:center;}
+/* tablets & small laptops: side menu, wider grids */
+@media (min-width:760px){
+  #app-shell{max-width:none;}
+  .top-bar{height:60px;padding:0 24px;}
+  .top-logo img{width:36px;height:36px;}
+  .scroll{height:calc(100vh - 60px);margin-left:96px;}
+  .tabs{position:fixed;top:60px;bottom:0;left:0;transform:none;width:96px;max-width:none;height:auto;display:flex;flex-direction:column;gap:4px;padding:12px 8px;border-top:0;border-right:1px solid var(--border2);background:#060d08;}
+  .tab{flex:none;height:70px;border-radius:12px;}
+  .tab:hover{background:rgba(240,192,64,.06);}
+  .tab.on{background:rgba(240,192,64,.1);box-shadow:inset 3px 0 0 var(--gold);}
+  .tab-ic{font-size:1.4rem;}
+  .page{padding:22px 26px 40px;max-width:1500px;margin:0 auto;}
+  .stats{grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;}
+  .st{padding:18px 20px;}
+  .qgrid{grid-template-columns:repeat(3,1fr);gap:12px;}
+  .tg{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+  #home-tbl,#tbl-list{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+  .tc-pn{font-size:1.05rem;}
+  #sc-live,#sc-next,#sc-pend,#sc-done{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:8px;}
+  #sc-live .mr,#sc-next .mr,#sc-pend .mr,#sc-done .mr{margin-bottom:0;}
+  #pg-settings.on{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:0 14px;align-items:start;}
+  #pg-settings .sh{grid-column:1/-1;}
+  .modal{align-items:center;}
+  .modal-box{border-radius:18px;border:1px solid rgba(255,255,255,.1);max-width:520px;}
+  .modal-handle{display:none;}
+}
+/* laptops & desktops: labelled side menu, home in two columns */
+@media (min-width:1180px){
+  .scroll{margin-left:210px;}
+  .tabs{width:210px;padding:16px 12px;}
+  .tab{flex-direction:row;justify-content:flex-start;gap:12px;height:52px;padding:0 16px;}
+  .tab-lb{font-size:.9rem !important;letter-spacing:.12em;}
+  .qgrid{grid-template-columns:repeat(6,1fr);}
+  .page{padding:26px 34px 48px;}
+  .st-n{font-size:3rem;}
+}
+/* big screens / TVs: a little larger everything */
+@media (min-width:1800px){
+  html{font-size:18px;}
+  #home-tbl,#tbl-list{grid-template-columns:repeat(auto-fill,minmax(420px,1fr));}
+}
+/* landscape phones: keep the bottom bar slim */
+@media (max-height:500px) and (max-width:900px){
+  .tabs{height:48px;} .tab-lb{display:none;} .scroll{height:calc(100vh - 52px - 48px);}
+}
+</style>
 </head>
 <body>
 
@@ -256,6 +309,8 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
         <div class="qbtn" onclick="goTab('tables')"><div class="qbtn-ic">🎱</div><div class="qbtn-lb">Tables</div><div class="qbtn-s">Manage tables</div></div>
         <div class="qbtn" onclick="goTab('sched')"><div class="qbtn-ic">📋</div><div class="qbtn-lb">Schedule</div><div class="qbtn-s">Load matches</div></div>
         <a href="bracket.html" target="_blank" class="qbtn"><div class="qbtn-ic">📡</div><div class="qbtn-lb">Live Bracket</div><div class="qbtn-s">Public view ↗</div></a>
+        <a href="control.html" class="qbtn"><div class="qbtn-ic">🛰️</div><div class="qbtn-lb">Control Room</div><div class="qbtn-s">All tables & alerts</div></a>
+        <a href="table-cards.html" class="qbtn"><div class="qbtn-ic">🖨️</div><div class="qbtn-lb">QR Cards</div><div class="qbtn-s">Print for tables</div></a>
       </div>
       <div class="sh">Live Tables</div>
       <div id="home-tbl"></div>
