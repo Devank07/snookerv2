@@ -90,6 +90,21 @@
     },
     "settings": {
       ".read": true
+    },
+    "breaks": {
+      ".read": true,
+      "$table": {
+        "$id": {
+          ".write": "auth != null && root.child('secret/pins').child($table).exists() && root.child('refPass').child($table).child(auth.uid).child('pin').val() === root.child('secret/pins').child($table).val()"
+        }
+      }
+    },
+    "refBat": {
+      "$table": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('secret/pins').child($table).exists() && root.child('refPass').child($table).child(auth.uid).child('pin').val() === root.child('secret/pins').child($table).val()"
+        }
+      }
     }
   }
 }

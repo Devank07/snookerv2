@@ -40,6 +40,8 @@
   var Q = firebase.database.Query.prototype, R = firebase.database.Reference.prototype;
   var o = { on: Q.on, off: Q.off, once: Q.once, set: R.set, update: R.update, remove: R.remove, transaction: R.transaction };
   var readyRes, readyP = new Promise(function (r) { readyRes = r; });
+  /* background writes that must never pop the PIN pad (stats, battery) */
+  UA.raw = function (name, ref) { return o[name].apply(ref, [].slice.call(arguments, 2)); };
   var pending = [];
   function isDenied(e) { return e && (e.code === 'PERMISSION_DENIED' || /permission.denied/i.test(e.message || '')); }
 
@@ -223,7 +225,8 @@
       '<div class="ua-sub">' + esc(note || 'Enter the table PIN from the organiser.') + '</div>' +
       '<div class="ua-dots" id="ua-dots"></div><div class="ua-msg" id="ua-m"></div>' +
       '<div class="ua-pad">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) { return '<button class="ua-k" data-k="' + n + '">' + n + '</button>'; }).join('') +
-      '<button class="ua-k" data-k="del" aria-label="Delete">⌫</button><button class="ua-k" data-k="0">0</button><button class="ua-k go" data-k="ok" id="ua-ok" disabled>✓</button></div>');
+      '<button class="ua-k" data-k="del" aria-label="Delete">⌫</button><button class="ua-k" data-k="0">0</button><button class="ua-k go" data-k="ok" id="ua-ok" disabled>✓</button></div>' +
+      '<a class="ua-link" href="go.html?pick=1" style="display:inline-block">Not Table ' + esc(TABLE) + '? Pick another table</a>');
     var dots = d.getElementById('ua-dots'), m = d.getElementById('ua-m'), okB = d.getElementById('ua-ok'), busy = false;
     function draw() {
       var h = '';

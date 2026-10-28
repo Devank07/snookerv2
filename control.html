@@ -70,6 +70,20 @@ a{color:inherit;}
 .legend b{color:var(--text);}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
 /* layout v2 */
+.sum{margin:16px 20px 0;padding:14px 16px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(240,192,64,.07),rgba(240,192,64,.02));border:1px solid rgba(240,192,64,.22);}
+.sum-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.sum-t{font:900 16px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--gold);}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+.seg button{height:30px;padding:0 12px;border:0;background:transparent;color:var(--dim);font:700 12px 'Inter',sans-serif;cursor:pointer;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seg button.on{background:rgba(240,192,64,.16);color:var(--gold);}
+.sum-g{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.sb{padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line);min-width:0;}
+.sb-n{font:400 38px/1 'Bebas Neue',sans-serif;letter-spacing:1px;}
+.sb-l{font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-top:2px;}
+.sb-s{font:500 12px 'Inter',sans-serif;color:rgba(232,244,224,.75);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media (max-width:1100px){.sum-g{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:520px){.sum-g{grid-template-columns:repeat(2,1fr);}.sum{margin:12px 12px 0;}}
+.chip.bat svg{display:block;}.chip.low{border-color:rgba(231,76,60,.5);color:#ffb3aa;}
 .mng{display:flex;justify-content:flex-end;gap:6px;padding:0 12px 12px;}
 .mng button{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--dim);font:700 12px 'Inter',sans-serif;cursor:pointer;}
 .mng button:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
@@ -130,6 +144,12 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <button class="tbtn" onclick="UA.openPinManager()">🔐 PINs</button>
   <a class="tbtn" href="admin.html">← Admin</a>
 </div>
+<div class="sum" id="sum">
+  <div class="sum-h"><span class="sum-t">Event summary</span>
+    <span class="seg"><button data-scope="today" class="on">Today</button><button data-scope="event" id="sc-ev">This event</button></span>
+    <span class="sp"></span><button class="tbtn" id="sum-copy" title="Copy a ready-to-read summary for the stream">📋 Copy for commentary</button></div>
+  <div class="sum-g" id="sum-g"></div>
+</div>
 <div class="sec">On the tables</div>
 <div class="grid" id="grid"></div>
 <div class="sec" id="free-h">Free tables <b>0</b></div>
@@ -172,6 +192,13 @@ db.ref('matches').on('value', function(s){
   draw();
 });
 db.ref('refSeen').on('value', function(s){ REF = s.val() || {}; draw(); });
+var BAT = {}, REG = {}, BRK = {}, scope = 'today';
+db.ref('refBat').on('value', function(s){ BAT = s.val() || {}; draw(); });
+db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; drawSum(); });
+db.ref('breaks').on('value', function(s){ BRK = s.val() || {}; drawSum(); });
+function battery(k){   // freshest phone on this table
+  var b = BAT[k] || {}, best = null; Object.keys(b).forEach(function(u){ var x = b[u]; if(x && x.at && now() - x.at < 5 * 60e3 && (!best || x.at > best.at)) best = x; }); return best;
+}
 db.ref('seen').on('value', function(s){ SEEN = s.val() || {}; draw(); });
 db.ref('secret/pins').on('value', function(s){ PINS = s.val() || {}; draw(); });
 var BK = {};
@@ -189,6 +216,8 @@ function tables(){
   Object.keys(M).forEach(function(k){ var n = parseInt(String(k).replace('table-',''), 10); if(n > 0 && M[k] && M[k].player1) set[n] = 1; });   // a match on a table beyond the count still shows
   return Object.keys(set).map(Number).sort(function(a,b){ return a-b; });
 }
+function batIcon(b){ var w = Math.max(1, Math.round(b.l / 100 * 14)), c = b.c ? '#59e08a' : b.l <= 20 ? '#ff6b5b' : '#e8f4e0';
+  return '<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="0.5" y="0.5" width="18" height="11" rx="2.5" fill="none" stroke="' + c + '" opacity=".8"/><rect x="19.5" y="3.5" width="2" height="5" rx="1" fill="' + c + '" opacity=".8"/><rect x="2.5" y="2.5" width="' + w + '" height="7" rx="1.2" fill="' + c + '"/></svg>'; }
 function lastRef(k){ var r = REF[k] || {}, best = 0, phones = 0, t = now(); Object.keys(r).forEach(function(u){ if(r[u] > best) best = r[u]; if(t - r[u] < REF_OK) phones++; }); return { at: best, phones: phones }; }
 function sportName(m){ return m.sport === 'billiards' ? 'Billiards' : (m.sport === 'shootout' || m.so) ? 'Shoot Out' : 'Snooker'; }
 function state(m){ if(!m || !m.player1) return 'idle'; return m.status === 'finished' ? 'done' : 'live'; }
@@ -198,6 +227,8 @@ function tile(n){
   var k = 'table-' + n, m = M[k], st = state(m), t = now();
   var rf = lastRef(k), sn = SEEN[k] || {}, msgs = [];
   var refOn = rf.at && t - rf.at < REF_OK, obsOn = sn.obs && t - sn.obs < SCREEN_OK, brdOn = sn.board && t - sn.board < SCREEN_OK;
+  var bt = battery(k);
+  if(st === 'live' && bt && !bt.c && bt.l <= 20) msgs.push([bt.l <= 10 ? 'red' : 'amber', 'Referee phone battery ' + bt.l + '% — send a charger']);
   if(st === 'live'){
     if(!PINS[k]) msgs.push(['amber', 'No PIN set — referees can\'t score once the security rules are on']);
     if(!refOn && (!rf.at || t - rf.at > REF_ALERT)) msgs.push(['red', rf.at ? 'Referee phone offline for ' + ago(t - rf.at).replace(' ago','') : 'No referee phone has connected']);
@@ -225,6 +256,7 @@ function tile(n){
   var dotR = refOn ? 'ok' : (st === 'live' ? 'bad' : 'off');
   h += '<div class="chips">' +
        '<span class="chip"><span class="dot ' + dotR + '"></span><b>Referee</b>' + refTxt + (rf.phones > 1 ? ' · ' + rf.phones + ' phones' : '') + '</span>' +
+       (bt ? '<span class="chip bat' + (!bt.c && bt.l <= 20 ? ' low' : '') + '" title="Referee phone battery">' + batIcon(bt) + '<b>' + bt.l + '%</b>' + (bt.c ? 'charging' : '') + '</span>' : '') +
        '<span class="chip"><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span><b>OBS</b>' + (obsOn ? 'on air' : sn.obs ? ago(t - sn.obs) : 'off') + '</span>' +
        '<span class="chip"><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span><b>Board</b>' + (brdOn ? 'showing' : sn.board ? ago(t - sn.board) : 'off') + '</span></div>';
   h += acts(n);
@@ -263,6 +295,7 @@ function render(){
     if(state(m) === 'idle'){ free += freeRow(n); nFree++; return; }
     var t = tile(n); html += t; if(/b-live/.test(t)) live++; if(/alert-/.test(t)) alerts++; if(/alert-red/.test(t)) reds[n] = 1;
   });
+  drawSum();
   g('grid').innerHTML = html || '<div class="none">No matches on any table right now.</div>';
   g('free').innerHTML = free; g('free-h').style.display = nFree ? '' : 'none'; g('free-h').querySelector('b').textContent = nFree;
   g('p-live').innerHTML = '<b>' + live + '</b> live';
@@ -304,6 +337,58 @@ document.addEventListener('click', function(e){
   var url = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + b.dataset.copy;
   try { navigator.clipboard.writeText(url); toast('OBS link copied'); } catch(er){ prompt('OBS link', url); }
 });
+
+/* ── event summary ── */
+function evName(){   // the tournament on the most recent match
+  var best = null, bt = 0;
+  Object.keys(M).forEach(function(k){ var m = M[k]; if(m && m.tournament && m.player1) { best = best || m.tournament; } });
+  if(best) return best;
+  Object.keys(REG).forEach(function(id){ var r = REG[id] || {}, t = r.endTime || r.startTime || 0; if(r.tournament && t > bt){ bt = t; best = r.tournament; } });
+  return best;
+}
+function mins(ms){ var m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; }
+function summary(){
+  var ev = evName(), mid = new Date(now()); mid.setHours(0,0,0,0); mid = mid.getTime();
+  var inScope = function(t, tour){ return scope === 'event' ? (!!ev && tour === ev) : (t || 0) >= mid; };
+  var done = 0, frames = 0, durs = [], live = 0;
+  Object.keys(REG).forEach(function(id){
+    var r = REG[id] || {}, t = r.endTime || r.startTime;
+    if(!inScope(t, r.tournament)) return;
+    if(r.status === 'finished'){ done++; frames += (+r.p1frames || 0) + (+r.p2frames || 0); if(r.startTime && r.endTime && r.endTime > r.startTime && r.endTime - r.startTime < 8 * 3600e3) durs.push(r.endTime - r.startTime); }
+  });
+  Object.keys(M).forEach(function(k){ var m = M[k]; if(m && m.player1 && m.status !== 'finished' && (scope === 'today' || m.tournament === ev)) live++; });
+  var all = [];
+  Object.keys(BRK).forEach(function(tk){ var b = BRK[tk] || {}; Object.keys(b).forEach(function(id){ var x = b[id]; if(x && x.v && inScope(x.at, x.tournament)) all.push(x); }); });
+  // a break still going on a live table counts too
+  Object.keys(M).forEach(function(k){ var m = M[k]; if(m && m.player1 && m.status !== 'finished' && (m.currentBreak || 0) >= 10 && (scope === 'today' || m.tournament === ev)) { var p = (m.breakPlayer || m.turn) === 2 ? m.player2 : m.player1; all.push({ v: m.currentBreak, name: (p && p.name) || '', live: true, at: now() }); } });
+  all.sort(function(a,b){ return b.v - a.v; });
+  var cent = all.filter(function(x){ return x.v >= 100; }), fifty = all.filter(function(x){ return x.v >= 50; });
+  var avg = durs.length ? durs.reduce(function(a,b){ return a + b; }, 0) / durs.length : 0;
+  return { ev: ev, done: done, live: live, frames: frames, avg: avg, top: all[0] || null, cent: cent, fifty: fifty.length };
+}
+function drawSum(){
+  var S = summary(), ev = S.ev;
+  var e = g('sc-ev'); if(e) e.textContent = ev ? (ev.length > 28 ? ev.slice(0, 27) + '…' : ev) : 'This event';
+  var box = function(n, l, sub){ return '<div class="sb"><div class="sb-n">' + n + '</div><div class="sb-l">' + l + '</div>' + (sub ? '<div class="sb-s">' + sub + '</div>' : '') + '</div>'; };
+  var centSub = S.cent.slice(0, 3).map(function(x){ return esc(x.name.split(' ').slice(-1)[0] || '') + ' ' + x.v + (x.live ? '*' : ''); }).join(' · ');
+  g('sum-g').innerHTML =
+    box(S.done, 'Matches played', S.live ? S.live + ' live now' : '') +
+    box(S.frames, 'Frames played') +
+    box(S.avg ? mins(S.avg) : '–', 'Average match', S.avg ? 'from start to finish' : 'shows once matches finish') +
+    box(S.top ? S.top.v : '–', 'Highest break', S.top ? esc(S.top.name) + (S.top.live ? ' · still going' : '') : 'no breaks of 10+ yet') +
+    box(S.cent.length, 'Centuries', centSub) +
+    box(S.fifty, '50+ breaks');
+}
+function summaryText(){
+  var S = summary(), where = scope === 'event' && S.ev ? 'at the ' + S.ev : 'today';
+  var t = 'So far ' + where + ': ' + S.done + ' match' + (S.done === 1 ? '' : 'es') + ' played' + (S.frames ? ', ' + S.frames + ' frames' : '') + '.';
+  if(S.top) t += ' Highest break ' + S.top.v + ' by ' + S.top.name + (S.top.live ? ' (still at the table)' : '') + '.';
+  t += ' ' + (S.cent.length ? S.cent.length + ' centur' + (S.cent.length === 1 ? 'y' : 'ies') + (S.cent.length <= 3 ? ' (' + S.cent.map(function(x){ return x.name + ' ' + x.v; }).join(', ') + ')' : '') : 'No centuries yet') + (S.fifty ? ', ' + S.fifty + ' breaks of 50 or more' : '') + '.';
+  if(S.avg) t += ' Average match ' + mins(S.avg) + '.';
+  return t;
+}
+document.querySelectorAll('[data-scope]').forEach(function(b){ b.onclick = function(){ scope = b.dataset.scope; document.querySelectorAll('[data-scope]').forEach(function(x){ x.classList.toggle('on', x === b); }); drawSum(); }; });
+g('sum-copy').onclick = function(){ var t = summaryText(); try { navigator.clipboard.writeText(t).then(function(){ toast('Summary copied'); }, function(){ prompt('Summary', t); }); } catch(e){ prompt('Summary', t); } };
 
 /* ── number of tables ── */
 UPT.on(function(c){ g('tblset-n').textContent = c; draw(); });

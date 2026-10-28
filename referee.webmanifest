@@ -1,0 +1,18 @@
+{
+  "id": "./go.html?app=1",
+  "name": "UPBSA Referee",
+  "short_name": "Referee",
+  "description": "UPBSA.TV scoring remote for snooker, billiards and Shoot Out",
+  "start_url": "./go.html?app=1",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#050a06",
+  "background_color": "#050a06",
+  "categories": ["sports", "utilities"],
+  "icons": [
+    { "src": "referee-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "referee-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "referee-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
