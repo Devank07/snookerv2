@@ -886,7 +886,10 @@ function activateTournament(){
 }
 function deleteTournament(){
   if(!confirm('Delete this tournament and all its data?'))return;
-  db.ref('tournaments/'+activeTid).remove().then(function(){activeTid=null;showPage('list');});
+  var t=allTournaments[activeTid]||{}, up={};
+  up['tournaments/'+activeTid]=null;
+  Object.values(t.draw||{}).forEach(function(cd){ Object.values((cd&&cd.matches)||{}).forEach(function(m){ if(m&&m.matchId) up['match_registry/'+m.matchId]=null; }); });   // its matches leave the schedule and the remotes too
+  db.ref().update(up).then(function(){activeTid=null;showPage('list');});
 }
 
 // ── UTILS ──
