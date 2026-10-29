@@ -783,7 +783,7 @@ function runImport() {
   showLoading('Importing '+csvRows.length+' players...');
 
   var updates = {};
-  var added=0, skipped=0;
+  var added=0, skipped=0, seenImport={};
 
   csvRows.forEach(function(r) {
     var name = (r[nameCol]||'').trim();
@@ -792,6 +792,9 @@ function runImport() {
     if (!name) { skipped++; return; }
     // Skip duplicate phone
     if (phone && allPlayers.find(function(p){return p.phone===phone;})) { skipped++; return; }
+    var nk = name.toLowerCase().replace(/\s+/g,' ') + '|' + sport + '|' + category;      // same player already in this sport + category
+    if (allPlayers.find(function(p){ return ((p.name||'').toLowerCase().replace(/\s+/g,' ') + '|' + p.sport + '|' + p.category) === nk; }) || seenImport[nk]) { skipped++; return; }
+    seenImport[nk] = 1;
     var key = playersRef.push().key;
     var player = {name:name, state:state, sport:sport, category:category, createdAt:Date.now()};
     if (phone) player.phone=phone;
@@ -802,7 +805,7 @@ function runImport() {
   db.ref().update(updates).then(function() {
     hideLoading();
     document.getElementById('import-done-text').textContent = added + ' players imported successfully!';
-    document.getElementById('import-done-sub').textContent = (skipped>0 ? skipped+' rows skipped (empty names or duplicate phones).' : 'All rows imported cleanly.');
+    document.getElementById('import-done-sub').textContent = (skipped>0 ? skipped+' rows skipped (empty names, or players already in this category).' : 'All rows imported cleanly.');
     setStep(4);
     document.getElementById('csv-step3').style.display='none';
     document.getElementById('csv-step4').style.display='block';

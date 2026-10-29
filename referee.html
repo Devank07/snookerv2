@@ -829,7 +829,7 @@ select.su-in{appearance:none;-webkit-appearance:none;background-image:linear-gra
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028d" data-mode="referee"></script>
 <script src="ref-app.js?v=20261028d"></script>
-<script src="next-match.js?v=20261028h"></script>
+<script src="next-match.js?v=20261029a"></script>
 <script>
 // Online/offline status
 window.addEventListener('online', function(){
@@ -1155,7 +1155,7 @@ function doFrameWon(playerNum) {
   s.player1.currentBreak = 0; s.player2.currentBreak = 0;
   s.currentBreak  = 0; s.breakBalls = []; s.redsRemaining = 15;
   s.currentFrame  = (s.currentFrame || 1) + 1;
-  s.turn          = playerNum === 1 ? 2 : 1; // loser breaks off
+  s.turn          = (s.breakPlayer || 1) === 1 ? 2 : 1; // players take turns to break off, frame by frame
   s.breakPlayer   = s.turn;
   s.bestBreak1    = 0; s.bestBreak2 = 0;
   s.frameStartTime   = Date.now();

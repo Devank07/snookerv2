@@ -17,11 +17,34 @@
   /* hooks used by the remotes' own "create match" code */
   var NM = w.NM = {
     pending: null,
-    take: function () { var p = NM.pending; NM.pending = null; return p; },
+    take: function () {
+      var p = NM.pending; NM.pending = null; if (!p) return null;
+      var on = Object.keys(MATCHES).filter(function (k) { var m = MATCHES[k]; return k !== 'table-' + T && m && m.matchId === p.matchId; })[0];
+      if (on) { alert('This match has just been started on ' + on.replace('table-', 'Table ') + '. Pick another match from the card.'); dismissed = null; render(); throw new Error('match already on ' + on); }
+      return p;
+    },
     fake: function (p) { var num = parseInt(String(p.matchId).replace(/\D/g, ''), 10) || 0;
       return { transaction: function (fn, cb) { setTimeout(function () { cb(null, true, { val: function () { return num; } }); }, 0); return Promise.resolve(); } }; },
-    noop: { set: function () { return Promise.resolve(); }, update: function () { return Promise.resolve(); } }
+    noop: { set: function () { return Promise.resolve(); }, update: function () { return Promise.resolve(); } },
+    /* a finished bracket match is "saved" once its result is in the draw (a staff page — Control Room or
+       Tournament Manager — does that within seconds). Clearing the table before then would lose it. */
+    saved: function (cur) {
+      if (!cur || cur.status !== 'finished' || !cur.matchId) return true;
+      var m = drawMatch(cur.matchId); return !m || !!m.result;
+    },
+    guard: function (go) {
+      var cur = MATCHES['table-' + T];
+      if (NM.saved(cur)) return go();
+      if (confirm('The result of ' + ((cur.player1 || {}).name || '') + ' v ' + ((cur.player2 || {}).name || '') + ' has not reached the bracket yet.\n\n' +
+        'It is saved automatically while the Control Room or Tournament Manager is open on any device. Ask the organiser to open one, wait a few seconds, then try again.\n\n' +
+        'Press OK only if you want to clear the table anyway — the bracket will NOT get this result.')) go();
+    }
   };
+  function drawMatch(mid) {
+    var hit = null;
+    Object.keys(TOUR).some(function (tid) { var dr = (TOUR[tid] && TOUR[tid].draw) || {}; return Object.keys(dr).some(function (ck) { var ms = (dr[ck] && dr[ck].matches) || {}; return Object.keys(ms).some(function (k) { if (ms[k] && ms[k].matchId === mid) { hit = ms[k]; return true; } }); }); });
+    return hit;
+  }
 
   var REG = {}, TOUR = {}, MATCHES = {}, NAMES = {}, me = null, dismissed = '';
   var css = '#nm{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2147482980;max-width:520px;margin:0 auto;border-radius:18px;background:#0b1610;border:1px solid rgba(240,192,64,.55);box-shadow:0 14px 40px rgba(0,0,0,.6);color:#e8f4e0;font-family:"Inter",system-ui,sans-serif;display:none;overflow:hidden;}' +
@@ -61,7 +84,7 @@
   }
   function pageSport(s) { s = s || 'snooker'; return s === 'billiards' ? 'billiards' : s === 'shootout' ? 'shootout' : 'snooker'; }
   function candidates() {
-    var busy = {}; Object.keys(MATCHES).forEach(function (k) { var m = MATCHES[k]; if (m && m.matchId && m.status !== 'finished') busy[m.matchId] = 1; });
+    var busy = {}; Object.keys(MATCHES).forEach(function (k) { var m = MATCHES[k]; if (m && m.matchId) busy[m.matchId] = 1; });   // live or just finished on a table = not available
     var list = [];
     Object.keys(REG).forEach(function (id) {
       var r = REG[id]; if (!r || r.status !== 'pending' || busy[id]) return;
@@ -112,8 +135,8 @@
       fill(c); hide(); dismissed = c.id;
       toast('Filled in: ' + c.r.p1 + ' v ' + c.r.p2 + ' — choose who breaks and press Start');
     };
-    if (cur && cur.player1 && cur.status === 'finished') {          // free the table first
-      firebase.database().ref('matches/table-' + T).remove().then(function () { setTimeout(go, 500); });
+    if (cur && cur.player1 && cur.status === 'finished') {          // free the table first (only once its result is safe)
+      NM.guard(function () { firebase.database().ref('matches/table-' + T).remove().then(function () { setTimeout(go, 500); }); });
     } else go();
   }
 
@@ -131,6 +154,7 @@
       '<div class="m"><div class="vs"><span>' + esc(c.r.p1) + '</span><i>v</i><span>' + esc(c.r.p2) + '</span></div>' +
       '<div class="st"><span>' + esc(c.r.p1state || '') + '</span><span>' + esc(c.r.p2state || '') + '</span></div>' +
       '<div class="meta">' + esc((c.r.tournament || c.inf.tourn || '') + (meta ? ' · ' + meta : '')) + '</div></div>' +
+      (NM.saved(cur) ? '' : '<div class="meta" style="color:#ffc770;padding:0 14px 8px">⏳ Saving the last result to the bracket… (needs the Control Room open on any device)</div>') +
       '<div class="a"><button class="go">▶ ' + (cur && cur.status === 'finished' ? 'Start next match' : 'Use this match') + '</button>' + (list.length > 1 ? '<button class="more">' + (list.length - 1) + ' more ▾</button>' : '') + '</div>' +
       '<div class="list">' + list.slice(1, 25).map(function (x, i) { return '<div class="it" data-i="' + (i + 1) + '"><b>' + esc(x.r.p1) + ' v ' + esc(x.r.p2) + '<small>' + esc([x.inf.cat, x.inf.round, 'BO' + (x.r.bestOf || 5)].filter(Boolean).join(' · ')) + '</small></b>' + (x.mine ? '<em>THIS TABLE</em>' : '') + '</div>'; }).join('') + '</div>';
     el.classList.add('on');
@@ -173,6 +197,7 @@
     db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; render(); });
     db.ref('meta/playerNames').on('value', function (s) { NAMES = s.val() || {}; attachPicker(); });
     attachPicker();
+    ['startNewOnSameTable', 'newMatch'].forEach(function (n) { var f = w[n]; if (typeof f === 'function') w[n] = function () { var a = arguments, self = this; NM.guard(function () { f.apply(self, a); }); }; });
     setInterval(function () { render(); attachPicker(); }, 4000);   // forms are drawn by the page; keep the picker on them
   }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);

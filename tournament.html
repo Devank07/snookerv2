@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
-<script src="bracket-core.js?v=20261028g"></script>
+<script src="bracket-core.js?v=20261029a"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:80px;}
@@ -522,6 +522,8 @@ function renderPPanel(){
 // ── GENERATE DRAW ──
 function generateDraw(){
   var t=allTournaments[activeTid]; if(!t||!t.categories)return;
+  var played=Object.values(t.draw||{}).some(function(cd){ return Object.values((cd&&cd.matches)||{}).some(function(m){ return m&&m.result; }); });
+  if(t.draw&&!confirm(played?'This event already has results. A new draw throws away the current draw AND its results. Continue?':'Make a new draw? The current draw is replaced.'))return;
   var draw={};
   var tvTable=t.tvTable||1;
   var catsList=Object.values(t.categories);
@@ -579,6 +581,10 @@ function generateDraw(){
       });
     });
 
+    // a new draw replaces the old one: drop the old draw's schedule entries that were never played
+    var oldDraw=(allTournaments[activeTid]&&allTournaments[activeTid].draw)||{};
+    Object.values(oldDraw).forEach(function(cd){ Object.values((cd&&cd.matches)||{}).forEach(function(m){
+      if(m&&m.matchId&&!m.result&&!regUpdates['match_registry/'+m.matchId]) regUpdates['match_registry/'+m.matchId]=null; }); });
     db.ref().update(regUpdates);
     db.ref('tournaments/'+activeTid+'/draw').set(draw).then(function(){
       dTab('draw',document.querySelectorAll('#pg-detail .tabs .tab')[1]);
@@ -614,8 +620,13 @@ function buildKnockout(players,cat,tvTable){
   var n=players.length;
   var rounds=Math.ceil(Math.log2(n));
   var size=Math.pow(2,rounds);
-  // Pad with byes
-  while(players.length<size) players.push({name:'BYE',bye:true});
+  // Byes: each one goes against a real player, spread evenly through the draw (never BYE v BYE)
+  var M=size/2, byes=size-n, slots=[], pi=0;
+  for(var bi=0;bi<M;bi++){
+    var isBye=Math.floor((bi+1)*byes/M)>Math.floor(bi*byes/M);
+    slots.push(players[pi++]); slots.push(isBye?{name:'BYE',bye:true}:players[pi++]);
+  }
+  players=slots;
   var mc=0;
   for(var m=0;m<size/2;m++){
     var mid='ko_r1_m'+m; mc++;
@@ -833,7 +844,10 @@ function openTblModal(mid,catk){
 
 function saveTable(){
   if(!tblModalMid) return;
-  db.ref('tournaments/'+activeTid+'/draw/'+tblModalCatk+'/matches/'+tblModalMid+'/table').set(tblSelTable||0)
+  var tm_=((allTournaments[activeTid].draw[tblModalCatk]||{}).matches||{})[tblModalMid]||{}, u_={};
+  u_['tournaments/'+activeTid+'/draw/'+tblModalCatk+'/matches/'+tblModalMid+'/table']=tblSelTable||0;
+  if(tm_.matchId) u_['match_registry/'+tm_.matchId+'/tableNumber']=tblSelTable||0;      // the Schedule and the remotes see it too
+  db.ref().update(u_)
     .then(function(){ closeTblModal(); renderDrawPanel(); renderTablesPanel(); });
 }
 function closeTblModal(){ document.getElementById('tbl-modal').classList.remove('open'); }
@@ -905,7 +919,10 @@ function saveDT(){
   var date=document.getElementById('dt-date').value;
   var time=document.getElementById('dt-time').value;
   var val=(date&&time)?date+' '+time:(date||time||'');
-  db.ref('tournaments/'+activeTid+'/draw/'+dtModalCatk+'/matches/'+dtModalMid+'/datetime').set(val)
+  var dm_=((allTournaments[activeTid].draw[dtModalCatk]||{}).matches||{})[dtModalMid]||{}, du_={};
+  du_['tournaments/'+activeTid+'/draw/'+dtModalCatk+'/matches/'+dtModalMid+'/datetime']=val;
+  if(dm_.matchId) du_['match_registry/'+dm_.matchId+'/datetime']=val;
+  db.ref().update(du_)
     .then(function(){document.getElementById('dt-modal').style.display='none';renderDrawPanel();renderTablesPanel();});
 }
 
@@ -932,7 +949,10 @@ function selectBO(n,el){
 }
 function saveBO(){
   if(!boModalMid||!boSelVal)return;
-  db.ref('tournaments/'+activeTid+'/draw/'+boModalCatk+'/matches/'+boModalMid+'/bo').set(boSelVal)
+  var bm_=((allTournaments[activeTid].draw[boModalCatk]||{}).matches||{})[boModalMid]||{}, bu_={};
+  bu_['tournaments/'+activeTid+'/draw/'+boModalCatk+'/matches/'+boModalMid+'/bo']=boSelVal;
+  if(bm_.matchId) bu_['match_registry/'+bm_.matchId+'/bestOf']=boSelVal;
+  db.ref().update(bu_)
     .then(function(){document.getElementById('bo-modal').style.display='none';renderDrawPanel();renderTablesPanel();});
 }
 

@@ -194,7 +194,7 @@
           var pr = pairs[k] || [0, 1], c = {}; for (var x in m) c[x] = m[x];
           if (isTbd(c.p1) || /^winner g/i.test(c.p1 && c.p1.name || '')) c.p1 = place(Math.floor(pr[0] / adv), pr[0] % adv);
           if (isTbd(c.p2) || /^winner g/i.test(c.p2 && c.p2.name || '')) c.p2 = place(Math.floor(pr[1] / adv), pr[1] % adv);
-          return flatVm(c, ctx);
+          var rv = flatVm(c, ctx); rv.stored = m; return rv;          // keep the saved match so sync can fill in the names
         });
         var rst = standings([], rvms);
         out.stages.push({ kind: 'table', title: 'Round Robin', rows: rst.rows, complete: rst.complete, matches: rvms, advance: koN });
@@ -328,7 +328,7 @@
   function metaLine(v) {
     var a = [];
     if (v.status === 'live') a.push('<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>');
-    else if (v.status === 'done') a.push('<span>Final</span>');
+    else if (v.status === 'done') a.push('<span>Result</span>');
     else if (v.status === 'bye') a.push('<span>Walkover</span>');
     else if (v.table) a.push('<span>Table ' + v.table + '</span>');
     if (v.datetime && v.status === 'pending') { var d = new Date(v.datetime); if (!isNaN(d)) a.push('<span>' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>'); }
