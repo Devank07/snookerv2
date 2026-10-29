@@ -6,7 +6,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261029a"></script>
+<script src="bracket-core.js?v=20261029c"></script>
 <style>
 /* OBS browser source: 1920 × 1080, transparent.
    bracket-overlay.html?table=1          follows whatever is on table 1 (bracket of its category)
@@ -144,6 +144,7 @@ var raf = 0; function render(){ if(raf) return; raf = requestAnimationFrame(func
 db.ref('tournaments').on('value', function(s){ T = s.val() || {}; render(); });
 db.ref('matches').on('value', function(s){ M = s.val() || {}; render(); });
 db.ref('match_registry').on('value', function(s){ R = s.val() || {}; render(); });
+BK.watchResults(db, render);
 </script>
 </body>
 </html>

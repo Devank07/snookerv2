@@ -23,13 +23,14 @@
       if (on) { alert('This match has just been started on ' + on.replace('table-', 'Table ') + '. Pick another match from the card.'); dismissed = null; render(); throw new Error('match already on ' + on); }
       return p;
     },
-    fake: function (p) { var num = parseInt(String(p.matchId).replace(/\D/g, ''), 10) || 0;
+    fake: function (p) { var num = String(p.matchId).replace(/^UPBSA-/, '');          // the remotes build 'UPBSA-' + this
       return { transaction: function (fn, cb) { setTimeout(function () { cb(null, true, { val: function () { return num; } }); }, 0); return Promise.resolve(); } }; },
     noop: { set: function () { return Promise.resolve(); }, update: function () { return Promise.resolve(); } },
     /* a finished bracket match is "saved" once its result is in the draw (a staff page — Control Room or
        Tournament Manager — does that within seconds). Clearing the table before then would lose it. */
     saved: function (cur) {
       if (!cur || cur.status !== 'finished' || !cur.matchId) return true;
+      if (RES[cur.matchId] && RES[cur.matchId].w) return true;                          // this phone (or another) saved it
       var m = drawMatch(cur.matchId); return !m || !!m.result;
     },
     guard: function (go) {
@@ -46,7 +47,7 @@
     return hit;
   }
 
-  var REG = {}, TOUR = {}, MATCHES = {}, NAMES = {}, me = null, dismissed = '';
+  var REG = {}, TOUR = {}, MATCHES = {}, NAMES = {}, RES = {}, me = null, dismissed = '';
   var css = '#nm{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2147482980;max-width:520px;margin:0 auto;border-radius:18px;background:#0b1610;border:1px solid rgba(240,192,64,.55);box-shadow:0 14px 40px rgba(0,0,0,.6);color:#e8f4e0;font-family:"Inter",system-ui,sans-serif;display:none;overflow:hidden;}' +
     '#nm.on{display:block;animation:nmIn .35s ease;}@keyframes nmIn{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}' +
     '#nm .h{display:flex;align-items:center;gap:8px;padding:10px 14px 0;font:800 12px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:#f0c040;}' +
@@ -85,17 +86,58 @@
   function pageSport(s) { s = s || 'snooker'; return s === 'billiards' ? 'billiards' : s === 'shootout' ? 'shootout' : 'snooker'; }
   function candidates() {
     var busy = {}; Object.keys(MATCHES).forEach(function (k) { var m = MATCHES[k]; if (m && m.matchId) busy[m.matchId] = 1; });   // live or just finished on a table = not available
-    var list = [];
-    Object.keys(REG).forEach(function (id) {
-      var r = REG[id]; if (!r || r.status !== 'pending' || busy[id]) return;
-      if (!realName(r.p1) || !realName(r.p2)) return;
-      var inf = info(r); if (pageSport(inf.sport) !== PAGE) return;
+    var list = [], inDraw = {};
+    function add(id, r, inf) {
+      if (busy[id]) return;
+      if (pageSport(inf.sport) !== PAGE) return;
       var tn = +(r.tableNumber || inf.table || 0);
       if (tn && String(tn) !== String(T)) return;                       // assigned to another table
       list.push({ id: id, r: r, inf: inf, mine: String(tn) === String(T) });
+    }
+    /* 1. every bracket: the next playable matches, worked out here, so the remote keeps going
+          even when no staff page is open to move winners on */
+    if (w.BK) Object.keys(TOUR).forEach(function (tid) {
+      var t = TOUR[tid]; if (!t || !t.draw || t.status === 'finished') return;
+      Object.keys(t.draw).forEach(function (ck) {
+        var md; try { md = BK.model(t, ck, BK.ctx(MATCHES, REG, RES)); } catch (e) { return; }
+        if (!md) return;
+        md.all.forEach(function (v) {
+          if (v.matchId) inDraw[v.matchId] = 1;
+          if (v.status !== 'pending' || !v.matchId || !v.p1 || !v.p2 || !realName(v.p1.name) || !realName(v.p2.name)) return;
+          var rg = REG[v.matchId] || {};
+          var r = { matchId: v.matchId, tournament: t.name || '', bestOf: v.bo || rg.bestOf || 5, tableNumber: v.table || rg.tableNumber || 0,
+            p1: v.p1.name, p1state: v.p1.state || '', p2: v.p2.name, p2state: v.p2.state || '', roundName: v.roundName || rg.roundName || '' };
+          add(v.matchId, r, { sport: t.sport || '', round: r.roundName || v.group || '', cat: md.catName || '', datetime: v.datetime || rg.datetime || '', table: v.table || 0, tourn: t.name });
+        });
+      });
+    });
+    /* 2. scheduled matches that are not part of any bracket */
+    Object.keys(REG).forEach(function (id) {
+      var r = REG[id]; if (!r || r.status !== 'pending' || inDraw[id] || drawMatch(id)) return;
+      if (!realName(r.p1) || !realName(r.p2)) return;
+      add(id, r, info(r));
     });
     list.sort(function (a, b) { return (b.mine - a.mine) || String(a.inf.datetime || '9').localeCompare(String(b.inf.datetime || '9')) || String(a.id).localeCompare(String(b.id)); });
     return list;
+  }
+
+  /* ── when the match on this table ends, this phone saves the result itself (results/{matchId}),
+        so the bracket moves on even if nobody has the Control Room open ── */
+  var lastSaved = '';
+  function saveResult() {
+    var cur = MATCHES['table-' + T]; if (!cur || !cur.matchId || !cur.player1) return;
+    var mid = cur.matchId, ex = RES[mid], db = firebase.database(), raw = w.UA && UA.raw;
+    var put = function (name, ref, v) { return raw ? UA.raw(name, ref, v) : ref[name](v); };
+    if (cur.status === 'finished' && cur.matchWinner) {
+      var a = cur.player1 || {}, b = cur.player2 || {};
+      var rec = { p1: a.name || '', p2: b.name || '', f1: a.frames || 0, f2: b.frames || 0, w: cur.matchWinner, table: 'table-' + T, tournament: cur.tournament || '', sport: cur.sport || PAGE, at: Date.now() };
+      var sig = mid + rec.f1 + '-' + rec.f2 + rec.w;
+      if (lastSaved === sig || (ex && ex.f1 === rec.f1 && ex.f2 === rec.f2 && ex.w === rec.w && ex.p1 === rec.p1)) return;
+      lastSaved = sig;
+      var p = put('set', db.ref('results/' + mid), rec); if (p && p.catch) p.catch(function () { lastSaved = ''; });
+    } else if (cur.status !== 'finished' && ex && ex.table === 'table-' + T) {      // the referee pressed Undo after the match ended
+      lastSaved = ''; var q = put('remove', db.ref('results/' + mid)); if (q && q.catch) q.catch(function () { });
+    }
   }
 
   /* ── fill each remote's setup form ── */
@@ -194,8 +236,10 @@
     var db = firebase.database();
     db.ref('match_registry').orderByChild('status').equalTo('pending').on('value', function (s) { REG = s.val() || {}; render(); });
     db.ref('tournaments').on('value', function (s) { TOUR = s.val() || {}; render(); attachPicker(); });
-    db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; render(); });
+    db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; saveResult(); render(); });
+    db.ref('results').on('value', function (s) { RES = s.val() || {}; if (w.BK) BK.results = RES; saveResult(); render(); }, function () { });
     db.ref('meta/playerNames').on('value', function (s) { NAMES = s.val() || {}; attachPicker(); });
+    w.addEventListener('ua-ready', function () { setTimeout(render, 50); });   // show the card as soon as the PIN is accepted
     attachPicker();
     ['startNewOnSameTable', 'newMatch'].forEach(function (n) { var f = w[n]; if (typeof f === 'function') w[n] = function () { var a = arguments, self = this; NM.guard(function () { f.apply(self, a); }); }; });
     setInterval(function () { render(); attachPicker(); }, 4000);   // forms are drawn by the page; keep the picker on them

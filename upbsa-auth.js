@@ -138,6 +138,7 @@
     var p = pending; pending = [];
     p.forEach(function (x) { o.on.apply(x[0], x[1]); });
     ungate();
+    try { w.dispatchEvent(new Event('ua-ready')); } catch (e) { }
   }
 
   var auth, db;

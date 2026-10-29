@@ -101,6 +101,7 @@
     db.ref('settings/moments').on('value', function (s) { var v = s.val() || {}; CFG = { intro: v.intro !== false, frame: v.frame !== false, after: v.after !== false }; });
     db.ref('tournaments').on('value', function (s) { TOUR = s.val() || {}; });
     db.ref('match_registry').on('value', function (s) { REG = s.val() || {}; });
+    if (w.BK) BK.watchResults(db);
     db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; });
     db.ref('matches/table-' + T).on('value', function (s) { onMatch(s.val()); });
     w.UPBSA_moment = { intro: function () { if (prev) intro(prev); }, frame: function () { if (prev) frameEnd(prev, prev); }, after: function () { if (prev) afterMatch(prev); } };   // for testing from OBS's "Interact"

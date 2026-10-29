@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
-<script src="bracket-core.js?v=20261029a"></script>
+<script src="bracket-core.js?v=20261029c"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:80px;}
@@ -861,7 +861,7 @@ function renderTablesPanel(){
     var catk=e[0],draw=e[1];
     if(!draw||!draw.matches)return;
     html+='<div style="font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:rgba(201,162,39,0.7);margin:16px 0 8px">'+esc(draw.catName||catk)+'</div>';
-    html+='<table class="mtable"><thead><tr><th>Round</th><th>Player 1</th><th>Player 2</th><th>Best Of</th><th>Date/Time</th><th>Table</th><th>Change</th></tr></thead><tbody>';
+    html+='<table class="mtable"><thead><tr><th>Round</th><th>Player 1</th><th>Player 2</th><th>Best Of</th><th>Date/Time</th><th>Table</th><th>Change</th><th>Result</th></tr></thead><tbody>';
     Object.values(draw.matches).forEach(function(m){
       var tv=m.table===tvTable&&m.table>0;
       html+='<tr>'+
@@ -872,11 +872,68 @@ function renderTablesPanel(){
         '<td style="font-size:0.72rem;color:rgba(232,244,224,0.4)">'+(m.datetime||'–')+'</td>'+
         '<td>'+(m.table>0?'<span style="color:'+(tv?'#e74c3c':'#5dade2')+'">T'+m.table+(tv?' 📺':'')+'</span>':'<span style="color:rgba(232,244,224,0.2)">–</span>')+'</td>'+
         '<td><button class="btn btn-b btn-sm" onclick="openTblModal(\''+m.id+'\',\''+catk+'\')">Change</button></td>'+
+        '<td>'+(m.p1&&m.p2&&!m.p1.tbd&&!m.p2.tbd&&!m.p1.bye&&!m.p2.bye?'<button class="btn btn-sm" style="background:rgba(240,192,64,0.12);border:1px solid rgba(240,192,64,0.4);color:#f0c040" onclick="openResult(\''+m.id+'\',\''+catk+'\')">'+(m.result&&m.result.w?(m.result.wo?'W/O':m.result.f1+'–'+m.result.f2)+' ✎':'Enter')+'</button>':'')+'</td>'+
       '</tr>';
     });
     html+='</tbody></table>';
   });
   document.getElementById('t-panel').innerHTML=html||'<div class="empty">No draw data.</div>';
+}
+
+// ── RESULT: correct a score, record a walkover / no-show, or clear it ──
+function openResult(mid,catk){
+  var t=allTournaments[activeTid]; var m=t&&t.draw&&t.draw[catk]&&t.draw[catk].matches[mid]; if(!m)return;
+  var r=m.result||{}, need=Math.ceil((m.bo||5)/2), a=m.p1.name, b=m.p2.name;
+  var o=document.getElementById('res-modal'); if(o)o.remove();
+  o=document.createElement('div'); o.id='res-modal';
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:210;display:flex;align-items:center;justify-content:center;padding:20px;';
+  var inp='width:64px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:#0b1610;color:#fff;font:700 20px Inter,sans-serif;text-align:center';
+  o.innerHTML='<div style="background:#0f2318;border:1px solid rgba(240,192,64,.35);border-radius:14px;padding:20px;width:100%;max-width:440px;color:#e8f4e0">'+
+    '<div style="font:800 18px \'Barlow Condensed\',sans-serif;letter-spacing:1px;color:#f0c040;text-transform:uppercase;margin-bottom:4px">Match result</div>'+
+    '<div style="font-size:.78rem;color:rgba(232,244,224,.5);margin-bottom:14px">'+esc(m.roundName||'')+' · Best of '+(m.bo||5)+' · first to '+need+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:14px">'+
+      '<b>'+esc(a)+'</b><input id="rs-f1" type="number" min="0" style="'+inp+'" value="'+(r.w&&!r.wo?r.f1:'')+'">'+
+      '<b>'+esc(b)+'</b><input id="rs-f2" type="number" min="0" style="'+inp+'" value="'+(r.w&&!r.wo?r.f2:'')+'">'+
+    '</div>'+
+    '<button class="btn btn-g" id="rs-save" style="width:100%;margin-bottom:12px">Save score</button>'+
+    '<div style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:rgba(232,244,224,.45);margin:4px 0 8px">Walkover / no-show</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-sm" id="rs-wo1" style="flex:1">'+esc(a)+' wins (W/O)</button><button class="btn btn-sm" id="rs-wo2" style="flex:1">'+esc(b)+' wins (W/O)</button></div>'+
+    '<div style="display:flex;gap:8px"><button class="btn btn-r btn-sm" id="rs-clr" style="flex:1"'+(r.w?'':' disabled')+'>Clear result</button><button class="btn btn-sm" id="rs-x" style="flex:1">Cancel</button></div>'+
+    '<div id="rs-msg" style="font-size:.8rem;color:#ff9d92;margin-top:10px;min-height:1em"></div></div>';
+  document.body.appendChild(o);
+  var msg=function(x){document.getElementById('rs-msg').textContent=x;};
+  o.onclick=function(e){if(e.target===o)o.remove();};
+  document.getElementById('rs-x').onclick=function(){o.remove();};
+  document.getElementById('rs-save').onclick=function(){
+    var f1=parseInt(document.getElementById('rs-f1').value,10), f2=parseInt(document.getElementById('rs-f2').value,10);
+    if(isNaN(f1)||isNaN(f2)||f1<0||f2<0)return msg('Enter both frame scores.');
+    if(f1===f2)return msg('Scores can\'t be level.');
+    if(Math.max(f1,f2)!==need&&!confirm('The winner normally has '+need+' frames in a best of '+(m.bo||5)+'. Save '+f1+'–'+f2+' anyway?'))return;
+    saveResult(mid,catk,{f1:f1,f2:f2,w:f1>f2?1:2}); o.remove();
+  };
+  document.getElementById('rs-wo1').onclick=function(){ if(confirm(a+' gets a walkover — '+b+' did not play?')){saveResult(mid,catk,{f1:need,f2:0,w:1,wo:true}); o.remove();} };
+  document.getElementById('rs-wo2').onclick=function(){ if(confirm(b+' gets a walkover — '+a+' did not play?')){saveResult(mid,catk,{f1:0,f2:need,w:2,wo:true}); o.remove();} };
+  document.getElementById('rs-clr').onclick=function(){ if(confirm('Clear this result? The match goes back to "to be played".')){saveResult(mid,catk,null); o.remove();} };
+}
+function laterPlayed(catk,mid,name){            // has the old winner already played on?
+  var t=allTournaments[activeTid], ms=(t.draw[catk]||{}).matches||{}, me=ms[mid], hit=false;
+  Object.keys(ms).forEach(function(k){ var x=ms[k]; if(k===mid||!x||!x.result||!(x.round>me.round||(me.stage==='part1'&&x.stage!=='part1')||(me.stage==='part2'&&x.stage==='part3')))return;
+    if([x.p1&&x.p1.name,x.p2&&x.p2.name].indexOf(name)>=0)hit=true; });
+  return hit;
+}
+function saveResult(mid,catk,res){
+  var t=allTournaments[activeTid], m=t.draw[catk].matches[mid], base='tournaments/'+activeTid+'/draw/'+catk+'/matches/'+mid, up={};
+  var oldW=m.result&&m.result.w?(m.result.w===1?m.p1.name:m.p2.name):null, newW=res?(res.w===1?m.p1.name:m.p2.name):null;
+  if(oldW&&oldW!==newW&&laterPlayed(catk,mid,oldW)&&!confirm(oldW+' has already played the next round. Changing this result does not undo that match — fix it too if needed. Continue?'))return;
+  if(res){ res.manual=true; res.at=Date.now(); up[base+'/result']=res; up[base+'/status']='done'; }
+  else { up[base+'/result']=null; up[base+'/status']='pending'; }
+  if(m.matchId){
+    var rp='match_registry/'+m.matchId+'/';
+    up[rp+'status']=res?(res.wo?'walkover':'finished'):'pending';
+    up[rp+'winner']=res?newW:null; up[rp+'p1frames']=res?res.f1:null; up[rp+'p2frames']=res?res.f2:null; if(res) up[rp+'endTime']=Date.now();
+    up['results/'+m.matchId]=null;                       // the staff entry replaces what a referee phone saved
+  }
+  db.ref().update(up).then(function(){ renderTablesPanel(); renderDrawPanel(); }).catch(function(e){ alert('Not saved: '+e.message); });
 }
 
 // ── TOURNAMENT ACTIONS ──

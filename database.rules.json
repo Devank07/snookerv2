@@ -105,6 +105,12 @@
           ".write": "auth != null && auth.uid === $uid && root.child('secret/pins').child($table).exists() && root.child('refPass').child($table).child(auth.uid).child('pin').val() === root.child('secret/pins').child($table).val()"
         }
       }
+    },
+    "results": {
+      ".read": true,
+      "$mid": {
+        ".write": "auth != null && $mid.length < 40 && ((newData.exists() && newData.child('table').isString() && newData.child('w').isNumber() && (!data.exists() || data.child('table').val() === newData.child('table').val()) && root.child('secret/pins').child(newData.child('table').val()).exists() && root.child('refPass').child(newData.child('table').val()).child(auth.uid).child('pin').val() === root.child('secret/pins').child(newData.child('table').val()).val()) || (!newData.exists() && data.exists() && root.child('secret/pins').child(data.child('table').val()).exists() && root.child('refPass').child(data.child('table').val()).child(auth.uid).child('pin').val() === root.child('secret/pins').child(data.child('table').val()).val()))"
+      }
     }
   }
 }

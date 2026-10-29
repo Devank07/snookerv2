@@ -22,13 +22,19 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   BK.ck = ck; BK.esc = esc; BK.isBye = isBye; BK.isTbd = isTbd;
 
-  /* ── context: live tables + registry ── */
-  BK.ctx = function (matchesByTable, registry) {
+  /* ── context: live tables + registry + results the referee phones saved ── */
+  BK.results = {};
+  BK.watchResults = function (db, cb) { db.ref('results').on('value', function (s) { BK.results = s.val() || {}; if (cb) cb(); }, function () { }); };
+  /* a later knockout match that the draw doesn't hold yet gets a fixed ID, so a referee can start it
+     before any staff page has created it — and the staff page later saves it under the same ID */
+  function hash(str) { var h = 5381; for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h.toString(36).toUpperCase().slice(-5); }
+  BK.vid = function (t, catKey, id) { return 'UPBSA-' + hash(String((t && t.createdAt) || (t && t.name) || '') + '|' + catKey + '|' + id); };
+  BK.ctx = function (matchesByTable, registry, results) {
     var live = {};
     Object.keys(matchesByTable || {}).forEach(function (k) {
       var m = matchesByTable[k]; if (m && m.matchId && m.player1) { live[m.matchId] = m; m._table = m._table || parseInt(String(k).replace('table-', ''), 10) || m.tableNumber; }
     });
-    return { live: live, reg: registry || {} };
+    return { live: live, reg: registry || {}, res: results || BK.results || {} };
   };
 
   /* ── one match: who won, or is it live ── */
@@ -40,6 +46,7 @@
       if (isBye(p1) && real(p2)) { out.status = 'bye'; out.w = 2; return out; }
       return out;                                          // a BYE waiting for its opponent
     }
+    if (m.result && m.result.manual && m.result.w) { out.status = 'done'; out.f1 = m.result.f1; out.f2 = m.result.f2; out.w = m.result.w; out.wo = !!m.result.wo; return out; }   // staff correction / walkover wins
     var lm = m.matchId && ctx.live[m.matchId];
     function side(name) {                                 // which draw side a name belongs to (referee may have swapped)
       var n = low(name); if (!n) return 0;
@@ -58,7 +65,12 @@
         return out;
       }
     }
-    if (m.result && m.result.w) { out.status = 'done'; out.f1 = m.result.f1; out.f2 = m.result.f2; out.w = m.result.w; return out; }
+    var rs = m.matchId && ctx.res && ctx.res[m.matchId];
+    if (rs && rs.w) {                                     // saved by the referee's phone when the match ended
+      var sw = side(rs.p1) === 2 || side(rs.p2) === 1;
+      out.status = 'done'; out.f1 = sw ? rs.f2 : rs.f1; out.f2 = sw ? rs.f1 : rs.f2; out.w = sw ? 3 - rs.w : rs.w; return out;
+    }
+    if (m.result && m.result.w) { out.status = 'done'; out.f1 = m.result.f1; out.f2 = m.result.f2; out.w = m.result.w; out.wo = !!m.result.wo; return out; }
     var r = m.matchId && ctx.reg[m.matchId];
     if (r && r.status === 'finished' && (r.p1frames != null || r.winner)) {
       var g1 = +r.p1frames || 0, g2 = +r.p2frames || 0, ww = 0;
@@ -113,7 +125,7 @@
         var m = stored[i], virt = !m;
         if (virt) {
           var rn = rks[0] !== undefined ? rks[0] + r : r + 1;
-          m = { id: (opts.prefix || 'ko_r') + rn + '_m' + i, virtual: true, stage: opts.stage || 'ko', round: rn, roundName: roundName(R - r, size / Math.pow(2, r)), p1: P('TBD', '', { tbd: true }), p2: P('TBD', '', { tbd: true }), bo: opts.bo ? opts.bo(R - r) : 0, table: 0 };
+          m = { id: (opts.prefix || 'ko_r') + rn + '_m' + i, virtual: true, matchId: opts.vid ? opts.vid((opts.prefix || 'ko_r') + rn + '_m' + i) : '', stage: opts.stage || 'ko', round: rn, roundName: roundName(R - r, size / Math.pow(2, r)), p1: P('TBD', '', { tbd: true }), p2: P('TBD', '', { tbd: true }), bo: opts.bo ? opts.bo(R - r) : 0, table: 0 };
         }
         ms.push(m);
       }
@@ -136,7 +148,7 @@
         }
         var res = resolve(m, p1, p2, ctx);
         var v = { key: m.key || m.id, id: m.id, virtual: !!m.virtual, stage: m.stage || opts.stage || 'ko', matchId: m.matchId || '', round: m.round, roundName: rd.name,
-          p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0,
+          p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo, live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0,
           datetime: m.datetime || '', label: rd.name.replace('Round of ', 'R') + (rd.list.length > 1 ? ' ' + (i + 1) : ''), stored: m };
         v.winner = res.w === 1 ? (res.byeBoth ? P('BYE', '', { bye: true }) : p1) : res.w === 2 ? p2 : null;
         return v;
@@ -151,7 +163,7 @@
   function flatVm(m, ctx) {
     var res = resolve(m, m.p1, m.p2, ctx);
     var v = { key: m.key || m.id, id: m.id, stage: m.stage, matchId: m.matchId || '', round: m.round, roundName: m.roundName || '', group: m.group, groupIndex: m.groupIndex,
-      p1: m.p1, p2: m.p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0, datetime: m.datetime || '', stored: m };
+      p1: m.p1, p2: m.p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo, live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0, datetime: m.datetime || '', stored: m };
     v.winner = res.w === 1 ? m.p1 : res.w === 2 ? m.p2 : null;
     return v;
   }
@@ -163,10 +175,10 @@
     ctx = ctx || { live: {}, reg: {} };
     var cfg = catCfg(t, draw.catName), all = [];
     Object.keys(draw.matches || {}).forEach(function (k) { var m = draw.matches[k]; if (m) { m.key = k; m.id = m.id || k; all.push(m); } });
-    var bo = function (left) { return boFor(cfg, left); };
+    var bo = function (left) { return boFor(cfg, left); }, vid = function (id) { return BK.vid(t, catKey, id); };
     var out = { format: draw.format, catName: draw.catName || catKey, catKey: catKey, manual: !!draw.manual, stages: [], champion: null, all: [] };
     if (draw.format === 'knockout') {
-      var ko = knockout(all, ctx, { stage: 'ko', prefix: 'ko_r', bo: bo });
+      var ko = knockout(all, ctx, { stage: 'ko', prefix: 'ko_r', bo: bo, vid: vid });
       out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko.rounds }); out.champion = ko.champion;
     } else if (draw.format === 'rr') {
       var vms = all.map(function (m) { return flatVm(m, ctx); }).sort(function (a, b) { return idx(a.id) - idx(b.id); });
@@ -204,7 +216,7 @@
       }
       var p3m = all.filter(function (m) { return m.stage === 'part3'; });
       if (p3m.length || seeds.length > 1) {
-        var ko3 = knockout(p3m, ctx, { stage: 'part3', prefix: 'p3_r', seeds: seeds, bo: bo });
+        var ko3 = knockout(p3m, ctx, { stage: 'part3', prefix: 'p3_r', seeds: seeds, bo: bo, vid: vid });
         out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko3.rounds }); out.champion = ko3.champion;
       }
     }
@@ -229,7 +241,7 @@
         var base = 'tournaments/' + tid + '/draw/' + ck2;
         md.all.forEach(function (v) {
           var m = v.stored || {};
-          if (v.virtual) { if (real(v.p1) || real(v.p2)) creates.push({ base: base, v: v, t: t }); return; }
+          if (v.virtual) { if (real(v.p1) || real(v.p2)) creates.push({ base: base, v: v, t: t, ck: ck2 }); return; }
           var path = base + '/matches/' + v.key;
           if ((v.status === 'done') && (!m.result || m.result.w !== v.w || m.result.f1 !== v.f1 || m.result.f2 !== v.f2)) {
             up[path + '/result'] = { f1: v.f1, f2: v.f2, w: v.w, at: now }; up[path + '/status'] = 'done';
@@ -258,28 +270,22 @@
     var work = Object.keys(up).length ? db.ref().update(up) : Promise.resolve();
     return work.then(function () {
       if (!creates.length) return 0;
-      // new knockout rounds: give each a match ID and a registry entry
-      return new Promise(function (res) {
-        db.ref('meta/matchCounter').transaction(function (c) { return (c || 0) + creates.length; }, function (err, ok, snap) {
-          if (err || !ok) return res(0);
-          var end = snap.val(), start = end - creates.length + 1, jobs = [];
-          creates.forEach(function (c, i) {
-            var v = c.v, mid = 'UPBSA-' + String(start + i).padStart(4, '0');
-            var obj = { id: v.id, matchId: mid, stage: v.stage, round: v.round, roundName: v.roundName, p1: { name: v.p1.name, state: v.p1.state || '' }, p2: { name: v.p2.name, state: v.p2.state || '' },
-              status: 'pending', table: 0, bo: v.bo || 5 };
-            if (isTbd(v.p1)) obj.p1.tbd = true; if (isTbd(v.p2)) obj.p2.tbd = true;
-            jobs.push(new Promise(function (r2) {
-              db.ref(c.base + '/matches/' + v.id).transaction(function (cur) { return cur ? undefined : obj; }, function (e, committed) {
-                if (!committed) return r2();
-                db.ref('match_registry/' + mid).set({ matchId: mid, tournament: c.t.name || '', bestOf: obj.bo, tableNumber: 0, status: 'pending',
-                  p1: isTbd(v.p1) ? 'TBD' : v.p1.name, p1state: v.p1.state || '', p2: isTbd(v.p2) ? 'TBD' : v.p2.name, p2state: v.p2.state || '',
-                  stage: v.stage, roundName: v.roundName, createdAt: Date.now() }).then(r2, r2);
-              });
-            }));
+      // new knockout rounds: saved under their fixed ID (the one a referee may already be using) + a registry entry
+      var jobs = creates.map(function (c) {
+        var v = c.v, mid = v.matchId || BK.vid(c.t, c.ck, v.id);
+        var obj = { id: v.id, matchId: mid, stage: v.stage, round: v.round, roundName: v.roundName, p1: { name: v.p1.name, state: v.p1.state || '' }, p2: { name: v.p2.name, state: v.p2.state || '' },
+          status: 'pending', table: 0, bo: v.bo || 5 };
+        if (isTbd(v.p1)) obj.p1.tbd = true; if (isTbd(v.p2)) obj.p2.tbd = true;
+        return new Promise(function (r2) {
+          db.ref(c.base + '/matches/' + v.id).transaction(function (cur) { return cur ? undefined : obj; }, function (e, committed) {
+            if (!committed) return r2();
+            db.ref('match_registry/' + mid).set({ matchId: mid, tournament: c.t.name || '', bestOf: obj.bo, tableNumber: 0, status: 'pending',
+              p1: isTbd(v.p1) ? 'TBD' : v.p1.name, p1state: v.p1.state || '', p2: isTbd(v.p2) ? 'TBD' : v.p2.name, p2state: v.p2.state || '',
+              stage: v.stage, roundName: v.roundName, createdAt: Date.now() }).then(r2, r2);
           });
-          Promise.all(jobs).then(function () { res(creates.length); });
         });
       });
+      return Promise.all(jobs).then(function () { return creates.length; });
     }).then(function (n) { syncing = false; return n; }, function () { syncing = false; return 0; });
   };
 
@@ -290,6 +296,7 @@
     db.ref('tournaments').on('value', function (s) { T = s.val() || {}; seen.t = 1; kick(); });
     db.ref('matches').on('value', function (s) { M = s.val() || {}; seen.m = 1; kick(); });
     db.ref('match_registry').on('value', function (s) { R = s.val() || {}; seen.r = 1; kick(); });
+    BK.watchResults(db, kick);
   };
 
   /* ════════════ DRAWING ════════════ */
@@ -328,7 +335,7 @@
   function metaLine(v) {
     var a = [];
     if (v.status === 'live') a.push('<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>');
-    else if (v.status === 'done') a.push('<span>Result</span>');
+    else if (v.status === 'done') a.push('<span>' + (v.wo ? 'Walkover' : 'Result') + '</span>');
     else if (v.status === 'bye') a.push('<span>Walkover</span>');
     else if (v.table) a.push('<span>Table ' + v.table + '</span>');
     if (v.datetime && v.status === 'pending') { var d = new Date(v.datetime); if (!isNaN(d)) a.push('<span>' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>'); }
