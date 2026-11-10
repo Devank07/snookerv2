@@ -296,6 +296,21 @@ html,body{
 #so-stg span{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.75);margin-top:4px;}
 #custom-score-bar{position:relative;overflow:hidden;width:1920px;box-shadow:0 6px 24px rgba(0,0,0,.7);}
 #custom-break-panel{position:relative;overflow:hidden;width:1920px;display:none;}
+/* ── separate OBS sources: ?part=score (no break panel) · ?part=break (only the break panel, top-left) ── */
+.part-score #break-panel,.part-score #custom-break-panel{display:none!important;}
+.part-break #score-bar,.part-break #custom-score-bar,.part-break #ticker,.part-break #reds-strip,.part-break #winner-flash,
+.part-break #cent-flash,.part-break #sc-ov,.part-break #so-stg,.part-break #mo{display:none!important;}
+.part-break #overlay{top:0;bottom:auto;right:auto;transform:none;padding:12px;}
+.part-break #overlay:not(.visible){opacity:0;}
+.part-break #custom-overlay{top:12px!important;bottom:auto!important;left:12px!important;width:auto!important;}
+.part-break #break-panel{display:none;width:max-content;border:2px solid var(--accent,#c9a227);border-radius:14px;padding:10px 26px;box-shadow:0 10px 30px rgba(0,0,0,.55);}
+/* the panel stays up a few seconds after the break ends, showing the final total */
+#break-panel.ended,#custom-break-panel.ended{opacity:.9;}
+#break-panel.ended .brk-word::after{content:' · ended';}
+#break-panel.out,#custom-break-panel.out{transition:opacity .5s;opacity:0;}
+.bball.new{animation:ballIn .35s cubic-bezier(.22,1.4,.36,1);}
+@keyframes ballIn{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+.bmore{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;color:rgba(255,255,255,.55);letter-spacing:1px;margin-right:2px;}
 #custom-break-panel.visible{display:block;}
 #custom-break-panel.pos-free{position:absolute;}
 .cv-rendered{position:absolute;overflow:hidden;}
@@ -433,8 +448,24 @@ if(!firebase.apps.length) firebase.initializeApp({
   messagingSenderId:"774218957368",appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
 });
 var db=firebase.database();
-var tbl=new URLSearchParams(location.search).get('table')||'1';
-document.title='OBS · Table '+tbl;
+var QS=new URLSearchParams(location.search), tbl=QS.get('table')||'1';
+var PART=(QS.get('part')||'').toLowerCase();             // '' = everything, 'score' = no break panel, 'break' = break panel only
+if(PART==='score'||PART==='break') document.documentElement.classList.add('part-'+PART);
+var HOLD=QS.get('hold')==='0'?0:(+QS.get('hold')||4)*1000;   // keep the final break on screen this long after it ends
+document.title='OBS · Table '+tbl+(PART==='break'?' · Break':PART==='score'?' · Scoreboard':'');
+/* break hold: when a break ends, keep showing it (final total) for HOLD ms */
+var held=null, heldTimer=null, lastLive=null;
+function breakView(s){
+  var brk=s.currentBreak||0;
+  if(brk>0){ lastLive={currentBreak:brk,breakBalls:(s.breakBalls||[]).slice(),breakPlayer:s.breakPlayer,key:s.matchId+'|'+s.currentFrame}; held=null; clearTimeout(heldTimer); return {s:s,ended:false}; }
+  if(lastLive&&HOLD&&!held){ held=lastLive; lastLive=null; heldTimer=setTimeout(function(){ held=null; if(matchState) onMatch(matchState); },HOLD); }
+  lastLive=null;
+  if(held){ var c={}; for(var k in s) c[k]=s[k]; c.currentBreak=held.currentBreak; c.breakBalls=held.breakBalls; c.breakPlayer=held.breakPlayer; return {s:c,ended:true}; }
+  return {s:s,ended:false};
+}
+/* how many balls fit, newest last; older ones become "+N" */
+var lastBallCount=0;
+function ballRun(balls,fit){ balls=balls||[]; var more=Math.max(0,balls.length-fit); return {list:balls.slice(more),more:more}; }
 
 var prevBrk=0, prevP1pts=-1, prevP2pts=-1, prevFW1=-1, prevFW2=-1;
 var matchState=null, customTheme=null, soTheme=null, soLoaded=false;
@@ -459,7 +490,8 @@ function applyTheme(t){
 }
 
 function isShootout(){ return !!(matchState&&matchState.sport==='shootout'); }
-function goBuiltInShootout(){ location.replace('shootout-overlay.html?table='+tbl+location.search.replace(/^\?/,'&').replace(/&table=[^&]*/,'')); }
+function goBuiltInShootout(){ if(PART==='break'){ var ov=g('overlay'); if(ov) ov.classList.remove('visible'); return; }   // the Shoot Out board has no break panel to show
+  location.replace('shootout-overlay.html?table='+tbl+location.search.replace(/^\?/,'&').replace(/&table=[^&]*/,'')); }
 
 // ── Which design this table shows ──
 // Per-table design (design/tables/N/snooker|shootout) beats the all-tables one.
@@ -551,24 +583,28 @@ function onMatch(s){
   g('p1dots').innerHTML=d1; g('p2dots').innerHTML=d2;
 
   // Break panel
-  var brk=s.currentBreak||0,bp=g('break-panel');
+  var BV=breakView(s), bs=BV.s, brk=bs.currentBreak||0,bp=g('break-panel');
+  bp.classList.toggle('ended',BV.ended);
   if(brk>0){
     bp.style.display='flex';
-    g('brk-who').textContent=s.breakPlayer===1?s.player1.name:s.player2.name;
+    g('brk-who').textContent=bs.breakPlayer===1?s.player1.name:s.player2.name;
     var bv=g('brk-val');bv.textContent=brk;bv.className='brk-val'+(brk>=100?' cent':'');
-    g('brk-balls').innerHTML=(s.breakBalls||[]).slice(-8).map(function(b){
-      return '<div class="bball bb-'+b.color+'"><span>'+b.value+'</span></div>';
+    var run=ballRun(bs.breakBalls,PART==='break'?16:12), all=(bs.breakBalls||[]).length;
+    g('brk-balls').innerHTML=(run.more?'<div class="bmore">+'+run.more+'</div>':'')+run.list.map(function(b,i){
+      var isNew=!BV.ended&&all>lastBallCount&&i===run.list.length-1;
+      return '<div class="bball bb-'+b.color+(isNew?' new':'')+'"><span>'+b.value+'</span></div>';
     }).join('');
+    lastBallCount=BV.ended?0:all;
     // Century flash
-    if(brk>=100&&prevBrk<100){
+    if(!BV.ended&&brk>=100&&prevBrk<100){
       g('cf-name').textContent=(s.breakPlayer===1?s.player1.name:s.player2.name)+' — '+brk+' Break';
       var cf=g('cent-flash');cf.classList.add('show');
       setTimeout(function(){cf.classList.remove('show');},5500);
     }
   } else {
-    bp.style.display='none';
+    bp.style.display='none'; lastBallCount=0;
   }
-  prevBrk=brk;
+  prevBrk=s.currentBreak||0;
 
   // Winner flash
   if(s.matchWinner&&s.status==='finished'){
@@ -683,18 +719,31 @@ function renderCustomTheme(theme,match){
   // Show break panel: must be visible in theme AND have a break (or always show if no elements rely on break)
   // breakStripVisible: false means user toggled it off in builder — never show
   // true (default) means show when there is an active break
-  var breakStripVisible = bpL.visible !== false;
-  var hasBreak = (match.currentBreak||0) > 0;
+  var breakStripVisible = bpL.visible !== false && PART!=='score';
+  var BV=breakView(match), bm=BV.s;
+  var hasBreak = (bm.currentBreak||0) > 0;
+  bp2.classList.toggle('ended',BV.ended);
   if(breakStripVisible && hasBreak){
     bp2.classList.add('visible');
     bp2.style.display='block';
     var bpEls=(bpL.elements||[]).slice().sort(function(a,b){return (a.zIndex||1)-(b.zIndex||1);});
-    bpEls.forEach(function(el){if(checkVis(el,match)) bp2.appendChild(buildEl(el,match,bpL.height||50));});
+    bpEls.forEach(function(el){if(checkVis(el,bm)) bp2.appendChild(buildEl(el,bm,bpL.height||50));});
+    if(PART==='break') trimPanel(bp2);
   } else {
     bp2.classList.remove('visible');
     bp2.style.display='none';
   }
   finishRender(sb); finishRender(bp2);
+}
+
+// break-only link: cut the 1920-wide strip down to just its elements, so the OBS source is tight
+function trimPanel(box){
+  var kids=box.querySelectorAll(':scope > .cv-rendered'), minX=1e9, maxX=0;
+  for(var i=0;i<kids.length;i++){ var x=parseFloat(kids[i].style.left)||0, w=parseFloat(kids[i].style.width)||0; if(kids[i].style.display==='none') continue; minX=Math.min(minX,x); maxX=Math.max(maxX,x+w); }
+  if(maxX<=minX) return;
+  var pad=16; minX=Math.max(0,minX-pad); maxX=maxX+pad;
+  for(var j=0;j<kids.length;j++) kids[j].style.left=((parseFloat(kids[j].style.left)||0)-minX)+'px';
+  box.style.width=(maxX-minX)+'px'; box.style.borderRadius='12px';
 }
 
 // after drawing: shrink long text, run per-element animations
@@ -871,7 +920,8 @@ function buildEl(el,m,lH){
       break;
     case 'ball-strip':
       var bc={red:'#c0392b',yellow:'#f1c40f',green:'#27ae60',brown:'#7d5a3c',blue:'#2980b9',pink:'#e91e8c',black:'#111'};
-      var bbs=(m.breakBalls||[]).slice(-8).map(function(b){
+      var fitN=Math.max(3,Math.floor(((el.w||220)+5)/29)), allB=m.breakBalls||[], moreB=Math.max(0,allB.length-fitN+(allB.length>fitN?1:0));
+      var bbs=(moreB?'<div style="font:800 13px \'Barlow Condensed\',sans-serif;color:rgba(255,255,255,.55);flex-shrink:0">+'+moreB+'</div>':'')+allB.slice(moreB).map(function(b){
         return '<div style="width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.75),rgba(255,255,255,0) 38%),'+(bc[b.color]||'#888')+
           ';box-shadow:inset -2px -3px 5px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex-shrink:0;">'+b.value+'</div>';
       }).join('');
@@ -887,6 +937,6 @@ function buildEl(el,m,lH){
 function b(){try{firebase.database().ref('seen/table-'+t+'/obs').set(firebase.database.ServerValue.TIMESTAMP).catch(function(){});}catch(e){}}
 setTimeout(b,3000);setInterval(b,20000);})();</script>
 <script src="bracket-core.js?v=20261029c"></script>
-<script src="moments.js?v=20261029c"></script>
+<script>if((new URLSearchParams(location.search).get('part')||'')!=='break') document.write('<script src="moments.js?v=20261110a"><\/script>');</script>
 </body>
 </html>

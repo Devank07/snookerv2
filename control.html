@@ -72,6 +72,11 @@ a{color:inherit;}
 .legend b{color:var(--text);}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#123321;border:1px solid var(--green);color:#bff5d2;padding:9px 16px;border-radius:10px;font:600 14px 'Inter',sans-serif;display:none;z-index:20;}
 /* layout v2 */
+#obs-pop{position:fixed;z-index:31;width:330px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
+#obs-pop .oh{font:800 13px 'Barlow Condensed',sans-serif;letter-spacing:3px;color:#f0c040;text-transform:uppercase;margin:2px 4px 8px;}
+#obs-pop button{display:block;width:100%;text-align:left;margin:0 0 6px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:700 13px Inter,sans-serif;cursor:pointer;}
+#obs-pop button small{display:block;font-weight:500;color:rgba(232,244,224,.5);margin-top:2px;}
+#obs-pop button:hover{border-color:rgba(240,192,64,.5);}
 #mo-pop{position:fixed;top:70px;right:20px;z-index:30;width:360px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
 .mo-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(255,255,255,.03);margin-top:8px;cursor:pointer;font-size:12px;color:var(--dim);}
 .mo-row input{width:18px;height:18px;margin-top:2px;accent-color:#f0c040;}.mo-row b{display:block;color:var(--text);font-size:14px;margin-bottom:2px;}
@@ -189,6 +194,19 @@ function g(id){ return document.getElementById(id); }
 function now(){ return Date.now() + offset; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function ago(ms){ if(ms < 0) ms = 0; var s = Math.round(ms/1000); if(s < 60) return s + 's ago'; var m = Math.round(s/60); if(m < 60) return m + ' min ago'; var h = Math.round(m/60); return h < 48 ? h + ' h ago' : Math.round(h/24) + ' days ago'; }
+/* OBS links for a table: everything in one source, or scoreboard + break panel as two sources you can place separately */
+function obsPop(btn){
+  var old = g('obs-pop'); if(old){ old.remove(); if(old.dataset.n === btn.dataset.obs) return; }
+  var n = btn.dataset.obs, p = document.createElement('div'); p.id = 'obs-pop'; p.dataset.n = n;
+  p.innerHTML = '<div class="oh">Table ' + n + ' · OBS browser sources</div>' +
+    '<button data-copy="overlay.html?table=' + n + '">All in one<small>Scoreboard with the break panel above it · 1920×1080</small></button>' +
+    '<button data-copy="overlay.html?table=' + n + '&part=score">Scoreboard only<small>Everything except the break panel · 1920×1080</small></button>' +
+    '<button data-copy="overlay.html?table=' + n + '&part=break">Break panel only<small>Sits top-left; move and scale it anywhere · 1920×1080</small></button>';
+  document.body.appendChild(p);
+  var r = btn.getBoundingClientRect(), top = r.bottom + 6, left = Math.min(window.innerWidth - 340, Math.max(10, r.right - 330));
+  if(top + 200 > window.innerHeight) top = Math.max(10, r.top - 206);
+  p.style.top = top + 'px'; p.style.left = left + 'px';
+}
 function toast(t){ var e = g('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(function(){ e.style.display = 'none'; }, 2200); }
 
 /* ── data ── */
@@ -290,7 +308,7 @@ function acts(n){
   return '<div class="acts"><a href="go.html?t=' + n + '" target="_blank" title="Open the referee remote (asks for the PIN)">Remote</a>' +
     '<button data-board="' + n + '" title="Open the venue board for this table">Board</button>' +
     '<button data-boardcopy="' + n + '" title="Copy the venue board link — open it once on the venue screen">Copy board link</button>' +
-    '<button data-copy="overlay.html?table=' + n + '" title="Copy the OBS browser-source link">Copy OBS link</button></div>';
+    '<button data-obs="' + n + '" title="Copy OBS browser-source links: all-in-one, or scoreboard and break panel as separate sources">OBS links ▾</button></div>';
 }
 function freeRow(n){
   var k = 'table-' + n, t = now(), rf = lastRef(k), sn = SEEN[k] || {};
@@ -302,7 +320,7 @@ function freeRow(n){
       '<span><span class="dot ' + (refOn ? 'ok' : 'off') + '"></span>Ref</span>' +
       '<span><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span>OBS</span>' +
       '<span><span class="dot ' + (brdOn ? 'ok' : 'off') + '"></span>Board</span></div></div>' +
-    '<div class="facts"><a href="go.html?t=' + n + '" target="_blank">Remote</a><button data-boardcopy="' + n + '" title="Copy the venue board link">Board link</button><button data-copy="overlay.html?table=' + n + '" title="Copy the OBS link">OBS link</button></div></div>';
+    '<div class="facts"><a href="go.html?t=' + n + '" target="_blank">Remote</a><button data-boardcopy="' + n + '" title="Copy the venue board link">Board link</button><button data-obs="' + n + '" title="Copy OBS links">OBS links ▾</button></div></div>';
 }
 
 var drawT = 0;
@@ -360,7 +378,11 @@ document.addEventListener('click', function(e){
   if(bo){ var n = bo.dataset.board, win = window.open('about:blank', '_blank'); boardKey('table-' + n).then(function(key){ if(win) win.location.href = boardUrl(n, key); }); return; }
   var bc = e.target.closest('[data-boardcopy]');
   if(bc){ var n2 = bc.dataset.boardcopy; boardKey('table-' + n2).then(function(key){ var u = boardUrl(n2, key); try { navigator.clipboard.writeText(u).then(function(){ toast('Board link copied — open it on the venue screen'); }, function(){ prompt('Venue board link', u); }); } catch(er){ prompt('Venue board link', u); } }); return; }
+  var ob = e.target.closest('[data-obs]');
+  if(ob){ obsPop(ob); return; }
+  if(!e.target.closest('#obs-pop')){ var op = g('obs-pop'); if(op) op.remove(); }
   var b = e.target.closest('[data-copy]'); if(!b) return;
+  var opp = g('obs-pop'); if(opp) opp.remove();
   var url = location.href.replace(/[#?].*$/, '').replace(/[^\/]*$/, '') + b.dataset.copy;
   try { navigator.clipboard.writeText(url); toast('OBS link copied'); } catch(er){ prompt('OBS link', url); }
 });
