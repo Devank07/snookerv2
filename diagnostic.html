@@ -459,6 +459,7 @@ function clearAllMatches(){
 
 function clearRegistry(){
   if(!confirm('Clear entire match registry? This removes all UPBSA match IDs.'))return;
+  db.ref('results').remove();
   db.ref('match_registry').remove().then(function(){ showMsg('Match registry cleared.', 'ok'); });
 }
 
@@ -505,6 +506,7 @@ function fullTournamentReset(){
     db.ref('matches').remove(),
     db.ref('match_registry').remove(),
     db.ref('match_history').remove(),
+    db.ref('results').remove(),
     db.ref('design/activeTheme').remove(),
     db.ref('design/themes').remove()
   ];

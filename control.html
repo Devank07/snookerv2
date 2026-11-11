@@ -9,7 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028c"></script>
-<script src="bracket-core.js?v=20261111e"></script>
+<script src="bracket-core.js?v=20261111f"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
@@ -157,6 +157,8 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <button class="tbtn" id="ytset" title="YouTube channel and live streams">▶ <span id="yt-n">YouTube</span></button>
   <button class="tbtn" id="tblset" title="How many tables the venue has">⚙ <span id="tblset-n">6</span> tables</button>
   <button class="tbtn" id="snd" title="Play a sound when a table needs attention">🔕 Sound off</button>
+  <a class="tbtn" href="referee-hub.html" target="_blank" title="Referees pick their match here">🎯 Referee Hub</a>
+  <a class="tbtn" href="bracket.html#events" target="_blank" title="The public page: brackets, matches, players">🏆 Public page</a>
   <a class="tbtn" href="table-cards.html" target="_blank">🖨 Print QR cards</a>
   <button class="tbtn" onclick="UA.openPinManager()">🔐 PINs</button>
   <a class="tbtn" href="admin.html">← Admin</a>
@@ -230,7 +232,30 @@ db.ref('settings/youtube').on('value', function(s){ YTC = s.val() || {}; });
 function ytFor(n){ var k = 'table-' + n; if(YTM[k] && YTM[k].id) return { id:YTM[k].id, manual:true }; var hit = null; ((YTA && YTA.live) || []).forEach(function(x){ if(!hit && (x.table || YT.tableOf(x.title)) === n) hit = x; }); return hit; }
 function ytLabel(){ var n = YT.streams(YTA, YTM).length; var e = g('yt-n'); if(e) e.textContent = n ? n + ' live on YouTube' : 'YouTube'; var b = g('ytset'); if(b) b.classList.toggle('on', !!n); }
 db.ref('refBat').on('value', function(s){ BAT = s.val() || {}; draw(); });
-db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; drawSum(); });
+db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; drawSum(); draw(); });
+var TOUR = {}; db.ref('tournaments').on('value', function(s){ TOUR = s.val() || {}; draw(); });
+if(window.BK) BK.watchResults(db, function(){ draw(); });
+/* what's next on a free table: the earliest ready match set for it (from the brackets and the schedule) */
+function nextFor(n){
+  if(!window.BK) return null;
+  var busy = {}, best = null, inDraw = {};
+  Object.keys(M).forEach(function(k){ var m = M[k]; if(m && m.matchId) busy[m.matchId] = 1; });
+  var real = function(x){ x = String(x || ''); return x && !/^(tbd|bye)$/i.test(x) && !/^(winner|g\d+ #|rr #)/i.test(x); };
+  var consider = function(o){ if(busy[o.id] || +o.table !== n || !real(o.p1) || !real(o.p2)) return; if(!best || String(o.dt || '9') < String(best.dt || '9')) best = o; };
+  Object.keys(TOUR).forEach(function(tid){ var t = TOUR[tid]; if(!t || !t.draw || t.status === 'finished') return;
+    Object.keys(t.draw).forEach(function(ck){ var md; try { md = BK.model(t, ck, BK.ctx(M, REG)); } catch(e){ return; } if(!md) return;
+      md.all.forEach(function(v){ if(v.matchId) inDraw[v.matchId] = 1; if(v.status === 'pending' && v.p1 && v.p2) consider({ id:v.matchId, p1:v.p1.name, p2:v.p2.name, dt:v.datetime, table:v.table || (REG[v.matchId] || {}).tableNumber, round:v.roundName }); }); }); });
+  Object.keys(REG).forEach(function(id){ var r = REG[id]; if(r && r.status === 'pending' && !inDraw[id]) consider({ id:id, p1:r.p1, p2:r.p2, dt:r.datetime, table:r.tableNumber, round:r.roundName }); });
+  return best;
+}
+var NXC = { key:'', map:{} };
+function nextLine(n){
+  var key = [Object.keys(M).map(function(k){ var m = M[k]; return k + (m && m.matchId) + (m && m.status); }).join(','), Object.keys(REG).length, JSON.stringify(TOUR).length, Object.keys(BK.results || {}).length].join('|');
+  if(NXC.key !== key){ NXC = { key:key, map:{} }; }
+  if(!(n in NXC.map)) NXC.map[n] = nextFor(n);
+  var x = NXC.map[n]; if(!x) return '';
+  return ' <span style="font-weight:600;color:rgba(232,244,224,.7)">· Next: ' + esc(x.p1) + ' v ' + esc(x.p2) + (x.dt ? ' · ' + esc(BK.when({ datetime:x.dt })) : '') + '</span>';
+}
 db.ref('breaks').on('value', function(s){ BRK = s.val() || {}; drawSum(); });
 function battery(k){   // freshest phone on this table
   var b = BAT[k] || {}, best = null; Object.keys(b).forEach(function(u){ var x = b[u]; if(x && x.at && now() - x.at < 5 * 60e3 && (!best || x.at > best.at)) best = x; }); return best;
@@ -315,7 +340,7 @@ function freeRow(n){
   var refOn = rf.at && t - rf.at < REF_OK, obsOn = sn.obs && t - sn.obs < SCREEN_OK, brdOn = sn.board && t - sn.board < SCREEN_OK;
   var pinTxt = PINS[k] ? (String(PINS[k]).length === 4 ? 'PIN set' : 'Old PIN — renew') : 'No PIN';
   return '<div class="free" data-k="' + k + '"><div class="fno">T' + n + '</div>' +
-    '<div class="finfo"><div class="fst">Free table</div><div class="fsub">' +
+    '<div class="finfo"><div class="fst">Free table' + nextLine(n) + '</div><div class="fsub">' +
       '<span class="' + (PINS[k] && String(PINS[k]).length === 4 ? 'okt' : 'warnt') + '">' + pinTxt + '</span>' +
       '<span><span class="dot ' + (refOn ? 'ok' : 'off') + '"></span>Ref</span>' +
       '<span><span class="dot ' + (obsOn ? 'ok' : 'off') + '"></span>OBS</span>' +

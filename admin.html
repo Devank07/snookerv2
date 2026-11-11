@@ -338,7 +338,7 @@ html,body{max-width:none;}
         <a href="dashboard.html" class="tt"><div class="tt-ic">⚡</div><div class="tt-nm">Dashboard</div><div class="tt-s">Full control</div><span class="tt-b tb-a">Admin</span></a>
         <a href="tournament.html" class="tt"><div class="tt-ic">🏆</div><div class="tt-nm">Tournaments</div><div class="tt-s">Draws & schedule</div><span class="tt-b tb-a">Admin</span></a>
         <a href="players.html" class="tt"><div class="tt-ic">👤</div><div class="tt-nm">Players</div><div class="tt-s">Registry</div><span class="tt-b tb-a">Admin</span></a>
-        <a href="draw-entry.html" class="tt"><div class="tt-ic">✍️</div><div class="tt-nm">Enter a Draw</div><div class="tt-s">Type a draw by hand</div><span class="tt-b tb-a">Admin</span></a>
+        <a href="draw-entry.html" class="tt"><div class="tt-ic">✍️</div><div class="tt-nm">Enter a Draw</div><div class="tt-s">Type, import or edit names</div><span class="tt-b tb-a">Admin</span></a>
         <a href="schedule.html" class="tt"><div class="tt-ic">📋</div><div class="tt-nm">Schedule</div><div class="tt-s">Full timeline</div><span class="tt-b tb-a">Admin</span></a>
         <div class="tt" onclick="BACKUP.panel()"><div class="tt-ic">🗄️</div><div class="tt-nm">Backups</div><div class="tt-s">Download / restore</div><span class="tt-b tb-a">Admin</span></div>
         <a href="diagnostic.html" class="tt"><div class="tt-ic">🔧</div><div class="tt-nm">Diagnostic</div><div class="tt-s">System health</div><span class="tt-b tb-a">Admin</span></a>
@@ -403,6 +403,7 @@ html,body{max-width:none;}
 <script src="tables.js?v=20261028c"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="bracket-core.js?v=20261111f"></script>
 <script src="backup.js?v=20261028h"></script>
 <script>
 // ═══ ACCESS ═══ (staff sign-in is handled by upbsa-auth.js + the database rules)
@@ -423,6 +424,10 @@ var LM={}, REG={}, loadM=null, loadT=null;
 
 for(var t=1;t<=UPT.MAX;t++){(function(n){db.ref('matches/table-'+n).on('value',function(s){LM[n]=s.val();ra();});})(t);}
 db.ref('match_registry').on('value',function(s){REG=s.val()||{};ra();});
+var TOURS={};db.ref('tournaments').on('value',function(s){TOURS=s.val()||{};});
+function redsFor(name){ var r=15; Object.keys(TOURS).some(function(k){ var t=TOURS[k]; if(t&&t.name===name&&t.reds){ r=+t.reds; return true; } }); return r; }
+/* keep brackets moving (winners into the next round, schedule names filled in) while Admin is open */
+if(window.BK) BK.autoSync(firebase.database());
 db.ref('meta/matchCounter').on('value',function(s){var el=document.getElementById('ctr-sub');if(el)el.textContent='Next: UPBSA-'+String((s.val()||0)+1).padStart(4,'0');});
 db.ref('.info/connected').on('value',function(s){
   var ok=s.val();
@@ -518,15 +523,22 @@ function rSched(){
     if(m.status==='finished') st='done';
     return Object.assign({},m,{st:st,lm:lm,p1n:lm?lm.player1.name:m.p1||'TBD',p2n:lm?lm.player2.name:m.p2||'TBD',p1f:lm?lm.player1.frames:0,p2f:lm?lm.player2.frames:0});
   });
-  all.sort(function(a,b){return ({live:0,pending:1,done:2}[a.st]||1)-({live:0,pending:1,done:2}[b.st]||1)||(a.matchId||'').localeCompare(b.matchId||'');});
-  var g={live:[],next:[],pend:[],done:[]};
+  all=all.filter(function(m){ return m.status!=='cancelled'&&m.status!=='walkover'; });
+  var known=function(m){ return m.p1n&&m.p2n&&!/^(tbd|bye)$/i.test(m.p1n)&&!/^(tbd|bye)$/i.test(m.p2n); };
+  all.sort(function(a,b){return ({live:0,pending:1,done:2}[a.st]||1)-({live:0,pending:1,done:2}[b.st]||1)||
+    (a.st==='done'?((b.endTime||0)-(a.endTime||0)):(String(a.datetime||'9').localeCompare(String(b.datetime||'9'))||(a.tableNumber||99)-(b.tableNumber||99)))||(a.matchId||'').localeCompare(b.matchId||'');});
+  var g={live:[],next:[],pend:[],done:[]}, waiting=0;
   all.forEach(function(m){
     if(m.st==='live') g.live.push(m);
-    else if(m.st==='pending'&&m.tableNumber>0&&g.next.length<3) g.next.push(m);
+    else if(m.st==='pending'&&!known(m)) waiting++;                 // players not known yet (later rounds)
+    else if(m.st==='pending'&&g.next.length<4) g.next.push(m);
     else if(m.st==='pending') g.pend.push(m);
     else g.done.push(m);
   });
+  g.done=g.done.slice(0,60);
   document.getElementById('sc-empty').style.display=all.length?'none':'block';
+  var wt=document.getElementById('sc-wait'); if(!wt){ var pw=document.getElementById('sc-pend-w'); if(pw){ wt=document.createElement('div'); wt.id='sc-wait'; wt.style.cssText='font-size:12px;color:rgba(232,244,224,.45);padding:8px 4px'; pw.parentNode.insertBefore(wt,pw.nextSibling); } }
+  if(wt) wt.textContent=waiting?waiting+' more match'+(waiting>1?'es':'')+' waiting for earlier rounds to finish':'';
   ['live','next','pend','done'].forEach(function(k){
     var w=document.getElementById('sc-'+k+'-w'), l=document.getElementById('sc-'+k);
     if(!w||!l) return;
@@ -537,7 +549,7 @@ function rSched(){
       var bTxt=isL?'LIVE':k==='next'?'NEXT':isDn?'DONE':'PENDING';
       return '<div class="mr'+(isL?' live':'')+'" onclick="'+(isDn?'':'openLoadById(\''+esc(m.matchId||'')+'\')') +'">'+
         '<div class="mr-id">'+esc(m.matchId||'–')+'</div>'+
-        '<div class="mr-ps"><div class="mr-pn">'+esc(m.p1n)+'<span class="mr-vs">vs</span>'+esc(m.p2n)+'</div><div class="mr-rnd">'+esc(m.roundName||m.tournament||'')+'</div></div>'+
+        '<div class="mr-ps"><div class="mr-pn">'+esc(m.p1n)+'<span class="mr-vs">vs</span>'+esc(m.p2n)+'</div><div class="mr-rnd">'+esc([m.roundName||m.tournament||'', m.datetime&&window.BK?BK.when({datetime:m.datetime}):'', m.tableNumber?'Table '+m.tableNumber:''].filter(Boolean).join(' · '))+'</div></div>'+
         ((isL||isDn)?'<div class="mr-sc">'+m.p1f+' – '+m.p2f+'</div>':'')+
         '<div class="mr-badge '+badge+'">'+bTxt+'</div></div>';
     }).join('');
@@ -558,7 +570,7 @@ function clrT(n){
 function doReset(){
   if(!confirm('FULL RESET — clear all matches?'))return;
   var c=prompt('Type RESET:','');
-  if(c&&c.trim().toUpperCase()==='RESET'){db.ref('matches').remove();db.ref('match_registry').remove();db.ref('match_history').remove();alert('Done.');}
+  if(c&&c.trim().toUpperCase()==='RESET'){db.ref('matches').remove();db.ref('match_registry').remove();db.ref('match_history').remove();db.ref('results').remove();alert('Done.');}
 }
 function openLoadFree(n){
   loadT=n;loadM=null;
@@ -590,8 +602,8 @@ function closeModal(){document.getElementById('lmodal').classList.remove('open')
 function confirmLoad(){
   if(!loadT){alert('Select a table.');return;}
   if(!loadM){closeModal();goTab('sched');return;}
-  var m=loadM,now=Date.now(),bf=m.firstBreak||1;
-  db.ref('matches/table-'+loadT).set({matchId:m.matchId,sport:m.sport||'snooker',tableNumber:loadT,tournament:m.tournament||'Match',bestOf:m.bestOf||5,currentFrame:1,status:'active',matchWinner:null,turn:bf,breakPlayer:bf,frameBreaker:bf,currentBreak:0,breakBalls:[],redsRemaining:15,lastFoul:null,bestBreak1:0,bestBreak2:0,frameStartTime:now,matchStartTime:now,shotClockEnabled:false,shotClockDuration:60,shotClockStarted:now,player1:{name:m.p1||'P1',frames:0,score:0,state:m.p1state||''},player2:{name:m.p2||'P2',frames:0,score:0,state:m.p2state||''}});
+  var m=loadM,now=Date.now(),bf=m.firstBreak||1,rd=redsFor(m.tournament);
+  db.ref('matches/table-'+loadT).set({matchId:m.matchId,sport:m.sport||'snooker',tableNumber:loadT,tournament:m.tournament||'Match',bestOf:m.bestOf||5,currentFrame:1,status:'active',matchWinner:null,turn:bf,breakPlayer:bf,frameBreaker:bf,currentBreak:0,breakBalls:[],reds:rd,redsRemaining:rd,lastFoul:null,bestBreak1:0,bestBreak2:0,frameStartTime:now,matchStartTime:now,shotClockEnabled:false,shotClockDuration:60,shotClockStarted:now,player1:{name:m.p1||'P1',frames:0,score:0,state:m.p1state||''},player2:{name:m.p2||'P2',frames:0,score:0,state:m.p2state||''}});
   db.ref('match_registry/'+m.matchId).update({status:'active',tableNumber:loadT,startTime:now});
   closeModal();
 }
