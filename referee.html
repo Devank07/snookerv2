@@ -591,6 +591,13 @@ select.su-in{appearance:none;-webkit-appearance:none;background-image:linear-gra
         <button onclick="selBO(25)" class="bo-btn">25</button>
       </div>
 
+      <div class="su-lbl">Reds</div>
+      <div class="su-chips" id="su-reds">
+        <button type="button" onclick="selReds(15)" class="bo-btn on" data-r="15">15 reds</button>
+        <button type="button" onclick="selReds(10)" class="bo-btn" data-r="10">10 reds</button>
+        <button type="button" onclick="selReds(6)" class="bo-btn" data-r="6">6 reds</button>
+      </div>
+
       <div class="su-lbl">Match preview</div>
       <div class="su-prev" id="su-prev"></div>
 
@@ -829,8 +836,8 @@ select.su-in{appearance:none;-webkit-appearance:none;background-image:linear-gra
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261029c" data-mode="referee"></script>
 <script src="ref-app.js?v=20261028d"></script>
-<script src="bracket-core.js?v=20261029c"></script>
-<script src="next-match.js?v=20261029c"></script>
+<script src="bracket-core.js?v=20261111b"></script>
+<script src="next-match.js?v=20261111b"></script>
 <script>
 // Online/offline status
 window.addEventListener('online', function(){
@@ -972,7 +979,7 @@ function render() {
     return '<div class="bball bb-' + b.color + '">' + b.value + '</div>';
   }).join('');
   // Info row
-  var reds = Math.max(0, s.redsRemaining || 15);
+  var reds = Math.max(0, (s.redsRemaining==null?(s.reds||15):s.redsRemaining));
   var ptsLeft = (reds * 8) + 27;
   var diff = Math.abs(s.player1.score - s.player2.score);
   document.getElementById('info-reds').innerHTML = '<strong>' + reds + '</strong> reds left';
@@ -1041,7 +1048,7 @@ function pot(color, val) {
   if (!s.breakPlayer) s.breakPlayer = s.turn;
   s.breakBalls = s.breakBalls || [];
   s.breakBalls.push({ color: color, value: val });
-  if (color === 'red') s.redsRemaining = Math.max(0, (s.redsRemaining || 15) - 1);
+  if (color === 'red') s.redsRemaining = Math.max(0, ((s.redsRemaining==null?(s.reds||15):s.redsRemaining)) - 1);
   // Track best break
   var bk = 'bestBreak' + s.turn;
   if (s.currentBreak > (s[bk] || 0)) s[bk] = s.currentBreak;
@@ -1154,9 +1161,10 @@ function doFrameWon(playerNum) {
   s[pl].frames    = (s[pl].frames || 0) + 1;
   s.player1.score = 0; s.player2.score = 0;
   s.player1.currentBreak = 0; s.player2.currentBreak = 0;
-  s.currentBreak  = 0; s.breakBalls = []; s.redsRemaining = 15;
+  s.currentBreak  = 0; s.breakBalls = []; s.redsRemaining = s.reds || 15;
   s.currentFrame  = (s.currentFrame || 1) + 1;
-  s.turn          = (s.breakPlayer || 1) === 1 ? 2 : 1; // players take turns to break off, frame by frame
+  s.frameBreaker  = (s.frameBreaker || s.breakPlayer || 1) === 1 ? 2 : 1; // players take turns to break off, frame by frame
+  s.turn          = s.frameBreaker;
   s.breakPlayer   = s.turn;
   s.bestBreak1    = 0; s.bestBreak2 = 0;
   s.frameStartTime   = Date.now();
@@ -1174,7 +1182,7 @@ function confirmResetFrame() {
   var s = clone();
   s.player1.score = 0; s.player2.score = 0;
   s.player1.currentBreak = 0; s.player2.currentBreak = 0;
-  s.currentBreak  = 0; s.breakBalls = []; s.redsRemaining = 15;
+  s.currentBreak  = 0; s.breakBalls = []; s.redsRemaining = s.reds || 15;
   s.frameStartTime   = Date.now();
   s.shotClockStarted = Date.now();
   safeSet(matchRef, s);
@@ -1213,6 +1221,8 @@ function startNewOnSameTable(){
 
 // ── MATCH SETUP FROM REMOTE ──
 var setupBO = 5;
+var setupReds = 15;
+function selReds(n){ setupReds = n; document.querySelectorAll('#su-reds .bo-btn').forEach(function(b){ b.classList.toggle('on', +b.dataset.r === n); }); if (typeof suPreview === 'function') suPreview(); }
 var setupBreaker = 1;
 
 // Populate state dropdowns
@@ -1237,7 +1247,7 @@ function populateStates() {
 
 function selBO(n) {
   setupBO = n;
-  document.querySelectorAll('.bo-btn').forEach(function(b) { b.classList.remove('on'); });
+  document.querySelectorAll('.bo-btn:not([data-r])').forEach(function(b) { b.classList.remove('on'); });
   event.target.classList.add('on');
   suPreview();
 }
@@ -1281,7 +1291,7 @@ function suPreview(){
     '<div class="sp-vs">'+side(1,n1)+'<div class="sp-x">V</div>'+side(2,n2)+'</div>'+
     '<div class="sp-cards"><div class="sp-c"><i>BEST OF</i><b>'+setupBO+'</b></div>'+
     '<div class="sp-c g"><i>FIRST TO</i><b>'+Math.ceil(setupBO/2)+'</b></div>'+
-    '<div class="sp-c"><i>REDS</i><b>15</b></div></div>';
+    '<div class="sp-c"><i>REDS</i><b>'+setupReds+'</b></div></div>';
 }
 
 function startMatchFromRemote() {
@@ -1332,7 +1342,8 @@ function startMatchFromRemote() {
       frameBreaker: setupBreaker,
       currentBreak: 0,
       breakBalls: [],
-      redsRemaining: 15,
+      reds: setupReds,
+      redsRemaining: setupReds,
       lastFoul: null,
       bestBreak1: 0,
       bestBreak2: 0,

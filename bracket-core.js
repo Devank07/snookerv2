@@ -107,9 +107,47 @@
   function catCfg(t, name) { var c = null; Object.keys((t && t.categories) || {}).forEach(function (k) { if (t.categories[k] && t.categories[k].name === name) c = t.categories[k]; }); return c || {}; }
   function boFor(cfg, left) { return left === 1 ? (cfg.bo_final || 9) : left === 2 ? (cfg.bo_sf || 9) : left === 3 ? (cfg.bo_rr || 7) : (cfg.bo_group || 5); }
 
+  /* ── linked knockout: every match says which match feeds each slot (src1 / src2), so players can
+        join in later rounds (seeds entering at the pre-quarters, say) and rounds needn't halve ── */
+  function shortRound(n) {
+    var s = String(n || ''), q = /^qualifier\s*(\d+)/i.exec(s);
+    if (q) return 'Q' + q[1];
+    if (/^pre[\s-]*quarter/i.test(s)) return 'PQF'; if (/^quarter/i.test(s)) return 'QF'; if (/^semi/i.test(s)) return 'SF'; if (/^final/i.test(s)) return 'Final';
+    var r = /^round of (\d+)/i.exec(s); return r ? 'R' + r[1] : s;
+  }
+  BK.shortRound = shortRound;
+  function linkedKO(list, ctx) {
+    var byKey = {}, byRound = {};
+    list.forEach(function (m) { byKey[m.key || m.id] = m; var r = +m.round || 1; (byRound[r] = byRound[r] || []).push(m); });
+    var rks = Object.keys(byRound).map(Number).sort(function (a, b) { return a - b; }), maxR = rks[rks.length - 1], minR = rks[0];
+    var vm = {}, rounds = [];
+    rks.forEach(function (r) {
+      var ms = byRound[r].sort(function (a, b) { return idx(a.id || a.key) - idx(b.id || b.key); });
+      var name = (ms[0] && ms[0].roundName) || roundName(maxR - r + 1, 0), short = shortRound(name);
+      var out = ms.map(function (m, i) {
+        var k = m.key || m.id;
+        function side(src, stored) {
+          if (!src) return stored;
+          var f = vm[src]; if (f && f.winner) return f.winner;
+          return P('TBD', '', { tbd: true, from: f ? 'Winner ' + f.label : 'TBD' });
+        }
+        var p1 = side(m.src1, m.p1), p2 = side(m.src2, m.p2), res = resolve(m, p1, p2, ctx);
+        var v = { key: k, id: m.id || k, stage: m.stage || 'ko', matchId: m.matchId || '', round: r, roundName: name, p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo,
+          live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0, datetime: m.datetime || '', label: short + (ms.length > 1 ? ' ' + (i + 1) : ''),
+          src1: m.src1 || '', src2: m.src2 || '', seed1: !m.src1 && r > minR, seed2: !m.src2 && r > minR, stored: m };
+        v.winner = res.w === 1 ? (res.byeBoth ? P('BYE', '', { bye: true }) : p1) : res.w === 2 ? p2 : null;
+        vm[k] = v; return v;
+      });
+      rounds.push({ name: name, left: maxR - r + 1, matches: out });
+    });
+    var fin = rounds[rounds.length - 1], champion = fin && fin.matches.length === 1 && fin.matches[0].winner && real(fin.matches[0].winner) ? fin.matches[0].winner : null;
+    return { rounds: rounds, champion: champion, linked: true };
+  }
+
   /* ── knockout tree (fills missing rounds, moves winners on) ── */
   function knockout(list, ctx, opts) {
     opts = opts || {};
+    if (list.some(function (m) { return m.src1 || m.src2; })) return linkedKO(list, ctx);
     var byRound = {};
     list.forEach(function (m) { var r = +m.round || 1; (byRound[r] = byRound[r] || []).push(m); });
     var rks = Object.keys(byRound).map(Number).sort(function (a, b) { return a - b; });
@@ -179,7 +217,7 @@
     var out = { format: draw.format, catName: draw.catName || catKey, catKey: catKey, manual: !!draw.manual, stages: [], champion: null, all: [] };
     if (draw.format === 'knockout') {
       var ko = knockout(all, ctx, { stage: 'ko', prefix: 'ko_r', bo: bo, vid: vid });
-      out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko.rounds }); out.champion = ko.champion;
+      out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko.rounds, linked: !!ko.linked }); out.champion = ko.champion;
     } else if (draw.format === 'rr') {
       var vms = all.map(function (m) { return flatVm(m, ctx); }).sort(function (a, b) { return idx(a.id) - idx(b.id); });
       var st = standings(draw.players || [], vms);
@@ -338,7 +376,7 @@
     else if (v.status === 'done') a.push('<span>' + (v.wo ? 'Walkover' : 'Result') + '</span>');
     else if (v.status === 'bye') a.push('<span>Walkover</span>');
     else if (v.table) a.push('<span>Table ' + v.table + '</span>');
-    if (v.datetime && v.status === 'pending') { var d = new Date(v.datetime); if (!isNaN(d)) a.push('<span>' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>'); }
+    if (v.datetime && v.status === 'pending') { var d = new Date(String(v.datetime).replace(' ', 'T')); if (!isNaN(d)) a.push('<span>' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>'); }
     var yu = BK.watchUrl ? BK.watchUrl(v) : '';
     if (yu) a.push('<a class="bk-yt" href="' + esc(yu) + '" target="_blank" rel="noopener" title="Watch this match live on YouTube">▶ Livestream</a>');
     a.push('<span class="sp"></span>'); if (v.bo) a.push('<span>BO' + v.bo + '</span>');
@@ -374,5 +412,137 @@
     }
     return '<div class="bk-wrap"><div class="bk-tree" style="width:' + W + 'px;height:' + (H + HEAD) + 'px"><svg class="bk-svg" width="' + W + '" height="' + (H + HEAD) + '">' + paths + '</svg>' + html + '</div></div>';
   };
-  BK.fmtTime = function (dt) { var d = new Date(dt); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+  /* ════════════ BRACKET VIEW (public page) ════════════
+     Columns per round with a header (round · best of · dates); match cards show time, table and
+     score; lines join each match to the one it feeds. Works for normal and linked draws.
+     opts: { root: match key to show only that part of the draw, fromLeft: show only rounds with left <= n,
+             champion } */
+  function feeders(stage) {
+    var map = {}, rs = stage.rounds || [];
+    rs.forEach(function (rd, ri) {
+      rd.matches.forEach(function (v, i) {
+        if (stage.linked) map[v.key] = [v.src1 || null, v.src2 || null];
+        else map[v.key] = ri ? [rs[ri - 1].matches[i * 2] ? rs[ri - 1].matches[i * 2].key : null, rs[ri - 1].matches[i * 2 + 1] ? rs[ri - 1].matches[i * 2 + 1].key : null] : [null, null];
+      });
+    });
+    return map;
+  }
+  BK.feeders = feeders;
+  /* parts of the draw worth a button: halves, quarters, and "from the quarter finals" */
+  BK.sections = function (stage) {
+    var rs = stage.rounds || [], out = [];
+    if (!rs.length) return out;
+    var total = 0; rs.forEach(function (r) { total += r.matches.length; });
+    var semis = rs.filter(function (r) { return r.left === 2; })[0], qf = rs.filter(function (r) { return r.left === 3; })[0];
+    if (total < 16) return out;
+    if (semis && semis.matches.length === 2) semis.matches.forEach(function (v, i) { out.push({ id: 'h' + i, name: (i ? 'Bottom' : 'Top') + ' half', root: v.key }); });
+    if (qf && qf.matches.length === 4) qf.matches.forEach(function (v, i) { out.push({ id: 'q' + i, name: 'Quarter ' + (i + 1), root: v.key }); });
+    if (qf && rs.length > 3) out.push({ id: 'last8', name: 'Quarter finals on', fromLeft: 3 });
+    return out;
+  };
+  function dateSpan(ms) {
+    var ds = ms.map(function (v) { return v.datetime ? new Date(String(v.datetime).replace(' ', 'T')) : null; }).filter(function (d) { return d && !isNaN(d); }).sort(function (a, b) { return a - b; });
+    if (!ds.length) return '';
+    var f = function (d) { return d.getDate() + ' ' + d.toLocaleDateString('en-GB', { month: 'short' }); };
+    var a = f(ds[0]), b = f(ds[ds.length - 1]); return a === b ? a : (ds[0].getMonth() === ds[ds.length - 1].getMonth() ? ds[0].getDate() + '–' + b : a + ' – ' + b);
+  }
+  BK.dateSpan = dateSpan;
+  function when(v) {
+    if (!v.datetime) return '';
+    var d = new Date(String(v.datetime).replace(' ', 'T')); if (isNaN(d)) return '';
+    return d.getDate() + ' ' + d.toLocaleDateString('en-GB', { month: 'short' }) + ' · ' + d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '').toLowerCase();
+  }
+  BK.when = when;
+  function tRow(v, s) {
+    var p = v[s], one = s === 'p1' ? 1 : 2, cls = isBye(p) ? 'b' : isTbd(p) ? 't' : v.w === one ? 'w' : v.w ? 'l' : '';
+    var sc = (v.status === 'done' || v.status === 'live') ? (one === 1 ? v.f1 : v.f2) : '';
+    var at = v.live && v.live.turn === one, seed = v['seed' + one] && real(p);
+    var name = isBye(p) ? 'BYE' : isTbd(p) ? (p && p.placeholder ? p.placeholder : p && p.from ? p.from : (p && p.name && !/^tbd$/i.test(p.name) ? p.name : 'TBD')) : p.name;
+    return '<div class="bt-p ' + cls + '" data-p="' + esc(real(p) ? low(p.name) : '') + '">' + (at ? '<i class="at"></i>' : '') +
+      '<span class="n">' + esc(name) + (real(p) && p.state ? '<small>' + esc(p.state) + '</small>' : '') + (seed ? '<em title="Joins the draw in this round">Seeded</em>' : '') + '</span>' +
+      '<b class="s">' + (sc == null ? '' : esc(sc)) + '</b></div>';
+  }
+  BK.treeCard = function (v, style) {
+    var top = v.status === 'live' ? '<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>' : v.status === 'done' ? '<span class="dn">' + (v.wo ? 'Walkover' : 'Final score') + '</span>' : v.status === 'bye' ? '<span class="dn">Walkover</span>' : '<span>' + esc(when(v) || (v.table ? '' : 'Time to be set')) + '</span>';
+    var yu = BK.watchUrl ? BK.watchUrl(v) : '';
+    var right = (yu ? '<a class="bk-yt" href="' + esc(yu) + '" target="_blank" rel="noopener">▶ Watch</a>' : '') + (v.table && v.status !== 'live' ? '<span>T' + v.table + '</span>' : '') + (v.bo ? '<span>BO' + v.bo + '</span>' : '');
+    return '<div class="bt-m ' + v.status + '" data-key="' + esc(v.key) + '" data-mid="' + esc(v.matchId) + '" style="' + (style || '') + '"><div class="bt-h">' + top + '<i></i>' + right + '</div>' + tRow(v, 'p1') + tRow(v, 'p2') + '</div>';
+  };
+  BK.renderTree = function (stage, opts) {
+    opts = opts || {};
+    var rs = stage.rounds || []; if (!rs.length) return '<div class="bk-empty">No knockout matches yet.</div>';
+    var MW = opts.mw || 236, MH = 78, GAP = opts.gap || 44, VG = 16, U = MH + VG;
+    var fd = feeders(stage), byKey = {}, roundOf = {};
+    rs.forEach(function (rd, ri) { rd.matches.forEach(function (v) { byKey[v.key] = v; roundOf[v.key] = ri; }); });
+    /* which matches are on show */
+    var show = {};
+    if (opts.root && byKey[opts.root]) (function add(k) { if (!k || !byKey[k] || show[k]) return; show[k] = 1; (fd[k] || []).forEach(add); })(opts.root);
+    else rs.forEach(function (rd) { if (!opts.fromLeft || rd.left <= opts.fromLeft) rd.matches.forEach(function (v) { show[v.key] = 1; }); });
+    var cols = []; rs.forEach(function (rd, ri) { if (rd.matches.some(function (v) { return show[v.key]; })) cols.push(ri); });
+    var colOf = {}; cols.forEach(function (ri, ci) { colOf[ri] = ci; });
+    /* vertical places: leaves in draw order, every other match centred on what feeds it */
+    var y = {}, slot = 0, consumed = {};
+    Object.keys(show).forEach(function (k) { (fd[k] || []).forEach(function (f) { if (f && show[f]) consumed[f] = 1; }); });
+    function place(k) {
+      if (y[k] != null) return y[k];
+      var fs = (fd[k] || []).filter(function (f) { return f && show[f]; });
+      if (!fs.length) { y[k] = slot++ * U; return y[k]; }
+      var ys = fs.map(place); y[k] = ys.length === 2 ? (ys[0] + ys[1]) / 2 : ys[0]; return y[k];
+    }
+    var roots = Object.keys(show).filter(function (k) { return !consumed[k]; }).sort(function (a, b) { return roundOf[a] - roundOf[b] || idx(a) - idx(b); });
+    roots.forEach(place);
+    var HEAD = 0, H = Math.max(1, slot) * U - VG, W = cols.length * MW + (cols.length - 1) * GAP;
+    var champ = opts.champion && (!opts.root || opts.root === rs[rs.length - 1].matches[0].key) && cols[cols.length - 1] === rs.length - 1;
+    if (champ) W += GAP + 190;
+    var html = '', paths = '', heads = '';
+    cols.forEach(function (ri, ci) {
+      var rd = rs[ri], x = ci * (MW + GAP), shown = rd.matches.filter(function (v) { return show[v.key]; });
+      var bo = shown[0] && shown[0].bo, span = dateSpan(shown);
+      heads += '<div class="bt-rh' + (rd.left === 1 ? ' fin' : '') + '" style="left:' + x + 'px;width:' + MW + 'px"><b>' + esc(rd.name) + '</b><span>' + [bo ? 'Best of ' + bo : '', span].filter(Boolean).map(esc).join(' · ') + '</span></div>';
+      shown.forEach(function (v) {
+        var top = y[v.key] + HEAD;
+        html += BK.treeCard(v, 'left:' + x + 'px;top:' + top + 'px;width:' + MW + 'px;height:' + MH + 'px');
+        (fd[v.key] || []).forEach(function (f, si) {
+          if (!f || !show[f]) return;
+          var fv = byKey[f], fx = colOf[roundOf[f]] * (MW + GAP) + MW, fy = y[f] + HEAD + MH / 2 + 9, ty = top + 18 + (si ? 45 : 15), mx = x - GAP / 2;
+          paths += '<path class="' + (fv.winner && real(fv.winner) ? 'won' : '') + '" data-from="' + esc(f) + '" d="M' + fx + ' ' + fy + ' H' + mx + ' V' + ty + ' H' + x + '"/>';
+        });
+      });
+    });
+    if (champ) {
+      var lx = (cols.length - 1) * (MW + GAP), fm = rs[rs.length - 1].matches[0], cy = y[fm.key] + HEAD + MH / 2;
+      paths += '<path class="won" d="M' + (lx + MW) + ' ' + cy + ' H' + (lx + MW + GAP) + '"/>';
+      html += '<div class="bt-champ" style="left:' + (lx + MW + GAP) + 'px;top:' + (cy - 44) + 'px;width:190px;height:88px"><span>🏆 Champion</span><b>' + esc(opts.champion.name) + '</b>' + (opts.champion.state ? '<small>' + esc(opts.champion.state) + '</small>' : '') + '</div>';
+    }
+    return '<div class="bt-wrap"><div class="bt-heads" style="width:' + W + 'px">' + heads + '</div><div class="bt-tree" style="width:' + W + 'px;height:' + (H + 4) + 'px"><svg class="bt-svg" width="' + W + '" height="' + (H + 4) + '">' + paths + '</svg>' + html + '</div></div>';
+  };
+  BK.treeCss = function () {
+    return '.bt-wrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 150px);border-radius:16px;border:1px solid var(--line,rgba(255,255,255,.08));background:rgba(0,0,0,.18);padding:0 14px 18px;overscroll-behavior:contain;}' +
+      '.bt-heads{position:sticky;top:0;z-index:5;height:54px;background:linear-gradient(180deg,#07120a 70%,rgba(7,18,10,0));margin-bottom:6px;}' +
+      '.bt-rh{position:absolute;top:10px;height:38px;display:flex;flex-direction:column;justify-content:center;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);}' +
+      '.bt-rh b{font:900 14px "Barlow Condensed",sans-serif;letter-spacing:2px;text-transform:uppercase;color:#e8f4e0;}.bt-rh span{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}' +
+      '.bt-rh.fin{background:rgba(240,192,64,.12);border-color:rgba(240,192,64,.35);}.bt-rh.fin b{color:#f0c040;}' +
+      '.bt-tree{position:relative;}.bt-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}' +
+      '.bt-svg path{fill:none;stroke:rgba(255,255,255,.14);stroke-width:2;}.bt-svg path.won{stroke:rgba(240,192,64,.55);}.bt-svg path.path{stroke:#5fb8ff;stroke-width:3;}' +
+      '.bt-m{position:absolute;border-radius:10px;background:#0f1f15;border:1px solid rgba(255,255,255,.09);overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s;}' +
+      '.bt-m:hover{border-color:rgba(240,192,64,.45);}' +
+      '.bt-m.live{border-color:rgba(46,204,113,.8);box-shadow:0 0 0 1px rgba(46,204,113,.3),0 0 20px rgba(46,204,113,.18);}' +
+      '.bt-h{display:flex;align-items:center;gap:6px;height:18px;padding:0 9px;background:rgba(0,0,0,.28);font:700 10.5px Inter,sans-serif;color:rgba(232,244,224,.5);white-space:nowrap;}' +
+      '.bt-h i{flex:1;}.bt-h .lv{color:#59e08a;font-weight:800;}.bt-h .lv:before{content:"● ";animation:blink 1.2s steps(2) infinite;}.bt-h .dn{color:rgba(232,244,224,.4);}' +
+      '.bt-h span+span{padding-left:6px;border-left:1px solid rgba(255,255,255,.12);}' +
+      '.bt-p{flex:1;display:flex;align-items:center;gap:6px;padding:0 0 0 9px;min-height:0;border-top:1px solid rgba(255,255,255,.05);cursor:pointer;}' +
+      '.bt-p .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 14.5px "Barlow Condensed",sans-serif;letter-spacing:.2px;color:#e8f4e0;}' +
+      '.bt-p .n small{font:600 10px Inter,sans-serif;color:rgba(232,244,224,.42);margin-left:6px;}' +
+      '.bt-p .n em{font:800 9px Inter,sans-serif;font-style:normal;letter-spacing:.5px;text-transform:uppercase;color:#f0c040;border:1px solid rgba(240,192,64,.45);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;}' +
+      '.bt-p .s{align-self:stretch;display:flex;align-items:center;justify-content:center;width:30px;font:400 20px/1 "Bebas Neue",sans-serif;color:#e8f4e0;background:rgba(0,0,0,.18);}' +
+      '.bt-p.w .n{color:#fff;font-weight:900;}.bt-p.w .s{background:rgba(240,192,64,.9);color:#111;}' +
+      '.bt-p.l .n,.bt-p.l .s{opacity:.42;}.bt-p.t{cursor:default;}.bt-p.t .n{color:rgba(232,244,224,.38);font-weight:600;font-style:italic;}.bt-p.b .n{color:rgba(232,244,224,.25);letter-spacing:3px;}' +
+      '.bt-m.live .bt-p .s{background:rgba(46,204,113,.18);color:#bff5d2;}' +
+      '.bt-p .at{width:7px;height:7px;border-radius:50%;background:#f0c040;box-shadow:0 0 8px #f0c040;flex:none;font-style:normal;}' +
+      '.bt-p.path{background:rgba(95,184,255,.16);}.bt-p.path .n{color:#9fd3ff!important;opacity:1!important;}' +
+      '.bt-p.hl{background:rgba(95,184,255,.22);}.bt-p.hl .n{color:#cfe8ff!important;opacity:1!important;}' +
+      '.bt-champ{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:12px;border:1px solid rgba(240,192,64,.6);background:linear-gradient(180deg,rgba(240,192,64,.22),rgba(240,192,64,.05));}' +
+      '.bt-champ span{font:800 11px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:rgba(232,244,224,.6);}.bt-champ b{font:400 25px/1.05 "Bebas Neue",sans-serif;color:#f0c040;letter-spacing:1px;padding:0 8px;}.bt-champ small{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}';
+  };
+  BK.fmtTime = function (dt) { var d = new Date(String(dt).replace(' ', 'T')); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
 })(window);

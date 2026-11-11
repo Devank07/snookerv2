@@ -35,7 +35,7 @@
       t['p' + n + '.name'] = p.name || ''; t['p' + n + '.first'] = firstOf(p.name); t['p' + n + '.surname'] = surnameOf(p.name);
       t['p' + n + '.state'] = p.state || ''; t['p' + n + '.score'] = p.score || 0; t['p' + n + '.frames'] = p.frames || 0; t['p' + n + '.break'] = p.currentBreak || 0;
     });
-    var at = m.turn === 2 ? p2 : p1, d = (p1.score || 0) - (p2.score || 0), reds = Math.max(0, m.redsRemaining == null ? 15 : m.redsRemaining);
+    var at = m.turn === 2 ? p2 : p1, d = (p1.score || 0) - (p2.score || 0), reds = Math.max(0, m.redsRemaining == null ? (m.reds || 15) : m.redsRemaining);
     t.frame = m.currentFrame || 1; t.bestOf = m.bestOf || 1; t.firstTo = Math.ceil((m.bestOf || 1) / 2);
     t.tournament = m.tournament || ''; t.referee = m.referee || ''; t.table = m.tableNumber || ''; t.matchId = m.matchId || '';
     t.atTable = at.name || ''; t.atSurname = surnameOf(at.name);

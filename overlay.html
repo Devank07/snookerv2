@@ -620,8 +620,8 @@ function onMatch(s){
   updateSC(s);
 
   // Reds
-  var reds=Math.max(0,s.redsRemaining||15);
-  var rd='';for(var r=0;r<15;r++) rd+='<div class="rdot '+(r<reds?'on':'off')+'"></div>';
+  var reds=Math.max(0,(s.redsRemaining==null?(s.reds||15):s.redsRemaining));
+  var rd='';for(var r=0;r<(s.reds||15);r++) rd+='<div class="rdot '+(r<reds?'on':'off')+'"></div>';
   g('rdots-row').innerHTML=rd;
   g('ri-reds').textContent=reds+' reds';
   g('ri-pts').textContent=((reds*8)+27)+' pts left';
@@ -899,10 +899,10 @@ function buildEl(el,m,lH){
       } else div.style.display='none';
       break;
     case 'reds-left':
-      div.innerHTML='<div style="'+wrap+ts+'color:'+(el.color||'#c0392b')+';justify-content:center;">'+(m.redsRemaining||15)+'</div>';
+      div.innerHTML='<div style="'+wrap+ts+'color:'+(el.color||'#c0392b')+';justify-content:center;">'+((m.redsRemaining==null?(m.reds||15):m.redsRemaining))+'</div>';
       break;
     case 'pts-remaining':
-      var ptsL=((m.redsRemaining||15)*8+27);
+      var ptsL=(((m.redsRemaining==null?(m.reds||15):m.redsRemaining))*8+27);
       div.innerHTML='<div style="'+wrap+ts+'color:'+(el.color||'#fff')+';justify-content:center;">'+ptsL+'</div>';
       break;
     case 'custom-text':
@@ -936,7 +936,7 @@ function buildEl(el,m,lH){
 (function(){var t=new URLSearchParams(location.search).get('table')||'1';if(!t)return;
 function b(){try{firebase.database().ref('seen/table-'+t+'/obs').set(firebase.database.ServerValue.TIMESTAMP).catch(function(){});}catch(e){}}
 setTimeout(b,3000);setInterval(b,20000);})();</script>
-<script src="bracket-core.js?v=20261029c"></script>
-<script>if((new URLSearchParams(location.search).get('part')||'')!=='break') document.write('<script src="moments.js?v=20261110a"><\/script>');</script>
+<script src="bracket-core.js?v=20261111b"></script>
+<script>if((new URLSearchParams(location.search).get('part')||'')!=='break') document.write('<script src="moments.js?v=20261111b"><\/script>');</script>
 </body>
 </html>

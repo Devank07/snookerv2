@@ -1286,8 +1286,8 @@ function getElContent(el){
     case 'break-who': return '<div style="'+wrap+txt+'color:'+(el.color||'#c9a227')+'">'+(m.breakPlayer==1?p1.name:p2.name)+"'s Break</div>";
     case 'shot-clock': return '<div style="'+wrap+txt+'color:'+(el.color||'#fff')+';justify-content:center;">45s</div>';
     case 'referee': return '<div style="'+wrap+txt+'color:'+(el.color||'rgba(255,255,255,.5)')+'">REF: '+(m.referee||'–')+'</div>';
-    case 'reds-left': return '<div style="'+wrap+txt+'color:'+(el.color||'#c0392b')+';justify-content:center;">'+(m.redsRemaining||15)+'</div>';
-    case 'pts-remaining': return '<div style="'+wrap+txt+'color:'+(el.color||'#fff')+';justify-content:center;">'+((m.redsRemaining||15)*8+27)+'</div>';
+    case 'reds-left': return '<div style="'+wrap+txt+'color:'+(el.color||'#c0392b')+';justify-content:center;">'+((m.redsRemaining==null?(m.reds||15):m.redsRemaining))+'</div>';
+    case 'pts-remaining': return '<div style="'+wrap+txt+'color:'+(el.color||'#fff')+';justify-content:center;">'+(((m.redsRemaining==null?(m.reds||15):m.redsRemaining))*8+27)+'</div>';
     case 'custom-text': return '<div style="'+wrap+txt+'color:'+(el.color||'#fff')+'">'+(el.text||'Custom Text')+'</div>';
     case 'logo': return el.imageUrl?'<img src="'+el.imageUrl+'" style="width:100%;height:100%;object-fit:contain;">'
       :'<div style="'+wrap+'color:rgba(255,255,255,.3);font-size:11px;justify-content:center;">LOGO</div>';

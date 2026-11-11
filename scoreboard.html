@@ -631,7 +631,7 @@ function render(s){
   }).join('');
 
   // Stats bar
-  var reds=Math.max(0,s.redsRemaining||15),ptsLeft=(reds*8)+27;
+  var reds=Math.max(0,(s.redsRemaining==null?(s.reds||15):s.redsRemaining)),ptsLeft=(reds*8)+27;
   g('s-ptsrem').textContent=ptsLeft;
   var hb=Math.max(s.bestBreak1||0,s.bestBreak2||0);
   g('s-hbrk').textContent=hb>0?hb:'–';
@@ -652,7 +652,7 @@ function render(s){
   }
 
   // Reds
-  var rd='';for(var r=0;r<15;r++) rd+='<div class="rdot '+(r<reds?'ron':'roff')+'"></div>';
+  var rd='';for(var r=0;r<(s.reds||15);r++) rd+='<div class="rdot '+(r<reds?'ron':'roff')+'"></div>';
   g('rdots').innerHTML=rd; g('rlbl').textContent=reds+' reds remaining';
 
   // Winner

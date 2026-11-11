@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261029c"></script>
+<script src="bracket-core.js?v=20261111b"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#050a06;--card:#0d1b12;--card2:#102218;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.12);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--faint:rgba(232,244,224,.32);--gold:#f0c040;--green:#2ecc71;--blue:#5fb8ff;
@@ -149,7 +149,71 @@ table.st tr.hl td{background:rgba(95,184,255,.12);}
 .bk-yt{display:inline-flex;align-items:center;gap:4px;height:16px;padding:0 7px;border-radius:999px;background:#ff0033;color:#fff!important;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;text-decoration:none;}
 .lc-yt{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;background:#ff0033;color:#fff;font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;}
 .lc-yt:hover{background:#ff1a47;}
-@media (max-width:980px){.watch{grid-template-columns:1fr;}}
+/* ── event page (VLR-style) ── */
+.ml.compact .mi{grid-template-columns:62px minmax(0,1fr) 52px minmax(0,1fr);}
+.ml.compact .mi .tb,.ml.compact .mi .rd,.ml.compact .mi small{display:none;}
+.ev-hero{position:relative;padding:20px 22px;border-radius:18px;border:1px solid rgba(240,192,64,.25);background:linear-gradient(120deg,rgba(240,192,64,.12),rgba(255,255,255,.02) 45%),var(--card);overflow:hidden;}
+.ev-hero:after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(46,204,113,.18),transparent 70%);}
+.ev-sub{font:800 13px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
+.ev-facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.ev-facts span{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;background:rgba(0,0,0,.3);border:1px solid var(--line2);font:600 12.5px 'Inter',sans-serif;color:var(--dim);}
+.ev-facts span b{color:var(--text);font-weight:700;}
+.vtabs{display:flex;gap:2px;margin-top:16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;}
+.vtabs::-webkit-scrollbar{display:none;}
+.vtab{flex:none;display:inline-flex;align-items:center;gap:7px;padding:12px 16px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--dim);font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;}
+.vtab:hover{color:var(--text);}
+.vtab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.vtab small{font:700 11px 'Inter',sans-serif;letter-spacing:0;color:var(--faint);}
+.vtab .dotl{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--dim);font:700 13px 'Inter',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.chip:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+.chip.on{background:rgba(240,192,64,.14);border-color:rgba(240,192,64,.6);color:var(--gold);}
+.ov-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start;}
+.rstrip{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;}
+.rs{flex:none;width:168px;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:block;}
+.rs:hover{border-color:rgba(240,192,64,.4);}
+.rs b{display:block;font:900 16px 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;}
+.rs span{display:block;font:600 11.5px 'Inter',sans-serif;color:var(--faint);margin-top:2px;}
+.rs .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:10px;overflow:hidden;}
+.rs .bar i{display:block;height:100%;background:var(--gold);}
+.rs .st{margin-top:7px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--faint);}
+.rs.live{border-color:rgba(46,204,113,.5);}.rs.live .st{color:#59e08a;}.rs.done .st{color:var(--blue);}.rs.next .st{color:var(--gold);}
+.ml{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card);}
+.mlh{display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(0,0,0,.3);font:900 13px 'Barlow Condensed',sans-serif;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--line);}
+.mlh:first-child{border-top:0;}.mlh b{color:var(--text);}.mlh .sp{flex:1;}.mlh small{font:600 11px 'Inter',sans-serif;letter-spacing:0;text-transform:none;color:var(--faint);}
+.mi{display:grid;grid-template-columns:86px 46px minmax(0,1fr) 64px minmax(0,1fr) 88px;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.05);font:700 15.5px 'Barlow Condensed',sans-serif;}
+.mi:hover{background:rgba(255,255,255,.025);}
+.mi .tm{font:700 13px 'Inter',sans-serif;color:var(--text);}.mi .tm small{display:block;font:600 11px 'Inter',sans-serif;color:var(--faint);}
+.mi .tb{font:800 12px 'Inter',sans-serif;color:var(--dim);text-align:center;padding:4px 0;border-radius:6px;background:rgba(255,255,255,.05);}
+.mi .a{text-align:right;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.mi .b{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mi .a small,.mi .b small{font:600 10.5px 'Inter',sans-serif;color:var(--faint);margin:0 6px;}
+.mi .w{color:var(--gold);}.mi .l{opacity:.5;}.mi .t{color:var(--faint);font-style:italic;font-weight:600;}
+.mi .sc{text-align:center;font:400 22px/1 'Bebas Neue',sans-serif;letter-spacing:1px;}.mi .sc.v{font:700 13px 'Inter',sans-serif;color:var(--faint);}
+.mi .rd{text-align:right;font:800 11.5px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);}
+.mi.live{background:rgba(46,204,113,.07);box-shadow:inset 3px 0 0 var(--green);}.mi.live .sc{color:#7ff0a7;}
+.mi.live .tm{color:#59e08a;}
+.mi .yt{grid-column:1/-1;justify-self:center;}
+.mi.hl{box-shadow:inset 3px 0 0 var(--blue);background:rgba(95,184,255,.08);}
+.soon{font:600 11px 'Inter',sans-serif;color:var(--gold);}
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;}
+.pc{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);cursor:pointer;}
+.pc:hover{border-color:rgba(255,255,255,.2);}
+.pc .av{width:40px;height:40px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;font:900 16px 'Barlow Condensed',sans-serif;background:rgba(255,255,255,.06);color:var(--dim);}
+.pc.in .av{background:rgba(46,204,113,.14);color:#7ff0a7;}.pc.ch .av{background:rgba(240,192,64,.2);color:var(--gold);}
+.pc .nm{font:800 17px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;}
+.pc .nm small{font:600 11px 'Inter',sans-serif;color:var(--faint);text-transform:none;margin-left:6px;}
+.pc .ds{font:500 12.5px/1.35 'Inter',sans-serif;color:var(--dim);margin-top:3px;}
+.pc .ds b{color:var(--text);font-weight:600;}
+.pc.out{opacity:.6;}
+.pc .tag{white-space:nowrap;margin-left:auto;align-self:flex-start;padding:2px 7px;border-radius:5px;font:800 10px 'Inter',sans-serif;letter-spacing:.5px;text-transform:uppercase;border:1px solid rgba(240,192,64,.45);color:var(--gold);}
+@media (max-width:980px){.watch{grid-template-columns:1fr;}.ov-grid{grid-template-columns:1fr;}}
+@media (max-width:760px){
+  .mi{grid-template-columns:60px minmax(0,1fr) 52px minmax(0,1fr);gap:8px;padding:10px 12px;font-size:15px;}
+  .mi .tb,.mi .rd,.mi .a small,.mi .b small{display:none;}.mi .tm small{display:none;}.mi .tm small.soon{display:block;margin:0;}
+  .vtab{padding:12px 10px;font-size:14px;letter-spacing:1px;}.vtab small{display:none;}
+  .ev-hero{padding:16px;}.pl-grid{grid-template-columns:1fr;}
+}
 @media (max-width:760px){.ytb span{display:none;}.ytb{padding:0 10px;}}
 @media (max-width:760px){
   .top{padding:0 12px;gap:8px;height:56px;}.nav{margin-left:0;}.nav a{padding:0 9px;font-size:13px;}.clock,.logo span{display:none;}
@@ -187,7 +251,7 @@ var T = {}, M = {}, R = {}, HIST = {}, find = '', stageSel = {};
 var YC = {}, YA = {}, YM = {}, watching = '';
 function streams(){ return window.YT ? YT.streams(YA, YM) : []; }
 function streamForTable(n){ var hit = null; streams().forEach(function(x){ if(!hit && x.table === n) hit = x; }); return hit; }
-var st = document.createElement('style'); st.textContent = BK.css(); document.head.appendChild(st);
+var st = document.createElement('style'); st.textContent = BK.css() + BK.treeCss(); document.head.appendChild(st);
 function g(id){ return document.getElementById(id); }
 var SPORT = { snooker:'Snooker', billiards:'Billiards', '8ball':'8 Ball', '9ball':'9 Ball', '10ball':'10 Ball', heyball:'Heyball', shootout:'Shoot Out' };
 function ctx(){ return BK.ctx(M, R); }
@@ -204,7 +268,10 @@ function where(mid){   // which event + category a match belongs to
 }
 
 /* ── routing ── */
-function route(){ var h = location.hash.replace(/^#/, '') || 'live', p = h.split('/'); return { page:p[0], tid:p[1], ck:p[2], st:p[3] }; }
+function route(){ var h = location.hash.replace(/^#/, '') || 'live', p = h.split('/'), v = p[3] || 'overview', st = null;
+  if(/^\d+$/.test(v)){ st = +v; v = 'bracket'; }
+  if(!VIEWS.some(function(x){ return x[0] === v; })) v = 'overview';
+  return { page:p[0], tid:p[1], ck:p[2], view:v, st:st }; }
 window.addEventListener('hashchange', function(){ window.scrollTo(0, 0); render(); });
 function nav(page){ ['live','events','results'].forEach(function(x){ g('n-' + x).classList.toggle('on', x === page || (page === 'e' && x === 'events')); }); }
 
@@ -278,27 +345,163 @@ function stageHtml(s, md){
   return '<div class="ggrid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="gc"><div class="gc-h"><b>Standings</b><span>' + (s.complete ? 'Complete' : 'In progress') + '</span></div>' + stTable(s.rows, s.advance || 1) + '</div>' +
     '<div class="gc"><div class="gc-h"><b>Matches</b><span>' + s.matches.length + '</span></div><div class="gm">' + s.matches.map(mrow).join('') + '</div></div></div>';
 }
+/* the event page: Overview · Bracket · Matches · Players (one category at a time) */
+var VIEWS = [['overview','Overview'],['bracket','Bracket'],['matches','Matches'],['players','Players']];
+var secSel = {}, mfilt = 'all', jumpTo = '';
+function pname(p){ return BK.isBye(p) ? 'BYE' : BK.isTbd(p) ? (p && p.placeholder ? p.placeholder : p && p.from ? p.from : 'TBD') : p.name; }
+function realP(p){ return p && !BK.isTbd(p) && !BK.isBye(p); }
+function dt(v){ if(!v.datetime) return null; var d = new Date(String(v.datetime).replace(' ', 'T')); return isNaN(d) ? null : d; }
+function dayKey(d){ return d ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : '~'; }
+function dayName(d){ return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); }
+function hhmm(d){ return d.toLocaleTimeString('en-GB', { hour:'numeric', minute:'2-digit', hour12:true }).replace(' ', '').toLowerCase(); }
+function until(d){ var m = Math.round((d - Date.now()) / 60000); if(m < 0 || m > 60 * 36) return ''; return m < 60 ? 'in ' + m + ' min' : 'in ' + Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); }
+function allKO(md){ var out = []; md.stages.forEach(function(s){ if(s.kind === 'ko') s.rounds.forEach(function(r){ out = out.concat(r.matches); }); }); return out; }
+function vmatches(md){ return md.all.filter(function(v){ return !(BK.isBye(v.p1) && BK.isBye(v.p2)); }); }
+function mHas(v, q){ return q && ((realP(v.p1) && v.p1.name.toLowerCase().indexOf(q) >= 0) || (realP(v.p2) && v.p2.name.toLowerCase().indexOf(q) >= 0)); }
+function matchRow(v){
+  var d = dt(v), live = v.status === 'live', done = v.status === 'done' || v.status === 'bye';
+  var a = v.w === 1 ? 'w' : v.w === 2 ? 'l' : '', b = v.w === 2 ? 'w' : v.w === 1 ? 'l' : '';
+  var nm = function(p, cls){ return '<span class="' + cls + (realP(p) ? '' : ' t') + '">' + esc(pname(p)) + (realP(p) && p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</span>'; };
+  var sc = live || v.status === 'done' ? '<span class="sc">' + esc(v.f1) + '–' + esc(v.f2) + '</span>' : v.status === 'bye' ? '<span class="sc v">W/O</span>' : '<span class="sc v">vs</span>';
+  var tm = live ? '● Live' + (v.live && v.live.frame ? '<small>Frame ' + v.live.frame + '</small>' : '') : d ? hhmm(d) + (done ? '' : '<small class="soon">' + until(d) + '</small>') : '—';
+  var yu = live ? tableStream(v.table) : '';
+  return '<div class="mi' + (live ? ' live' : '') + (mHas(v, find) ? ' hl' : '') + '"><span class="tm">' + tm + '</span><span class="tb">' + (v.table ? 'T' + v.table : '–') + '</span>' +
+    nm(v.p1, 'a ' + a) + sc + nm(v.p2, 'b ' + b) + '<span class="rd">' + esc(v.label || BK.shortRound(v.roundName)) + (v.bo ? ' · BO' + v.bo : '') + '</span>' +
+    (yu ? '<a class="mr-yt yt" href="' + yu + '" target="_blank" rel="noopener">▶ Go to livestream</a>' : '') + '</div>';
+}
+function evHead(t, r, cs, c, md){
+  var h = '<a class="back" href="#events">← All events</a><div class="ev-hero">' + (t.subtitle ? '<div class="ev-sub">' + esc(t.subtitle) + '</div>' : '') + '<div class="h1">' + esc(t.name) + '</div>';
+  var ps = md ? players(md).length : 0, ms = md ? vmatches(md) : [], done = ms.filter(function(v){ return v.status === 'done'; }).length, rd = md ? allKO(md).length : 0;
+  var dates = t.startDate ? fmtD(t.startDate) + (t.endDate && t.endDate !== t.startDate ? ' – ' + fmtD(t.endDate) : '') : '';
+  h += '<div class="ev-facts">' + [SPORT[t.sport] ? '<span>🎱 <b>' + esc((t.reds ? t.reds + ' Red ' : '') + SPORT[t.sport]) + '</b></span>' : '', dates ? '<span>📅 <b>' + esc(dates) + '</b></span>' : '', t.venue ? '<span>📍 <b>' + esc(t.venue) + '</b></span>' : '',
+    ps ? '<span>👤 <b>' + ps + '</b> players</span>' : '', ms.length ? '<span>🏁 <b>' + done + '</b> of ' + ms.length + ' matches played</span>' : ''].join('') + '</div></div>';
+  if(cs.length > 1) h += '<div class="tabs">' + cs.map(function(x){
+    var live = x.d && Object.keys(x.d.matches || {}).some(function(k){ var lm = ctx().live[x.d.matches[k].matchId]; return lm && lm.status !== 'finished'; });
+    return '<a class="tab' + (x === c ? ' on' : '') + '" href="#e/' + r.tid + '/' + x.key + '/' + r.view + '">' + (live ? '<span class="dotl"></span>' : '') + esc(x.name) + '</a>'; }).join('') + '</div>';
+  return h;
+}
+function fmtD(s){ var d = new Date(String(s) + 'T00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }); }
+function vtabs(r, c, md){
+  var ms = md ? vmatches(md) : [], live = ms.some(function(v){ return v.status === 'live'; });
+  var cnt = { matches: ms.length, players: md ? players(md).length : 0 };
+  return '<div class="vtabs">' + VIEWS.map(function(x){ return '<a class="vtab' + (r.view === x[0] ? ' on' : '') + '" href="#e/' + r.tid + '/' + c.key + '/' + x[0] + '">' + (x[0] === 'overview' && live ? '<span class="dotl"></span>' : '') + x[1] + (cnt[x[0]] ? ' <small>' + cnt[x[0]] + '</small>' : '') + '</a>'; }).join('') + '</div>';
+}
+/* every player in the draw, where they stand and what's next for them */
+function players(md){
+  var map = {}, order = [];
+  vmatches(md).forEach(function(v){ ['p1','p2'].forEach(function(s, i){ var p = v[s]; if(!realP(p)) return; var k = p.name.toLowerCase();
+    if(!map[k]){ map[k] = { name:p.name, state:p.state || '', entry:v.roundName, seeded:!!v['seed' + (i + 1)], ms:[] }; order.push(k); }
+    map[k].ms.push({ v:v, side:i + 1 }); }); });
+  return order.map(function(k){ var p = map[k], last = null, next = null, lost = null;
+    p.ms.forEach(function(x){ var v = x.v; if(v.status === 'done' || v.status === 'bye'){ last = x; if(v.w && v.w !== x.side) lost = x; } else if(!next) next = x; });
+    p.champion = md.champion && md.champion.name.toLowerCase() === k;
+    p.out = !!lost && !p.champion; p.lost = lost; p.next = next; p.live = next && next.v.status === 'live'; return p; });
+}
 function pageEvent(r){
   var t = T[r.tid]; if(!t) return '<a class="back" href="#events">← All events</a><div class="empty">This event isn\'t available.</div>';
   var cs = cats(t), c = cs.filter(function(x){ return x.key === r.ck; })[0] || cs[0];
-  var h = '<a class="back" href="#events">← All events</a><div class="ehead"><div><div class="h1">' + esc(t.name) + '</div><div class="sub">' +
-    [SPORT[t.sport] || t.sport, t.venue, t.startDate ? t.startDate + (t.endDate && t.endDate !== t.startDate ? ' – ' + t.endDate : '') : ''].filter(Boolean).map(esc).join(' · ') + '</div></div></div>';
+  var md = c && c.d ? BK.model(t, c.key, ctx()) : null;
+  var h = evHead(t, r, cs, c, md);
   if(!cs.length) return h + '<div class="empty" style="margin-top:18px">No categories yet.</div>';
-  h += '<div class="tabs">' + cs.map(function(x){
-    var live = x.d && Object.keys(x.d.matches || {}).some(function(k){ var lm = ctx().live[x.d.matches[k].matchId]; return lm && lm.status !== 'finished'; });
-    return '<a class="tab' + (x === c ? ' on' : '') + '" href="#e/' + r.tid + '/' + x.key + '">' + (live ? '<span class="dotl"></span>' : '') + esc(x.name) + '</a>'; }).join('') + '</div>';
-  var md = c.d ? BK.model(t, c.key, ctx()) : null;
   if(!md) return h + '<div class="empty" style="margin-top:18px">The draw for ' + esc(c.name) + ' hasn\'t been made yet.</div>';
+  h += vtabs(r, c, md);
   var sl = streams(); if(sl.length) h += '<div class="ytbar"><span style="color:#ff6b86">● Live on YouTube</span>' + sl.map(function(x){ return '<a href="' + streamUrl(x.id) + '" target="_blank" rel="noopener">▶ ' + esc(x.table ? 'Table ' + x.table : (x.title || 'Live stream')) + '</a>'; }).join(' ') + '</div>';
   if(md.champion) h += '<div class="champ"><span class="tr">🏆</span><div><span>' + esc(c.name) + ' champion</span><b>' + esc(md.champion.name) + '</b></div></div>';
-  var stages = md.stages, sel = r.st != null ? +r.st : (stageSel[c.key] != null ? stageSel[c.key] : (function(){   // open on the stage that's being played
-    var pick = 0; stages.forEach(function(s, i){ var any = (s.kind === 'ko' ? [].concat.apply([], s.rounds.map(function(x){ return x.matches; })) : s.kind === 'groups' ? [].concat.apply([], s.groups.map(function(x){ return x.matches; })) : s.matches)
-      .some(function(v){ return v.status === 'live' || v.status === 'done'; }); if(any) pick = i; }); return pick; })());
-  if(sel >= stages.length) sel = 0;
-  if(stages.length > 1) h += '<div class="stabs">' + stages.map(function(s, i){ return '<a class="stab' + (i === sel ? ' on' : '') + '" href="#e/' + r.tid + '/' + c.key + '/' + i + '">' + esc(s.title) + '</a>'; }).join('') + '</div>';
-  h += '<div class="tools"><input class="find" id="find" placeholder="Find a player…" value="' + esc(find) + '"><div class="legend"><span><i style="background:#2ecc71"></i>Live</span><span><i style="background:#f0c040"></i>Winner</span><span><i style="background:#5fb8ff"></i>Your search</span></div></div>';
-  h += '<div id="stage">' + stageHtml(stages[sel], md) + '</div>';
+  if(r.view === 'matches') return h + viewMatches(r, c, md);
+  if(r.view === 'players') return h + viewPlayers(r, c, md);
+  if(r.view === 'bracket') return h + viewBracket(r, c, md);
+  return h + viewOverview(r, c, md, t);
+}
+function viewOverview(r, c, md, t){
+  var ms = vmatches(md), h = '';
+  /* how far the event has got, round by round */
+  var rounds = [];
+  md.stages.forEach(function(s){ if(s.kind === 'ko') s.rounds.forEach(function(rd){ rounds.push({ name:rd.name, ms:rd.matches }); });
+    else if(s.kind === 'groups') rounds.push({ name:s.title, ms:[].concat.apply([], s.groups.map(function(gp){ return gp.matches; })) });
+    else rounds.push({ name:s.title, ms:s.matches }); });
+  var nextMarked = false;
+  h += '<div class="sec">Format &amp; progress</div><div class="rstrip">' + rounds.map(function(rd){
+    var real = rd.ms.filter(function(v){ return !(BK.isBye(v.p1) || BK.isBye(v.p2)); }), dn = real.filter(function(v){ return v.status === 'done'; }).length, lv = real.some(function(v){ return v.status === 'live'; });
+    var st = lv ? 'live' : real.length && dn === real.length ? 'done' : (!nextMarked ? (nextMarked = true, 'next') : '');
+    var bo = rd.ms[0] && rd.ms[0].bo, span = BK.dateSpan(rd.ms);
+    return '<a class="rs ' + st + '" href="#e/' + r.tid + '/' + c.key + '/matches"><b>' + esc(rd.name) + '</b><span>' + [bo ? 'Best of ' + bo : '', span].filter(Boolean).map(esc).join(' · ') + '</span><span>' + real.length + ' match' + (real.length === 1 ? '' : 'es') + '</span>' +
+      '<div class="bar"><i style="width:' + (real.length ? Math.round(dn / real.length * 100) : 0) + '%"></i></div><div class="st">' + (st === 'live' ? '● Playing now' : st === 'done' ? 'Complete' : st === 'next' ? 'Up next' : 'Later') + '</div></a>'; }).join('') + '</div>';
+  var live = ms.filter(function(v){ return v.status === 'live'; });
+  var up = ms.filter(function(v){ return v.status === 'pending' && realP(v.p1) && realP(v.p2); }).sort(function(a, b){ return String(a.datetime || '9').localeCompare(String(b.datetime || '9')); }).slice(0, 8);
+  var at = function(v){ var r = v.stored && v.stored.result; return r && r.at > 1e12 ? r.at : (dt(v) ? +dt(v) : 0); };
+  var res = ms.filter(function(v){ return v.status === 'done'; }).sort(function(a, b){ return at(b) - at(a) || String(b.datetime || '').localeCompare(String(a.datetime || '')); }).slice(0, 8);
+  h += '<div class="ov-grid"><div>';
+  if(live.length) h += '<div class="sec">Live now <b>' + live.length + '</b></div><div class="ml">' + live.map(matchRow).join('') + '</div>';
+  h += '<div class="sec">Up next</div>' + (up.length ? '<div class="ml">' + groupByDay(up) + '</div>' : '<div class="empty">Next matches appear here once both players are known.</div>');
+  h += '</div><div><div class="sec">Latest results</div>' + (res.length ? '<div class="ml compact">' + res.map(matchRow).join('') + '</div>' : '<div class="empty">No results yet.</div>') + '</div></div>';
   return h;
+}
+function groupByDay(list){
+  var out = '', cur = null;
+  list.forEach(function(v){ var d = dt(v), k = dayKey(d);
+    if(k !== cur){ cur = k; var n = list.filter(function(x){ return dayKey(dt(x)) === k; }).length;
+      out += '<div class="mlh"><b>' + (d ? (dayKey(new Date()) === k ? 'Today · ' : '') + dayName(d) : 'Time to be set') + '</b><span class="sp"></span><small>' + n + ' match' + (n === 1 ? '' : 'es') + '</small></div>'; }
+    out += matchRow(v); });
+  return out;
+}
+function viewMatches(r, c, md){
+  var ms = vmatches(md).filter(function(v){ return !(BK.isBye(v.p1) || BK.isBye(v.p2)); });
+  var F = [['all','All'],['upcoming','Upcoming'],['live','Live'],['results','Results']];
+  var h = '<div class="tools"><div class="chips">' + F.map(function(x){ var n = x[0] === 'all' ? ms.length : ms.filter(function(v){ return fit(v, x[0]); }).length;
+    return '<button class="chip' + (mfilt === x[0] ? ' on' : '') + '" data-mf="' + x[0] + '">' + x[1] + ' <small>' + n + '</small></button>'; }).join('') + '</div>' +
+    '<input class="find" id="find" placeholder="Find a player…" value="' + esc(find) + '"></div>';
+  var list = ms.filter(function(v){ return fit(v, mfilt) && (!find || mHas(v, find)); });
+  list.sort(function(a, b){ return mfilt === 'results' ? String(b.datetime || '').localeCompare(String(a.datetime || '')) : String(a.datetime || '9').localeCompare(String(b.datetime || '9')) || (a.table || 0) - (b.table || 0); });
+  return h + (list.length ? '<div class="ml">' + groupByDay(list) + '</div>' : '<div class="empty">' + (find ? 'No matches for that name.' : 'Nothing here yet.') + '</div>');
+}
+function fit(v, f){ return f === 'all' || (f === 'live' && v.status === 'live') || (f === 'results' && (v.status === 'done')) || (f === 'upcoming' && v.status === 'pending'); }
+function viewPlayers(r, c, md){
+  var ps = players(md), list = ps.filter(function(p){ return !find || p.name.toLowerCase().indexOf(find) >= 0 || (p.state || '').toLowerCase() === find; });
+  list.sort(function(a, b){ return (b.champion - a.champion) || (a.out - b.out) || a.name.localeCompare(b.name); });
+  var inN = ps.filter(function(p){ return !p.out; }).length;
+  var h = '<div class="tools"><input class="find" id="find" placeholder="Find a player or district…" value="' + esc(find) + '"><div class="legend">' + inN + ' still in · ' + (ps.length - inN) + ' out</div></div>';
+  return h + '<div class="pl-grid">' + list.map(function(p){
+    var ini = p.name.split(/\s+/).map(function(x){ return x[0]; }).slice(0, 2).join('');
+    var ds;
+    if(p.champion) ds = '🏆 <b>Champion</b>';
+    else if(p.out){ var v = p.lost.v, opp = p.lost.side === 1 ? v.p2 : v.p1, me = p.lost.side === 1 ? v.f1 : v.f2, them = p.lost.side === 1 ? v.f2 : v.f1;
+      ds = 'Out in <b>' + esc(v.roundName) + '</b>' + (v.wo ? ' (walkover)' : ' · lost ' + esc(me) + '–' + esc(them)) + ' to ' + esc(pname(opp)); }
+    else if(p.next){ var n = p.next.v, op = p.next.side === 1 ? n.p2 : n.p1, d = dt(n);
+      ds = (n.status === 'live' ? '<b style="color:#59e08a">● Playing now</b> · ' : 'Next: <b>' + esc(n.roundName) + '</b> · ') + 'v ' + esc(pname(op)) + (n.status !== 'live' && d ? '<br>' + esc(dayName(d) + ' · ' + hhmm(d)) + (n.table ? ' · Table ' + n.table : '') : ''); }
+    else ds = 'Waiting for the next round';
+    return '<div class="pc ' + (p.champion ? 'ch in' : p.out ? 'out' : 'in') + '" data-follow="' + esc(p.name) + '"><div class="av">' + esc(ini) + '</div><div style="min-width:0"><div class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</div><div class="ds">' + ds + '</div></div>' +
+      (p.seeded ? '<span class="tag" title="Joins the draw in ' + esc(p.entry) + '">Seed · ' + esc(BK.shortRound(p.entry)) + '</span>' : '') + '</div>';
+  }).join('') + '</div>';
+}
+function viewBracket(r, c, md){
+  var stages = md.stages, sel = stageSel[c.key] != null ? stageSel[c.key] : (function(){
+    var pick = 0; stages.forEach(function(s, i){ var any = (s.kind === 'ko' ? [].concat.apply([], s.rounds.map(function(x){ return x.matches; })) : s.kind === 'groups' ? [].concat.apply([], s.groups.map(function(x){ return x.matches; })) : s.matches)
+      .some(function(v){ return v.status === 'live' || v.status === 'done'; }); if(any) pick = i; }); return pick; })();
+  if(sel >= stages.length) sel = 0;
+  var h = '';
+  if(stages.length > 1) h += '<div class="stabs">' + stages.map(function(s, i){ return '<a class="stab' + (i === sel ? ' on' : '') + '" href="#e/' + r.tid + '/' + c.key + '/' + i + '">' + esc(s.title) + '</a>'; }).join('') + '</div>';
+  var s = stages[sel];
+  if(s.kind !== 'ko'){
+    h += '<div class="tools"><input class="find" id="find" placeholder="Find a player…" value="' + esc(find) + '"><div class="legend"><span><i style="background:#2ecc71"></i>Live</span><span><i style="background:#f0c040"></i>Winner</span><span><i style="background:#5fb8ff"></i>Your search</span></div></div>';
+    return h + '<div id="stage">' + stageHtml(s, md) + '</div>';
+  }
+  var secs = BK.sections(s), key = c.key + ':' + sel, cur = secSel[key];
+  if(cur == null) cur = secs.length && window.innerWidth < 900 ? secs.filter(function(x){ return /^q/.test(x.id); })[0] ? 'q0' : 'full' : 'full';
+  /* searching for someone outside the part on show → jump to their part of the draw */
+  if(find && secs.length){
+    var fd = BK.feeders(s), inSec = function(sec){ if(!sec) return null; var seen = {}, hit = false;
+      if(sec.fromLeft){ s.rounds.forEach(function(rd){ if(rd.left <= sec.fromLeft) rd.matches.forEach(function(v){ if(mHas(v, find)) hit = true; }); }); return hit; }
+      (function add(k){ if(!k || seen[k]) return; seen[k] = 1; (fd[k] || []).forEach(add); })(sec.root);
+      s.rounds.forEach(function(rd){ rd.matches.forEach(function(v){ if(seen[v.key] && mHas(v, find)) hit = true; }); }); return hit; };
+    var cs0 = secs.filter(function(x){ return x.id === cur; })[0];
+    if(cur !== 'full' && !inSec(cs0)){ var q = secs.filter(function(x){ return /^q/.test(x.id) && inSec(x); })[0]; if(q) cur = q.id; }
+  }
+  secSel[key] = cur;
+  var sec = secs.filter(function(x){ return x.id === cur; })[0];
+  h += '<div class="tools"><div class="chips"><button class="chip' + (cur === 'full' ? ' on' : '') + '" data-sec="full">Full draw</button>' + secs.map(function(x){ return '<button class="chip' + (cur === x.id ? ' on' : '') + '" data-sec="' + x.id + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
+    '<input class="find" id="find" placeholder="Find a player…" value="' + esc(find) + '"></div>';
+  h += '<div class="legend" style="margin:0 0 10px">Tap a player to follow them through the draw · <span><i style="background:#2ecc71"></i>Live</span> <span><i style="background:#f0c040"></i>Winner</span> <span><i style="background:#5fb8ff"></i>Following</span></div>';
+  return h + '<div id="stage">' + BK.renderTree(s, { mw: window.innerWidth < 600 ? 206 : 236, gap: window.innerWidth < 600 ? 30 : 44, root: sec && sec.root, fromLeft: sec && sec.fromLeft, champion: md.champion && sel === stages.length - 1 ? md.champion : null }) + '</div>';
 }
 
 /* ── results ── */
@@ -331,6 +534,18 @@ function topButton(){
   b.href = sl.length === 1 ? streamUrl(sl[0].id) : sl.length ? ch + '/streams' : ch;
   b.classList.toggle('live', sl.length > 0); g('ytb-t').textContent = sl.length ? 'Live on YouTube' : 'YouTube';
 }
+document.addEventListener('click', function(e){
+  var sc = e.target.closest('[data-sec]'); if(sc){ var r = route(); secSel[r.ck + ':' + (stageSel[r.ck] || 0)] = sc.dataset.sec; var w0 = document.querySelector('.bt-wrap'); if(w0){ w0.scrollTop = 0; w0.scrollLeft = 0; } jumpTo = find ? 'sec' : ''; draw(); var w1 = document.querySelector('.bt-wrap'); if(w1 && !find){ w1.scrollTop = 0; w1.scrollLeft = 0; } return; }
+  var mf = e.target.closest('[data-mf]'); if(mf){ mfilt = mf.dataset.mf; draw(); return; }
+  var fo = e.target.closest('[data-follow]'); if(fo){ find = fo.dataset.follow.toLowerCase(); var r2 = route(); jumpTo = 'follow'; location.hash = '#e/' + r2.tid + '/' + r2.ck + '/bracket'; draw(); return; }
+  var bp = e.target.closest('.bt-p[data-p]'); if(bp && bp.dataset.p && !e.target.closest('a')){ find = find === bp.dataset.p ? '' : bp.dataset.p; draw(); return; }
+});
+document.addEventListener('mouseover', function(e){   // hover a player: light up their whole path
+  var p = e.target.closest('.bt-p[data-p]'), was = document.querySelectorAll('.bt-p.path');
+  for(var i = 0; i < was.length; i++) was[i].classList.remove('path');
+  if(!p || !p.dataset.p) return;
+  document.querySelectorAll('.bt-p[data-p="' + CSS.escape(p.dataset.p) + '"]').forEach(function(x){ x.classList.add('path'); });
+});
 document.addEventListener('click', function(e){   // buttons inside cards that are links themselves
   var w = e.target.closest('[data-yt]'); if(!w) return;
   e.preventDefault(); e.stopPropagation(); window.open(w.dataset.yt, '_blank', 'noopener');
@@ -341,15 +556,20 @@ var raf = 0;
 function render(){ if(raf) return; raf = requestAnimationFrame(function(){ raf = 0; draw(); }); }
 function draw(){
   var r = route(), y = window.scrollY, active = document.activeElement && document.activeElement.id === 'find', pos = active ? document.activeElement.selectionStart : 0;
-  var sx = 0, sw = document.querySelector('#stage .bk-wrap'); if(sw) sx = sw.scrollLeft;
+  var sx = 0, sy = 0, sw = document.querySelector('#stage .bk-wrap, #stage .bt-wrap'); if(sw){ sx = sw.scrollLeft; sy = sw.scrollTop; }
   nav(r.page); topButton();
+  if(r.page === 'e' && r.st != null) stageSel[r.ck] = r.st;
   var html = r.page === 'events' ? pageEvents() : r.page === 'results' ? pageResults() : r.page === 'e' ? pageEvent(r) : pageLive();
   g('view').innerHTML = html;
   if(r.page === 'e' && r.st != null && T[r.tid]) stageSel[r.ck] = +r.st;
+  var f0 = g('find'); if(f0) f0.addEventListener('input', function(){ jumpTo = 'find'; });
   var f = g('find'); if(f){ f.oninput = function(){ find = f.value.trim().toLowerCase(); draw(); }; if(active){ f.focus(); try { f.setSelectionRange(pos, pos); } catch(e){} } }
   if(find) document.querySelectorAll('.bk-p[data-p]').forEach(function(p){ if(p.dataset.p && p.dataset.p.indexOf(find) >= 0) p.classList.add('hl'); });
-  var nw = document.querySelector('#stage .bk-wrap'); if(nw && sx) nw.scrollLeft = sx;
+  var nw = document.querySelector('#stage .bk-wrap, #stage .bt-wrap'); if(nw && !jumpTo){ if(sx) nw.scrollLeft = sx; if(sy) nw.scrollTop = sy; }
+  if(find) document.querySelectorAll('.bt-p[data-p]').forEach(function(p){ if(p.dataset.p && p.dataset.p.indexOf(find) >= 0) p.classList.add('hl'); });
   window.scrollTo(0, y);
+  if(jumpTo && nw){ var tgt = nw.querySelector('.bt-p.hl'); if(tgt){ var m = tgt.closest('.bt-m'); nw.scrollTop = Math.max(0, m.offsetTop - 60); nw.scrollLeft = Math.max(0, m.offsetLeft - 40); try { m.scrollIntoView({ block:'nearest', inline:'nearest' }); } catch(e){} } }
+  jumpTo = '';
   var lc = Object.keys(M).filter(function(k){ return M[k] && M[k].player1 && M[k].status !== 'finished'; }).length;
   g('n-cnt').textContent = lc; g('n-cnt').style.display = lc ? '' : 'none';
   document.title = (lc ? '● ' : '') + 'Live Draws & Results — UPBSA.TV';

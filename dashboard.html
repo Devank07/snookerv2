@@ -673,7 +673,7 @@ function renderLive(card,n,s,isTv){
   card.className='tcard live';
   var p1at=s.turn===1, p2at=s.turn===2;
   var brk=s.currentBreak||0;
-  var reds=Math.max(0,s.redsRemaining||15);
+  var reds=Math.max(0,(s.redsRemaining==null?(s.reds||15):s.redsRemaining));
   var ptsLeft=(reds*8)+27;
   var diff=Math.abs(s.player1.score-s.player2.score);
   var needsSnk=diff>ptsLeft&&diff>0;

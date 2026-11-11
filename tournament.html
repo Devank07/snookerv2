@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
-<script src="bracket-core.js?v=20261029c"></script>
+<script src="bracket-core.js?v=20261111b"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:80px;}
@@ -872,7 +872,7 @@ function renderTablesPanel(){
         '<td style="font-size:0.72rem;color:rgba(232,244,224,0.4)">'+(m.datetime||'–')+'</td>'+
         '<td>'+(m.table>0?'<span style="color:'+(tv?'#e74c3c':'#5dade2')+'">T'+m.table+(tv?' 📺':'')+'</span>':'<span style="color:rgba(232,244,224,0.2)">–</span>')+'</td>'+
         '<td><button class="btn btn-b btn-sm" onclick="openTblModal(\''+m.id+'\',\''+catk+'\')">Change</button></td>'+
-        '<td>'+(m.p1&&m.p2&&!m.p1.tbd&&!m.p2.tbd&&!m.p1.bye&&!m.p2.bye?'<button class="btn btn-sm" style="background:rgba(240,192,64,0.12);border:1px solid rgba(240,192,64,0.4);color:#f0c040" onclick="openResult(\''+m.id+'\',\''+catk+'\')">'+(m.result&&m.result.w?(m.result.wo?'W/O':m.result.f1+'–'+m.result.f2)+' ✎':'Enter')+'</button>':'')+'</td>'+
+        '<td>'+(m.p1&&m.p2&&(!m.p1.tbd||m.p1.placeholder)&&(!m.p2.tbd||m.p2.placeholder)&&!(m.p1.tbd&&m.p2.tbd)&&!m.p1.bye&&!m.p2.bye?'<button class="btn btn-sm" style="background:rgba(240,192,64,0.12);border:1px solid rgba(240,192,64,0.4);color:#f0c040" onclick="openResult(\''+m.id+'\',\''+catk+'\')">'+(m.result&&m.result.w?(m.result.wo?'W/O':m.result.f1+'–'+m.result.f2)+' ✎':'Enter')+'</button>':'')+'</td>'+
       '</tr>';
     });
     html+='</tbody></table>';
@@ -883,7 +883,7 @@ function renderTablesPanel(){
 // ── RESULT: correct a score, record a walkover / no-show, or clear it ──
 function openResult(mid,catk){
   var t=allTournaments[activeTid]; var m=t&&t.draw&&t.draw[catk]&&t.draw[catk].matches[mid]; if(!m)return;
-  var r=m.result||{}, need=Math.ceil((m.bo||5)/2), a=m.p1.name, b=m.p2.name;
+  var r=m.result||{}, need=Math.ceil((m.bo||5)/2), a=m.p1.tbd?(m.p1.placeholder||'TBD'):m.p1.name, b=m.p2.tbd?(m.p2.placeholder||'TBD'):m.p2.name;
   var o=document.getElementById('res-modal'); if(o)o.remove();
   o=document.createElement('div'); o.id='res-modal';
   o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:210;display:flex;align-items:center;justify-content:center;padding:20px;';
@@ -903,6 +903,7 @@ function openResult(mid,catk){
   document.body.appendChild(o);
   var msg=function(x){document.getElementById('rs-msg').textContent=x;};
   o.onclick=function(e){if(e.target===o)o.remove();};
+  if(m.p1.tbd||m.p2.tbd){ document.getElementById('rs-save').style.display='none'; document.getElementById('rs-f1').disabled=document.getElementById('rs-f2').disabled=true; if(m.p1.tbd)document.getElementById('rs-wo1').style.display='none'; if(m.p2.tbd)document.getElementById('rs-wo2').style.display='none'; msg('One slot is still "Player to be named" — give the walkover, or fill the name in Enter a Draw → Edit names.'); }
   document.getElementById('rs-x').onclick=function(){o.remove();};
   document.getElementById('rs-save').onclick=function(){
     var f1=parseInt(document.getElementById('rs-f1').value,10), f2=parseInt(document.getElementById('rs-f2').value,10);

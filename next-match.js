@@ -76,7 +76,7 @@
         var ms = (t.draw[ck] && t.draw[ck].matches) || {};
         return Object.keys(ms).some(function (k) {
           var m = ms[k]; if (!m || m.matchId !== r.matchId) return false;
-          out.sport = out.sport || t.sport || ''; out.cat = t.draw[ck].catName || ''; out.round = out.round || m.roundName || '';
+          out.sport = out.sport || t.sport || ''; out.reds = t.reds || 0; out.cat = t.draw[ck].catName || ''; out.round = out.round || m.roundName || '';
           out.datetime = out.datetime || m.datetime || ''; out.table = m.table || 0; out.tourn = t.name; return true;
         });
       });
@@ -107,7 +107,7 @@
           var rg = REG[v.matchId] || {};
           var r = { matchId: v.matchId, tournament: t.name || '', bestOf: v.bo || rg.bestOf || 5, tableNumber: v.table || rg.tableNumber || 0,
             p1: v.p1.name, p1state: v.p1.state || '', p2: v.p2.name, p2state: v.p2.state || '', roundName: v.roundName || rg.roundName || '' };
-          add(v.matchId, r, { sport: t.sport || '', round: r.roundName || v.group || '', cat: md.catName || '', datetime: v.datetime || rg.datetime || '', table: v.table || 0, tourn: t.name });
+          add(v.matchId, r, { reds: t.reds || 0, sport: t.sport || '', round: r.roundName || v.group || '', cat: md.catName || '', datetime: v.datetime || rg.datetime || '', table: v.table || 0, tourn: t.name });
         });
       });
     });
@@ -119,6 +119,17 @@
     });
     list.sort(function (a, b) { return (b.mine - a.mine) || String(a.inf.datetime || '9').localeCompare(String(b.inf.datetime || '9')) || String(a.id).localeCompare(String(b.id)); });
     return list;
+  }
+
+  /* a match started from the Admin / Schedule pages doesn't know its event plays 6 or 10 reds: fix it at the first shot */
+  var redsFixed = '';
+  function fixReds() {
+    if (PAGE !== 'snooker') return;
+    var cur = MATCHES['table-' + T]; if (!cur || !cur.player1 || cur.reds || cur.status !== 'active' || redsFixed === cur.matchId) return;
+    var t = null; Object.keys(TOUR).some(function (id) { var x = TOUR[id]; if (x && x.reds && x.name && x.name === cur.tournament) { t = x; return true; } }); if (!t) return;
+    var fresh = !(cur.player1.score || (cur.player2 || {}).score || cur.player1.frames || (cur.player2 || {}).frames) && (cur.currentFrame || 1) === 1;
+    redsFixed = cur.matchId; var up = { reds: +t.reds }; if (fresh) up.redsRemaining = +t.reds;
+    var ref = firebase.database().ref('matches/table-' + T), p = w.UA && UA.raw ? UA.raw('update', ref, up) : ref.update(up); if (p && p.catch) p.catch(function () { });
   }
 
   /* ── when the match on this table ends, this phone saves the result itself (results/{matchId}),
@@ -155,7 +166,8 @@
     if (PAGE === 'snooker') {
       g('setup-p1-name').value = r.p1; g('setup-p2-name').value = r.p2; setState(1, r.p1state); setState(2, r.p2state);
       var tn = g('setup-tourn'); if (tn) tn.value = r.tournament || c.inf.tourn || '';
-      var btn = [].filter.call(d.querySelectorAll('.bo-btn'), function (b) { return parseInt(b.textContent, 10) === bo; })[0];
+      var btn = [].filter.call(d.querySelectorAll('.bo-btn:not([data-r])'), function (b) { return parseInt(b.textContent, 10) === bo; })[0];
+      if (w.selReds && c.inf.reds) selReds(+c.inf.reds);
       if (btn) btn.click(); else { w.setupBO = bo; }
       if (w.suPreview) suPreview();
       var go = d.querySelector('[onclick*="startMatchFromRemote"]'); if (go) go.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -191,7 +203,7 @@
     var list = candidates();
     if (!free || !list.length || !setupOpen || (w.UA && !UA.ready)) { hide(); return; }
     var c = list[0]; if (dismissed === c.id && !el.classList.contains('on')) return;
-    var meta = [c.inf.cat, c.inf.round, 'Best of ' + (c.r.bestOf || 5), c.inf.datetime ? new Date(c.inf.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ');
+    var meta = [c.inf.cat, c.inf.round, 'Best of ' + (c.r.bestOf || 5), c.inf.datetime ? (window.BK && BK.when ? BK.when({ datetime: c.inf.datetime }) : c.inf.datetime) : ''].filter(Boolean).join(' · ');
     el.innerHTML = '<div class="h">' + (c.mine ? 'Next on Table ' + esc(T) : 'Ready to play') + '<button class="x" aria-label="Hide">×</button></div>' +
       '<div class="m"><div class="vs"><span>' + esc(c.r.p1) + '</span><i>v</i><span>' + esc(c.r.p2) + '</span></div>' +
       '<div class="st"><span>' + esc(c.r.p1state || '') + '</span><span>' + esc(c.r.p2state || '') + '</span></div>' +
@@ -235,8 +247,8 @@
     var t = d.createElement('div'); t.id = 'nm-toast'; d.body.appendChild(t);
     var db = firebase.database();
     db.ref('match_registry').orderByChild('status').equalTo('pending').on('value', function (s) { REG = s.val() || {}; render(); });
-    db.ref('tournaments').on('value', function (s) { TOUR = s.val() || {}; render(); attachPicker(); });
-    db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; saveResult(); render(); });
+    db.ref('tournaments').on('value', function (s) { TOUR = s.val() || {}; fixReds(); render(); attachPicker(); });
+    db.ref('matches').on('value', function (s) { MATCHES = s.val() || {}; saveResult(); fixReds(); render(); });
     db.ref('results').on('value', function (s) { RES = s.val() || {}; if (w.BK) BK.results = RES; saveResult(); render(); }, function () { });
     db.ref('meta/playerNames').on('value', function (s) { NAMES = s.val() || {}; attachPicker(); });
     w.addEventListener('ua-ready', function () { setTimeout(render, 50); });   // show the card as soon as the PIN is accepted
