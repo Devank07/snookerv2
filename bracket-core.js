@@ -460,10 +460,11 @@
     var name = isBye(p) ? 'BYE' : isTbd(p) ? (p && p.placeholder ? p.placeholder : p && p.from ? p.from : (p && p.name && !/^tbd$/i.test(p.name) ? p.name : 'TBD')) : p.name;
     return '<div class="bt-p ' + cls + '" data-p="' + esc(real(p) ? low(p.name) : '') + '">' + (at ? '<i class="at"></i>' : '') +
       '<span class="n">' + esc(name) + (real(p) && p.state ? '<small>' + esc(p.state) + '</small>' : '') + (seed ? '<em title="Joins the draw in this round">Seeded</em>' : '') + '</span>' +
+      (v.status === 'live' && v.live ? '<span class="pt' + (at ? ' on' : '') + '">' + esc((one === 1 ? v.live.pts1 : v.live.pts2) || 0) + '</span>' : '') +
       '<b class="s">' + (sc == null ? '' : esc(sc)) + '</b></div>';
   }
   BK.treeCard = function (v, style) {
-    var top = v.status === 'live' ? '<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>' : v.status === 'done' ? '<span class="dn">' + (v.wo ? 'Walkover' : 'Final score') + '</span>' : v.status === 'bye' ? '<span class="dn">Walkover</span>' : '<span>' + esc(when(v) || (v.table ? '' : 'Time to be set')) + '</span>';
+    var top = v.status === 'live' ? '<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>' + (v.live ? '<span>Frame ' + esc(v.live.frame || 1) + (v.live.brk ? ' · Break ' + esc(v.live.brk) : '') + '</span>' : '') : v.status === 'done' ? '<span class="dn">' + (v.wo ? 'Walkover' : 'Final score') + '</span>' : v.status === 'bye' ? '<span class="dn">Walkover</span>' : '<span>' + esc(when(v) || (v.table ? '' : 'Time to be set')) + '</span>';
     var yu = BK.watchUrl ? BK.watchUrl(v) : '';
     var right = (yu ? '<a class="bk-yt" href="' + esc(yu) + '" target="_blank" rel="noopener">▶ Watch</a>' : '') + (v.table && v.status !== 'live' ? '<span>T' + v.table + '</span>' : '') + (v.bo ? '<span>BO' + v.bo + '</span>' : '');
     return '<div class="bt-m ' + v.status + '" data-key="' + esc(v.key) + '" data-mid="' + esc(v.matchId) + '" style="' + (style || '') + '"><div class="bt-h">' + top + '<i></i>' + right + '</div>' + tRow(v, 'p1') + tRow(v, 'p2') + '</div>';
@@ -538,6 +539,7 @@
       '.bt-p.w .n{color:#fff;font-weight:900;}.bt-p.w .s{background:rgba(240,192,64,.9);color:#111;}' +
       '.bt-p.l .n,.bt-p.l .s{opacity:.42;}.bt-p.t{cursor:default;}.bt-p.t .n{color:rgba(232,244,224,.38);font-weight:600;font-style:italic;}.bt-p.b .n{color:rgba(232,244,224,.25);letter-spacing:3px;}' +
       '.bt-m.live .bt-p .s{background:rgba(46,204,113,.18);color:#bff5d2;}' +
+      '.bt-p .pt{font:700 12px Inter,sans-serif;color:rgba(232,244,224,.55);min-width:22px;text-align:right;padding-right:2px;font-variant-numeric:tabular-nums;}.bt-p .pt.on{color:#f0c040;}' +
       '.bt-p .at{width:7px;height:7px;border-radius:50%;background:#f0c040;box-shadow:0 0 8px #f0c040;flex:none;font-style:normal;}' +
       '.bt-p.path{background:rgba(95,184,255,.16);}.bt-p.path .n{color:#9fd3ff!important;opacity:1!important;}' +
       '.bt-p.hl{background:rgba(95,184,255,.22);}.bt-p.hl .n{color:#cfe8ff!important;opacity:1!important;}' +

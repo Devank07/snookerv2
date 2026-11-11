@@ -70,6 +70,8 @@ function pickTable(){
   var g = function(id){ return document.getElementById(id); };
   var saved = 0; try { saved = parseInt(localStorage.getItem('upbsa_ref_table'), 10) || 0; } catch(e){}
   g('ttl').textContent = 'Your table'; g('sub').textContent = 'Which table are you refereeing?'; g('spin').style.display = 'none';
+  if(!g('pickm')){ var a = document.createElement('a'); a.id = 'pickm'; a.className = 'opt'; a.href = 'referee-hub.html'; a.style.marginBottom = '16px';
+    a.innerHTML = '<div class="i">📋</div><div><b>Pick your match</b><span>See every match ready to play and open it with the players filled in</span></div>'; g('tgrid').parentNode.insertBefore(a, g('tgrid')); }
   var grid = g('tgrid'); grid.style.display = 'grid'; var M = {};
   function draw(){
     grid.innerHTML = UPT.list().map(function(n){

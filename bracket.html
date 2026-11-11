@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261111b"></script>
+<script src="bracket-core.js?v=20261111e"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#050a06;--card:#0d1b12;--card2:#102218;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.12);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--faint:rgba(232,244,224,.32);--gold:#f0c040;--green:#2ecc71;--blue:#5fb8ff;
@@ -192,6 +192,7 @@ table.st tr.hl td{background:rgba(95,184,255,.12);}
 .mi .sc{text-align:center;font:400 22px/1 'Bebas Neue',sans-serif;letter-spacing:1px;}.mi .sc.v{font:700 13px 'Inter',sans-serif;color:var(--faint);}
 .mi .rd{text-align:right;font:800 11.5px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);}
 .mi.live{background:rgba(46,204,113,.07);box-shadow:inset 3px 0 0 var(--green);}.mi.live .sc{color:#7ff0a7;}
+.mi .sc .pts{display:block!important;margin:3px 0 0;font:700 10.5px 'Inter',sans-serif;letter-spacing:0;color:rgba(232,244,224,.6);white-space:nowrap;}
 .mi.live .tm{color:#59e08a;}
 .mi .yt{grid-column:1/-1;justify-self:center;}
 .mi.hl{box-shadow:inset 3px 0 0 var(--blue);background:rgba(95,184,255,.08);}
@@ -362,7 +363,7 @@ function matchRow(v){
   var d = dt(v), live = v.status === 'live', done = v.status === 'done' || v.status === 'bye';
   var a = v.w === 1 ? 'w' : v.w === 2 ? 'l' : '', b = v.w === 2 ? 'w' : v.w === 1 ? 'l' : '';
   var nm = function(p, cls){ return '<span class="' + cls + (realP(p) ? '' : ' t') + '">' + esc(pname(p)) + (realP(p) && p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</span>'; };
-  var sc = live || v.status === 'done' ? '<span class="sc">' + esc(v.f1) + '–' + esc(v.f2) + '</span>' : v.status === 'bye' ? '<span class="sc v">W/O</span>' : '<span class="sc v">vs</span>';
+  var sc = live ? '<span class="sc">' + esc(v.f1) + '–' + esc(v.f2) + (v.live ? '<small class="pts">' + esc(v.live.pts1 || 0) + '–' + esc(v.live.pts2 || 0) + (v.live.brk ? ' · brk ' + esc(v.live.brk) : '') + '</small>' : '') + '</span>' : v.status === 'done' ? '<span class="sc">' + esc(v.f1) + '–' + esc(v.f2) + '</span>' : v.status === 'bye' ? '<span class="sc v">W/O</span>' : '<span class="sc v">vs</span>';
   var tm = live ? '● Live' + (v.live && v.live.frame ? '<small>Frame ' + v.live.frame + '</small>' : '') : d ? hhmm(d) + (done ? '' : '<small class="soon">' + until(d) + '</small>') : '—';
   var yu = live ? tableStream(v.table) : '';
   return '<div class="mi' + (live ? ' live' : '') + (mHas(v, find) ? ' hl' : '') + '"><span class="tm">' + tm + '</span><span class="tb">' + (v.table ? 'T' + v.table : '–') + '</span>' +

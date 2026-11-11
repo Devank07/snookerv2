@@ -19,18 +19,22 @@
     '.imp .r small{font:700 11px "Barlow Condensed",sans-serif;letter-spacing:1px;color:rgba(232,244,224,.5);text-transform:uppercase;}' +
     '.imp .r.open input:first-of-type{border-color:rgba(240,192,64,.6);}' +
     '.imp .m{min-height:20px;font:600 13px Inter,sans-serif;margin-top:10px;}.imp .m.er{color:#ff9d92;}.imp .m.ok{color:#59e08a;}' +
-    '.imp .list{max-height:52vh;overflow:auto;margin-top:8px;}';
+    '.imp .list{max-height:52vh;overflow:auto;margin-top:8px;}' +
+    '.imp .btn{height:38px;padding:0 16px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;font:700 13px Inter,sans-serif;cursor:pointer;}' +
+    '.imp .btn.gold{background:#f0c040;border-color:#f0c040;color:#111;}';
   var st = d.createElement('style'); st.textContent = css; d.head.appendChild(st);
   function el(html) { var o = d.createElement('div'); o.className = 'imp'; o.innerHTML = '<div class="bx">' + html + '</div>'; d.body.appendChild(o); o.addEventListener('click', function (e) { if (e.target === o) o.remove(); }); return o; }
   function esc(s) { return BK.esc(s); }
+  function TT() { return w.T && Object.keys(w.T).length ? w.T : (w.allTournaments || w.T || {}); }   // Enter a Draw keeps events in T, Tournament Manager in allTournaments
+  function say(t) { if (typeof w.toast === 'function') w.toast(t); }
   function realP(p) { return p && p.name && !p.tbd && !p.bye && !/^(tbd|bye)$/i.test(p.name); }
 
   /* ── import ── */
   function importFile(file) {
     var r = new FileReader();
     r.onload = function () {
-      var j; try { j = JSON.parse(r.result); } catch (e) { toast('That file is not a draw file'); return; }
-      if (!j || !j.draw || !j.draw.matches) { toast('That file is not a draw file'); return; }
+      var j; try { j = JSON.parse(r.result); } catch (e) { say('That file is not a draw file'); return; }
+      if (!j || !j.draw || !j.draw.matches) { say('That file is not a draw file'); return; }
       showImport(j);
     };
     r.readAsText(file);
@@ -38,7 +42,7 @@
   function showImport(j) {
     var ms = j.draw.matches, keys = Object.keys(ms), names = {}, open = 0, rounds = {};
     keys.forEach(function (k) { var m = ms[k]; rounds[m.round] = 1; [m.p1, m.p2].forEach(function (p) { if (realP(p)) names[p.name.toLowerCase()] = 1; else if (p && p.placeholder) open++; }); });
-    var ev = j.event || {}, ids = Object.keys(T).filter(function (id) { return T[id] && T[id].name; });
+    var T = TT(), ev = j.event || {}, ids = Object.keys(T).filter(function (id) { return T[id] && T[id].name; });
     var same = ids.filter(function (id) { return String(T[id].name).toLowerCase() === String(ev.name || '').toLowerCase(); })[0];
     var o = el('<h3><span>Import a draw</span><button class="x">×</button></h3>' +
       '<p>' + esc(ev.subtitle ? ev.subtitle + ' · ' : '') + '<b>' + esc(ev.name || 'Unnamed event') + '</b>' + (ev.startDate ? ' · ' + esc(ev.startDate) + (ev.endDate ? ' – ' + esc(ev.endDate) : '') : '') + '</p>' +
@@ -90,7 +94,7 @@
         });
       }).then(function () {
         m.className = 'm ok'; m.innerHTML = 'Imported — <a href="bracket.html#e/' + tid + '/' + ck + '" target="_blank" style="color:#f0c040">open the public page ↗</a>';
-        toast('Draw imported'); q('im-go').textContent = 'Done'; q('im-go').onclick = function () { o.remove(); };
+        say('Draw imported'); q('im-go').textContent = 'Done'; q('im-go').onclick = function () { o.remove(); };
         q('im-go').disabled = false;
         if (g('ev')) { setTimeout(function () { g('ev').value = tid; if (w.catOpts) catOpts(); if (g('cat').querySelector('option[value="' + CSS.escape(cat) + '"]')) { g('cat').value = cat; if (w.showExisting) showExisting(); } }, 600); }
       }, function (e) { q('im-go').disabled = false; m.className = 'm er'; m.textContent = 'Could not import: ' + (e && e.message || e); });
@@ -99,7 +103,7 @@
 
   /* ── edit the names in a saved draw (fill "Player to be named", fix spelling, change district) ── */
   function editNames(tid, ck) {
-    var t = T[tid], dr = t && t.draw && t.draw[ck]; if (!dr) return;
+    var t = TT()[tid], dr = t && t.draw && t.draw[ck]; if (!dr) { say('No draw to edit yet'); return; }
     var ms = dr.matches || {}, rows = [];
     var minR = Math.min.apply(null, Object.keys(ms).map(function (k) { return +ms[k].round || 1; }));
     Object.keys(ms).sort(function (a, b) { return (ms[a].round - ms[b].round) || (parseInt(a.split('_m')[1], 10) - parseInt(b.split('_m')[1], 10)); }).forEach(function (k) {
@@ -115,7 +119,9 @@
       '<p>Change a name or district and press Save. Slots marked in gold are still “Player to be named”. Names already played can be changed too — results stay with the slot.</p>' +
       '<input id="en-f" placeholder="Find…" style="margin-bottom:6px"><div class="list">' + rows.map(function (r, i) {
         var lbl = BK.shortRound(r.m.roundName) + ' · ' + (r.m.datetime ? r.m.datetime.slice(8, 10) + '/' + r.m.datetime.slice(5, 7) + ' ' + r.m.datetime.slice(11) : '') + (r.m.table ? ' T' + r.m.table : '');
-        return '<div class="r' + (realP(r.p) ? '' : ' open') + '" data-i="' + i + '"><small>' + esc(lbl) + '</small><input data-n value="' + esc(realP(r.p) ? r.p.name : '') + '" placeholder="Player to be named"><input data-s value="' + esc(r.p.state || '') + '" placeholder="District"></div>';
+        var op = r.m[r.s === 'p1' ? 'p2' : 'p1'], opn = r.m[r.s === 'p1' ? 'src2' : 'src1'] ? 'winner of the earlier round' : (realP(op) ? op.name : (op && op.placeholder) || 'TBD');
+        lbl += '<br><span style="text-transform:none;letter-spacing:0;font-family:Inter,sans-serif;font-weight:500">v ' + esc(opn) + '</span>';
+        return '<div class="r' + (realP(r.p) ? '' : ' open') + '" data-i="' + i + '"><small>' + lbl + '</small><input data-n value="' + esc(realP(r.p) ? r.p.name : '') + '" placeholder="Player to be named"><input data-s value="' + esc(r.p.state || '') + '" placeholder="District"></div>';
       }).join('') + '</div><div class="m" id="en-m"></div><div class="acts"><button class="btn" id="en-x">Close</button><button class="btn gold" id="en-go">Save names</button></div>');
     var q = function (id) { return o.querySelector('#' + id); };
     o.querySelector('.x').onclick = q('en-x').onclick = function () { o.remove(); };
@@ -132,7 +138,18 @@
         n++;
       });
       if (!n) { q('en-m').className = 'm'; q('en-m').textContent = 'Nothing changed.'; return; }
-      db.ref().update(up).then(function () { q('en-m').className = 'm ok'; q('en-m').textContent = n + ' name' + (n > 1 ? 's' : '') + ' saved — live on the public page.'; toast('Names saved'); },
+      /* a match being played right now shows the new name on the table too */
+      db.ref('matches').once('value').then(function (sn) {
+        var live = sn.val() || {};
+        o.querySelectorAll('.r').forEach(function (x) {
+          var r = rows[+x.dataset.i], nm = x.querySelector('[data-n]').value.trim(), stt = x.querySelector('[data-s]').value.trim(); if (!nm || !r.m.matchId) return;
+          var was = realP(r.p) ? r.p.name.toLowerCase() : '';
+          Object.keys(live).forEach(function (tk) { var lm = live[tk]; if (!lm || lm.matchId !== r.m.matchId || lm.status === 'finished') return;
+            ['player1', 'player2'].forEach(function (pk, pi) { var cur = String((lm[pk] || {}).name || '').toLowerCase();
+              if ((was && cur === was) || (!was && ((r.s === 'p1') === (pi === 0)))) { up['matches/' + tk + '/' + pk + '/name'] = nm; up['matches/' + tk + '/' + pk + '/state'] = stt; } }); });
+        });
+        return db.ref().update(up);
+      }).then(function () { q('en-m').className = 'm ok'; q('en-m').textContent = n + ' name' + (n > 1 ? 's' : '') + ' saved — live on the public page.'; say('Names saved'); },
         function (e) { q('en-m').className = 'm er'; q('en-m').textContent = 'Not saved: ' + e.message; });
     };
   }
@@ -140,7 +157,11 @@
 
   /* buttons on the page */
   function wire() {
+    if (!/draw-entry/.test(location.pathname)) return;
     var top = d.querySelector('.top .sp'); if (!top || d.getElementById('imp-btn')) return;
+    var eb = d.createElement('button'); eb.className = 'btn'; eb.id = 'en-btn'; eb.textContent = '✎ Edit names';
+    eb.onclick = function () { var n = w.catName ? catName() : ''; if (!g('ev').value || g('ev').value === '__new' || !n) { say('Pick the event and category first'); return; } editNames(g('ev').value, BK.ck(n)); };
+    top.parentNode.insertBefore(eb, top.nextSibling);
     var inp = d.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.style.display = 'none'; inp.id = 'imp-file';
     inp.onchange = function () { var f = inp.files[0]; inp.value = ''; if (f) importFile(f); };
     var b = d.createElement('button'); b.className = 'btn gold'; b.id = 'imp-btn'; b.textContent = '⬆ Import a draw file'; b.onclick = function () { inp.click(); };
@@ -150,7 +171,7 @@
   var _show = w.showExisting;
   if (_show) w.showExisting = function () {
     _show.apply(this, arguments);
-    var t = T[g('ev').value], n = w.catName ? catName() : '', ck = n && BK.ck(n), dr = t && ck && t.draw && t.draw[ck], box = g('exists');
+    var t = TT()[g('ev').value], n = w.catName ? catName() : '', ck = n && BK.ck(n), dr = t && ck && t.draw && t.draw[ck], box = g('exists');
     if (!dr || dr.empty || !box) return;
     var wb = box.querySelector('.warn'); if (!wb || wb.querySelector('#editnames')) return;
     var e = d.createElement('button'); e.className = 'btn sm'; e.id = 'editnames'; e.textContent = '✎ Edit names'; e.style.marginLeft = '6px';

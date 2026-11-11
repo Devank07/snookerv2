@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
-<script src="bracket-core.js?v=20261111b"></script>
+<script src="bracket-core.js?v=20261111e"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#1a1a1a;color:#f0f0f0;font-family:'Inter',Arial,sans-serif;min-height:100vh;padding-bottom:80px;}
@@ -234,6 +234,7 @@ footer{text-align:center;padding:40px 0 0;font-size:0.63rem;color:rgba(232,244,2
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-g btn-sm" id="d-start-btn" onclick="activateTournament()">▶ Start Tournament</button>
+      <button class="btn btn-b btn-sm" onclick="editDrawNames()" title="Fix spellings, districts, or fill 'Player to be named' slots">✎ Edit names</button>
       <button class="btn btn-r btn-sm" onclick="deleteTournament()">🗑 Delete</button>
     </div>
   </div>
@@ -937,6 +938,15 @@ function saveResult(mid,catk,res){
   db.ref().update(up).then(function(){ renderTablesPanel(); renderDrawPanel(); }).catch(function(e){ alert('Not saved: '+e.message); });
 }
 
+// ── EDIT NAMES in the draw (shared with Enter a Draw) ──
+function editDrawNames(){
+  var t=allTournaments[activeTid]; if(!t||!t.draw){ alert('Make or import a draw first.'); return; }
+  var keys=Object.keys(t.draw).filter(function(k){ return t.draw[k]&&!t.draw[k].empty; }); if(!keys.length){ alert('Make or import a draw first.'); return; }
+  var ck=keys.length===1?keys[0]:(activeDCat&&keys.indexOf(ck2(activeDCat))>=0?ck2(activeDCat):keys[0]);
+  if(window.DrawImport) DrawImport.editNames(activeTid,ck);
+  function ck2(n){ return (n||'').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'').toLowerCase(); }
+}
+
 // ── TOURNAMENT ACTIONS ──
 function activateTournament(){
   if(!confirm('Start this tournament? The draw will go live.'))return;
@@ -1023,5 +1033,6 @@ renderCatRows();
 /* keep tournament draws up to date: results saved, winners moved to the next round */
 if(window.BK) BK.autoSync(firebase.database());
 </script>
+<script src="draw-import.js?v=20261111d"></script>
 </body>
 </html>

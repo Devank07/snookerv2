@@ -47,7 +47,9 @@
     return hit;
   }
 
-  var REG = {}, TOUR = {}, MATCHES = {}, NAMES = {}, RES = {}, me = null, dismissed = '';
+  var REG = {}, TOUR = {}, MATCHES = {}, NAMES = {}, RES = {}, me = null, dismissed = '', OTHERS = [];
+  var lastCur = null;
+  var PICK = new URLSearchParams(location.search).get('pick') || '';   // opened from the Referee Hub with a match already chosen
   var css = '#nm{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2147482980;max-width:520px;margin:0 auto;border-radius:18px;background:#0b1610;border:1px solid rgba(240,192,64,.55);box-shadow:0 14px 40px rgba(0,0,0,.6);color:#e8f4e0;font-family:"Inter",system-ui,sans-serif;display:none;overflow:hidden;}' +
     '#nm.on{display:block;animation:nmIn .35s ease;}@keyframes nmIn{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}' +
     '#nm .h{display:flex;align-items:center;gap:8px;padding:10px 14px 0;font:800 12px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:#f0c040;}' +
@@ -63,6 +65,8 @@
     '#nm .list{display:none;max-height:44vh;overflow:auto;border-top:1px solid rgba(255,255,255,.08);}#nm.open .list{display:block;}' +
     '#nm .it{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;}#nm .it:active{background:rgba(240,192,64,.1);}' +
     '#nm .it b{flex:1;font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;}#nm .it small{font-size:11px;color:rgba(232,244,224,.5);display:block;font-weight:500;text-transform:none;font-family:"Inter",sans-serif;}' +
+    '#nm .sec{padding:8px 14px 6px;font:800 11px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:rgba(232,244,224,.45);background:rgba(0,0,0,.25);}' +
+    '#nm-pill{position:fixed;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147482979;height:44px;padding:0 16px;border-radius:999px;border:1px solid rgba(240,192,64,.6);background:#0b1610;color:#f0c040;font:800 15px "Barlow Condensed",sans-serif;letter-spacing:1px;box-shadow:0 8px 24px rgba(0,0,0,.5);}' +
     '#nm .it em{font-style:normal;font:800 11px "Barlow Condensed",sans-serif;letter-spacing:1px;color:#f0c040;}' +
     '#nm-toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:2147482981;background:#123321;border:1px solid #2ecc71;color:#bff5d2;padding:10px 16px;border-radius:10px;font:600 14px "Inter",sans-serif;display:none;max-width:92vw;text-align:center;}';
   function toast(t) { var e = g('nm-toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(function () { e.style.display = 'none'; }, 3500); }
@@ -87,11 +91,12 @@
   function candidates() {
     var busy = {}; Object.keys(MATCHES).forEach(function (k) { var m = MATCHES[k]; if (m && m.matchId) busy[m.matchId] = 1; });   // live or just finished on a table = not available
     var list = [], inDraw = {};
+    var others = [];
     function add(id, r, inf) {
       if (busy[id]) return;
       if (pageSport(inf.sport) !== PAGE) return;
       var tn = +(r.tableNumber || inf.table || 0);
-      if (tn && String(tn) !== String(T)) return;                       // assigned to another table
+      if (tn && String(tn) !== String(T)) { others.push({ id: id, r: r, inf: inf, other: tn }); return; }   // set for another table: offered further down
       list.push({ id: id, r: r, inf: inf, mine: String(tn) === String(T) });
     }
     /* 1. every bracket: the next playable matches, worked out here, so the remote keeps going
@@ -118,6 +123,8 @@
       add(id, r, info(r));
     });
     list.sort(function (a, b) { return (b.mine - a.mine) || String(a.inf.datetime || '9').localeCompare(String(b.inf.datetime || '9')) || String(a.id).localeCompare(String(b.id)); });
+    others.sort(function (a, b) { return String(a.inf.datetime || '9').localeCompare(String(b.inf.datetime || '9')) || a.other - b.other; });
+    OTHERS = others;
     return list;
   }
 
@@ -182,11 +189,11 @@
       if (w.renderPreview) try { renderPreview(); } catch (e) { }
     }
   }
-  function use(c) {
+  function use(c, quiet) {
     var cur = MATCHES['table-' + T];
     var go = function () {
       NM.pending = { matchId: c.id, tournament: c.r.tournament || c.inf.tourn || '' };
-      fill(c); hide(); dismissed = c.id;
+      fill(c); hide(); dismissed = '*';                                  // keep the card away while the form is filled in
       toast('Filled in: ' + c.r.p1 + ' v ' + c.r.p2 + ' — choose who breaks and press Start');
     };
     if (cur && cur.player1 && cur.status === 'finished') {          // free the table first (only once its result is safe)
@@ -196,26 +203,52 @@
 
   /* ── the card ── */
   function hide() { var e = g('nm'); if (e) e.classList.remove('on', 'open'); }
+  function whenTxt(c) { return c.inf.datetime ? (window.BK && BK.when ? BK.when({ datetime: c.inf.datetime }) : c.inf.datetime) : ''; }
+  function itemHtml(x, key) {
+    var tag = x.other ? '<em>TABLE ' + esc(x.other) + '</em>' : x.mine ? '<em>THIS TABLE</em>' : '';
+    return '<div class="it" data-k="' + key + '"><b>' + esc(x.r.p1) + ' v ' + esc(x.r.p2) + '<small>' + esc([whenTxt(x), x.inf.round, 'BO' + (x.r.bestOf || 5)].filter(Boolean).join(' · ')) + '</small></b>' + tag + '</div>';
+  }
   function render() {
-    var el = g('nm'); if (!el) return;
+    var el = g('nm'), pill = g('nm-pill'); if (!el) return;
     var cur = MATCHES['table-' + T], free = !cur || !cur.player1 || cur.status === 'finished';
     var setupOpen = PAGE !== 'billiards' || !cur || !cur.player1 || cur.status === 'finished';
-    var list = candidates();
-    if (!free || !list.length || !setupOpen || (w.UA && !UA.ready)) { hide(); return; }
-    var c = list[0]; if (dismissed === c.id && !el.classList.contains('on')) return;
-    var meta = [c.inf.cat, c.inf.round, 'Best of ' + (c.r.bestOf || 5), c.inf.datetime ? (window.BK && BK.when ? BK.when({ datetime: c.inf.datetime }) : c.inf.datetime) : ''].filter(Boolean).join(' · ');
-    el.innerHTML = '<div class="h">' + (c.mine ? 'Next on Table ' + esc(T) : 'Ready to play') + '<button class="x" aria-label="Hide">×</button></div>' +
+    var list = candidates(), others = OTHERS, ready = !(w.UA && !UA.ready);
+    if (pill) pill.style.display = 'none';
+    if (!free || !setupOpen || !ready || (!list.length && !others.length)) { hide(); return; }
+    var curId = (cur && cur.matchId || '') + '|' + (cur && cur.status || ''); if (curId !== lastCur) { lastCur = curId; if (dismissed === '*') dismissed = ''; }
+    /* chosen in the Referee Hub → fill it straight away */
+    if (PICK) {
+      var pk = list.concat(others).filter(function (x) { return x.id === PICK; })[0];
+      if (pk) { PICK = ''; use(pk, true); return; }
+      if (Object.keys(TOUR).length && Object.keys(MATCHES).length >= 0 && REG && Object.keys(REG).length) {
+        var on = Object.keys(MATCHES).filter(function (k) { return MATCHES[k] && MATCHES[k].matchId === PICK; })[0];
+        toast(on ? 'That match is already on ' + on.replace('table-', 'Table ') : 'That match isn\'t ready to play yet'); PICK = '';
+      }
+    }
+    var c = list[0] || null, key = c ? c.id : 'none';
+    if ((dismissed === key || dismissed === '*') && !el.classList.contains('on')) { if (pill) pill.style.display = ''; return; }
+    var all = list.slice(1).map(function (x, i) { return itemHtml(x, 'l' + (i + 1)); }).join('') +
+      (others.length ? '<div class="sec">On other tables</div>' + others.slice(0, 40).map(function (x, i) { return itemHtml(x, 'o' + i); }).join('') : '');
+    var count = list.length - (c ? 1 : 0) + others.length;
+    var head = c ? '<div class="h">' + (c.mine ? 'Next on Table ' + esc(T) : 'Ready to play') + '<button class="x" aria-label="Hide">×</button></div>' +
       '<div class="m"><div class="vs"><span>' + esc(c.r.p1) + '</span><i>v</i><span>' + esc(c.r.p2) + '</span></div>' +
       '<div class="st"><span>' + esc(c.r.p1state || '') + '</span><span>' + esc(c.r.p2state || '') + '</span></div>' +
-      '<div class="meta">' + esc((c.r.tournament || c.inf.tourn || '') + (meta ? ' · ' + meta : '')) + '</div></div>' +
-      (NM.saved(cur) ? '' : '<div class="meta" style="color:#ffc770;padding:0 14px 8px">⏳ Saving the last result to the bracket… (needs the Control Room open on any device)</div>') +
-      '<div class="a"><button class="go">▶ ' + (cur && cur.status === 'finished' ? 'Start next match' : 'Use this match') + '</button>' + (list.length > 1 ? '<button class="more">' + (list.length - 1) + ' more ▾</button>' : '') + '</div>' +
-      '<div class="list">' + list.slice(1, 25).map(function (x, i) { return '<div class="it" data-i="' + (i + 1) + '"><b>' + esc(x.r.p1) + ' v ' + esc(x.r.p2) + '<small>' + esc([x.inf.cat, x.inf.round, 'BO' + (x.r.bestOf || 5)].filter(Boolean).join(' · ')) + '</small></b>' + (x.mine ? '<em>THIS TABLE</em>' : '') + '</div>'; }).join('') + '</div>';
-    el.classList.add('on');
-    el.querySelector('.go').onclick = function () { use(c); };
-    el.querySelector('.x').onclick = function () { dismissed = c.id; hide(); };
+      '<div class="meta">' + esc([c.r.tournament || c.inf.tourn || '', c.inf.cat, c.inf.round, 'Best of ' + (c.r.bestOf || 5), whenTxt(c)].filter(Boolean).join(' · ')) + '</div></div>'
+      : '<div class="h">Pick a match<button class="x" aria-label="Hide">×</button></div><div class="m"><div class="meta" style="margin:4px 0 2px">No match is set for Table ' + esc(T) + ' right now. Pick one below to play it here.</div></div>';
+    el.innerHTML = head +
+      (NM.saved(cur) ? '' : '<div class="meta" style="color:#ffc770;padding:0 14px 8px">⏳ Saving the last result to the bracket…</div>') +
+      '<div class="a">' + (c ? '<button class="go">▶ ' + (cur && cur.status === 'finished' ? 'Start next match' : 'Use this match') + '</button>' : '') +
+      (count ? '<button class="more"' + (c ? '' : ' style="flex:1"') + '>' + (c ? count + ' more ▾' : 'Choose a match ▾ (' + count + ')') + '</button>' : '') + '</div>' +
+      '<div class="list">' + all + '</div>';
+    el.classList.add('on'); if (!c) el.classList.add('open');
+    var go = el.querySelector('.go'); if (go) go.onclick = function () { use(c); };
+    el.querySelector('.x').onclick = function () { dismissed = key; hide(); if (pill) pill.style.display = ''; };
     var mo = el.querySelector('.more'); if (mo) mo.onclick = function () { el.classList.toggle('open'); };
-    el.querySelectorAll('.it').forEach(function (it) { it.onclick = function () { use(list[+it.dataset.i]); }; });
+    el.querySelectorAll('.it').forEach(function (it) { it.onclick = function () {
+      var k = it.dataset.k, x = k[0] === 'l' ? list[+k.slice(1)] : others[+k.slice(1)]; if (!x) return;
+      if (x.other && !confirm(x.r.p1 + ' v ' + x.r.p2 + ' is set for Table ' + x.other + '.\n\nPlay it here on Table ' + T + ' instead?')) return;
+      use(x);
+    }; });
   }
 
   /* ── player picker ── */
@@ -244,6 +277,8 @@
     if (!PAGE || !firebase.apps.length) return;
     var st = d.createElement('style'); st.textContent = css; d.head.appendChild(st);
     me = d.createElement('div'); me.id = 'nm'; d.body.appendChild(me);
+    var pl = d.createElement('button'); pl.id = 'nm-pill'; pl.textContent = '📋 Pick a match'; pl.style.display = 'none';
+    pl.onclick = function () { dismissed = 'reopen'; pl.style.display = 'none'; render(); var e = g('nm'); if (e) e.classList.add('open'); }; d.body.appendChild(pl);
     var t = d.createElement('div'); t.id = 'nm-toast'; d.body.appendChild(t);
     var db = firebase.database();
     db.ref('match_registry').orderByChild('status').equalTo('pending').on('value', function (s) { REG = s.val() || {}; render(); });

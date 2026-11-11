@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028c"></script>
+<script src="bracket-core.js?v=20261111e"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{--bg:#07120d;--bg2:#0a1610;--bg3:#0f1f14;--border:rgba(255,255,255,0.07);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--text:#e8f4e0;--sub:rgba(232,244,224,0.45);}
@@ -99,6 +100,28 @@ footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(232,244,224,0
 .li-match{font-family:var(--cond);font-weight:800;font-size:1.1rem;letter-spacing:.03em;}
 .go-btn{background:var(--so-go) !important;color:#04140a !important;border:none !important;font-family:var(--cond);font-weight:800;letter-spacing:.14em;box-shadow:0 6px 22px rgba(46,204,113,.18); font-size:1.2rem;}
 .go-btn:disabled{background:var(--so-bg3) !important;color:var(--so-faint) !important;box-shadow:none;}
+/* pick your match */
+.pk{margin:4px 0 22px;}
+.pk-h{display:flex;align-items:baseline;gap:8px;font-size:1.15rem;font-weight:800;letter-spacing:.5px;margin-bottom:4px;}
+.pk-h small{font-size:.75rem;font-weight:600;color:var(--sub);}
+.pk-sub{font-size:.8rem;color:var(--sub);margin-bottom:10px;}
+.pk-find{width:100%;height:42px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);padding:0 12px;font-size:.95rem;margin-bottom:8px;}
+.pk-day{font-size:.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--sub);margin:12px 2px 6px;}
+.pk-m{display:block;width:100%;text-align:left;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:14px;padding:11px 12px;margin-bottom:7px;cursor:pointer;font-family:inherit;}
+.pk-m:active{transform:scale(.99);}
+.pk-m.live{border-color:rgba(46,204,113,.5);background:rgba(46,204,113,.07);}
+.pk-t{display:flex;gap:8px;align-items:center;font-size:.72rem;font-weight:700;color:var(--sub);}
+.pk-t b{color:var(--gold);}.pk-t .lv{color:#59e08a;}.pk-t i{flex:1;}
+.pk-n{font-size:1.02rem;font-weight:800;margin-top:4px;line-height:1.25;}
+.pk-n span{color:var(--sub);font-weight:600;font-size:.8rem;margin:0 6px;}
+.pk-tables{display:none;gap:6px;flex-wrap:wrap;margin-top:9px;}
+.pk-m.open .pk-tables{display:flex;}
+.pk-tables a{flex:1;min-width:58px;text-align:center;padding:9px 0;border-radius:10px;border:1px solid rgba(240,192,64,.5);color:var(--gold);font-weight:800;text-decoration:none;font-size:.9rem;}
+.pk-tables a.busy{border-color:var(--border);color:var(--sub);}
+.pk-more{display:block;width:100%;padding:10px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--sub);font-weight:700;cursor:pointer;}
+.pk-empty{padding:16px;border-radius:12px;border:1px dashed var(--border);color:var(--sub);font-size:.85rem;text-align:center;}
+.or{display:flex;align-items:center;gap:10px;margin:6px 0 14px;font-size:.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--sub);}
+.or:before,.or:after{content:'';flex:1;height:1px;background:var(--border);}
 </style>
 </head>
 <body>
@@ -114,6 +137,15 @@ footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(232,244,224,0
 <div class="main">
   <div class="page-title">Referee Hub</div>
   <div class="page-sub">Select your sport and table to open the scoring remote</div>
+
+  <!-- Pick your match -->
+  <div class="pk" id="pk">
+    <div class="pk-h">Pick your match <small id="pk-count"></small></div>
+    <div class="pk-sub">Tap a match to open its remote with the players already filled in.</div>
+    <input class="pk-find" id="pk-find" placeholder="Find a player…" autocomplete="off">
+    <div id="pk-list"><div class="pk-empty">Loading matches…</div></div>
+  </div>
+  <div class="or">or open a table</div>
 
   <!-- Step 1: Sport -->
   <div class="step-label" data-step="1">Sport</div>
@@ -181,7 +213,7 @@ for(var t=1;t<=UPT.MAX;t++){
   (function(n){
     db.ref('matches/table-'+n).on('value',function(s){
       liveMatches[n]=s.val();
-      renderTableGrid();
+      renderTableGrid(); if (typeof renderPick === 'function') renderPick();
       updateLiveInfo();
     });
   })(t);
@@ -269,6 +301,64 @@ function goToReferee(){
   var url = (selectedSport==='snooker'?'referee.html':selectedSport==='shootout'?'shootout-referee.html':'billiards-referee.html')+'?table='+selectedTable;
   window.location.href = url;
 }
+
+/* ── pick your match: every match ready to play, from the event draws and the schedule ── */
+var PT = {}, PR = {}, PM = {}, pkShow = 30, pkFind = '';
+db.ref('tournaments').on('value', function(s){ PT = s.val() || {}; renderPick(); });
+db.ref('match_registry').on('value', function(s){ PR = s.val() || {}; renderPick(); });
+db.ref('matches').on('value', function(s){ PM = s.val() || {}; renderPick(); });
+if (window.BK) BK.watchResults(db, renderPick);
+function hesc(x){ return String(x == null ? '' : x).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function realN(n){ n = String(n || '').trim(); return n && !/^(tbd|bye)$/i.test(n) && !/^(winner|g\d+ #|rr #)/i.test(n); }
+function pageFor(sport){ return sport === 'billiards' ? 'billiards-referee.html' : sport === 'shootout' ? 'shootout-referee.html' : 'referee.html'; }
+function pickRows(){
+  var rows = [], inDraw = {}, liveIds = {};
+  Object.keys(PM).forEach(function(k){ var m = PM[k]; if(m && m.matchId && m.player1) liveIds[m.matchId] = { table: parseInt(k.replace('table-', ''), 10), m: m }; });
+  Object.keys(PT).forEach(function(tid){ var t = PT[tid]; if(!t || !t.draw || t.status === 'finished') return;
+    Object.keys(t.draw).forEach(function(ck){ var md; try { md = BK.model(t, ck, BK.ctx(PM, PR)); } catch(e){ return; } if(!md) return;
+      md.all.forEach(function(v){ if(v.matchId) inDraw[v.matchId] = 1;
+        if(!v.matchId || !v.p1 || !v.p2 || !realN(v.p1.name) || !realN(v.p2.name)) return;
+        var lv = liveIds[v.matchId];
+        if(v.status === 'pending' || (lv && lv.m.status !== 'finished')) rows.push({ id:v.matchId, p1:v.p1.name, p2:v.p2.name, s1:v.p1.state || '', s2:v.p2.state || '', round:v.roundName || '', bo:v.bo, table:v.table || 0, dt:v.datetime || '', sport:t.sport || 'snooker', ev:t.name || '', live:lv && lv.m.status !== 'finished' ? lv : null });
+      }); }); });
+  Object.keys(PR).forEach(function(id){ var r = PR[id]; if(!r || r.status !== 'pending' || inDraw[id] || !realN(r.p1) || !realN(r.p2) || liveIds[id]) return;
+    rows.push({ id:id, p1:r.p1, p2:r.p2, s1:r.p1state || '', s2:r.p2state || '', round:r.roundName || '', bo:r.bestOf, table:+r.tableNumber || 0, dt:r.datetime || '', sport:r.sport || 'snooker', ev:r.tournament || '' }); });
+  rows.sort(function(a, b){ return (b.live ? 1 : 0) - (a.live ? 1 : 0) || String(a.dt || '9').localeCompare(String(b.dt || '9')) || (a.table || 99) - (b.table || 99); });
+  return rows;
+}
+function renderPick(){
+  if(!window.BK) return;
+  var box = document.getElementById('pk-list'); if(!box) return;
+  var all = pickRows(), rows = all.filter(function(r){ return !pkFind || (r.p1 + ' ' + r.p2).toLowerCase().indexOf(pkFind) >= 0; });
+  document.getElementById('pk-count').textContent = all.length ? all.length + ' ready' : '';
+  if(!rows.length){ box.innerHTML = '<div class="pk-empty">' + (pkFind ? 'No match with that name.' : 'No matches ready to play right now — they appear here once both players are known.') + '</div>'; return; }
+  var html = '', day = null, open = box.querySelector('.pk-m.open'), openId = open && open.dataset.id;
+  rows.slice(0, pkShow).forEach(function(r){
+    var d = r.dt ? new Date(String(r.dt).replace(' ', 'T')) : null, k = r.live ? 'Playing now' : d && !isNaN(d) ? d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) : 'Time to be set';
+    if(k !== day){ day = k; html += '<div class="pk-day">' + hesc(k) + '</div>'; }
+    var top = r.live ? '<span class="lv">● Live · Table ' + r.live.table + ' · ' + (r.live.m.player1.frames || 0) + '–' + (r.live.m.player2.frames || 0) + '</span>' : (d && !isNaN(d) ? '<b>' + hesc(BK.when({ datetime:r.dt }).split(' · ')[1] || '') + '</b>' : '') + (r.table ? '<span>Table ' + r.table + '</span>' : '<span>Any table</span>');
+    var tabs = '';
+    for(var i = 1; i <= UPT.count; i++){ var lm = liveMatches[i], busy = lm && lm.player1 && lm.status !== 'finished';
+      tabs += '<a class="' + (busy ? 'busy' : '') + '" href="' + pageFor(r.sport) + '?table=' + i + '&pick=' + encodeURIComponent(r.id) + '">T' + i + (busy ? ' · busy' : '') + '</a>'; }
+    html += '<button class="pk-m' + (r.live ? ' live' : '') + (openId === r.id ? ' open' : '') + '" data-id="' + hesc(r.id) + '" data-t="' + (r.table || '') + '" data-sport="' + hesc(r.sport) + '" data-live="' + (r.live ? r.live.table : '') + '">' +
+      '<div class="pk-t">' + top + '<i></i><span>' + hesc(BK.shortRound(r.round)) + (r.bo ? ' · BO' + r.bo : '') + '</span></div>' +
+      '<div class="pk-n">' + hesc(r.p1) + '<span>v</span>' + hesc(r.p2) + '</div>' +
+      '<div class="pk-tables">' + tabs + '</div></button>';
+  });
+  if(rows.length > pkShow) html += '<button class="pk-more" id="pk-more">Show ' + Math.min(30, rows.length - pkShow) + ' more</button>';
+  box.innerHTML = html;
+}
+document.addEventListener('click', function(e){
+  if(e.target.id === 'pk-more'){ pkShow += 30; renderPick(); return; }
+  if(e.target.closest('.pk-tables a')) return;                          // a table was chosen: follow the link
+  var b = e.target.closest('.pk-m'); if(!b) return;
+  if(b.dataset.live){ location.href = pageFor(b.dataset.sport) + '?table=' + b.dataset.live; return; }   // already playing: open that table
+  var t = +b.dataset.t, lm = t && liveMatches[t], busy = lm && lm.player1 && lm.status !== 'finished';
+  if(t && !busy){ location.href = pageFor(b.dataset.sport) + '?table=' + t + '&pick=' + encodeURIComponent(b.dataset.id); return; }
+  document.querySelectorAll('.pk-m.open').forEach(function(x){ if(x !== b) x.classList.remove('open'); });
+  b.classList.toggle('open');                                           // no table yet (or it's busy): choose one
+});
+document.getElementById('pk-find').addEventListener('input', function(){ pkFind = this.value.trim().toLowerCase(); renderPick(); });
 
 // Init
 renderTableGrid();
