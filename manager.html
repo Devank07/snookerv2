@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#050a06">
+<title>Tournament Manager — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
+<script src="tables.js?v=20261028c"></script>
+<script src="bracket-core.js?v=20261113a"></script>
+<style>
+:root{--bg:#050a06;--card:#0c1912;--card2:#10221a;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#e8f4e0;--dim:rgba(232,244,224,.58);--faint:rgba(232,244,224,.34);--gold:#f0c040;--green:#2ecc71;--red:#ff7b6b;--blue:#5fb8ff;--amber:#ffc770;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;}
+body{min-height:100vh;background:radial-gradient(ellipse 120% 50% at 50% -10%,#143322 0%,#071209 55%,var(--bg) 100%) no-repeat,var(--bg);}
+button,input,select{font-family:inherit;}
+a{color:inherit;text-decoration:none;}
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;background:rgba(5,10,6,.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(240,192,64,.25);}
+.top h1{font:900 22px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}.top h1 i{font-style:normal;color:var(--gold);}
+.top select{height:36px;max-width:360px;flex:1 1 220px;border-radius:9px;border:1px solid var(--line2);background:#08130d;color:var(--text);padding:0 10px;font:600 13.5px Inter,sans-serif;}
+.sp{flex:1;}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--text);font:700 12.5px Inter,sans-serif;cursor:pointer;white-space:nowrap;}
+.btn:hover{border-color:rgba(240,192,64,.5);}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#111;}
+.btn.red{color:var(--red);border-color:rgba(255,123,107,.4);}
+.btn.sm{height:28px;padding:0 9px;font-size:12px;}
+.wrap{max-width:1500px;margin:0 auto;padding:16px 18px 80px;}
+.empty{padding:40px 18px;text-align:center;color:var(--dim);border:1px dashed var(--line2);border-radius:14px;}
+/* event head */
+.ev{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid rgba(240,192,64,.22);background:linear-gradient(120deg,rgba(240,192,64,.1),rgba(255,255,255,.015) 50%),var(--card);}
+.ev .sub{font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:3px;color:var(--gold);text-transform:uppercase;}
+.ev .nm{font:900 30px/1.05 'Barlow Condensed',sans-serif;text-transform:uppercase;}
+.ev .facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.ev .facts span{height:26px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.3);border:1px solid var(--line2);font-size:12px;color:var(--dim);}
+.ev .facts b{color:var(--text);font-weight:700;margin-right:4px;}
+.stats{display:flex;gap:8px;margin-left:auto;}
+.st{min-width:84px;padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line);text-align:center;}
+.st b{display:block;font:400 26px/1 'Bebas Neue',sans-serif;}.st span{font:700 10.5px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:var(--faint);text-transform:uppercase;}
+.st.live b{color:#59e08a;}.st.warn b{color:var(--amber);}
+.tabs{display:flex;gap:2px;margin-top:14px;border-bottom:1px solid var(--line);overflow-x:auto;}
+.tab{padding:11px 15px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--dim);font:800 14px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;white-space:nowrap;background:none;border-top:0;border-left:0;border-right:0;}
+.tab.on{color:var(--gold);border-bottom-color:var(--gold);}
+.tab small{font:700 11px Inter,sans-serif;color:var(--faint);margin-left:5px;letter-spacing:0;}
+.cats{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.cat{height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:none;color:var(--dim);font:700 12.5px Inter,sans-serif;cursor:pointer;}
+.cat.on{background:rgba(240,192,64,.14);border-color:rgba(240,192,64,.6);color:var(--gold);}
+/* toolbar */
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 10px;}
+.find{height:34px;width:230px;border-radius:9px;border:1px solid var(--line2);background:rgba(0,0,0,.35);color:#fff;padding:0 11px;font:500 13px Inter,sans-serif;}
+.find:focus{outline:none;border-color:var(--gold);}
+.tools select{height:34px;border-radius:9px;border:1px solid var(--line2);background:#08130d;color:var(--text);padding:0 8px;font:600 12.5px Inter,sans-serif;}
+.chip{height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--dim);font:700 12px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+.chip.on{background:rgba(240,192,64,.14);border-color:rgba(240,192,64,.6);color:var(--gold);}
+.chip small{font-size:11px;opacity:.75;}
+.chip.warn{color:var(--amber);border-color:rgba(255,199,112,.35);}
+.chip.warn.on{background:rgba(255,199,112,.12);}
+/* bulk bar */
+.bulk{position:sticky;top:57px;z-index:20;display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;margin-bottom:8px;border-radius:12px;background:#17301f;border:1px solid rgba(240,192,64,.4);box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.bulk.on{display:flex;}
+.bulk b{font:800 14px 'Barlow Condensed',sans-serif;letter-spacing:1px;margin-right:6px;}
+/* table */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:14px;background:var(--card);}
+.tbl th{position:sticky;top:57px;z-index:5;background:#0a1710;padding:9px 8px;text-align:left;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap;}
+.tbl td{padding:0 4px;height:46px;border-top:1px solid rgba(255,255,255,.045);vertical-align:middle;}
+.tbl tr.rh td{height:32px;background:rgba(0,0,0,.3);padding:0 12px;font:900 12.5px 'Barlow Condensed',sans-serif;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);}
+.tbl tr.rh td small{font:600 11px Inter,sans-serif;letter-spacing:0;text-transform:none;color:var(--faint);margin-left:8px;}
+.tbl tr:hover td{background:rgba(255,255,255,.02);}
+.tbl tr.sel td{background:rgba(240,192,64,.07);}
+.tbl tr.live td{background:rgba(46,204,113,.06);}
+.tbl tr.live td:first-child{box-shadow:inset 3px 0 0 var(--green);}
+.c{display:flex;align-items:center;gap:6px;min-height:34px;width:100%;padding:0 8px;border-radius:8px;border:1px solid transparent;background:none;color:var(--text);text-align:left;font:600 13px Inter,sans-serif;cursor:pointer;}
+.c:hover{border-color:var(--line2);background:rgba(255,255,255,.03);}
+.c.ro{cursor:default;}.c.ro:hover{border-color:transparent;background:none;}
+.c.miss{color:var(--amber);}
+.c .d{color:var(--faint);font-weight:500;font-size:11.5px;}
+.lbl{font:800 13px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:var(--dim);white-space:nowrap;padding:0 8px;}
+.lbl small{display:block;font:600 10.5px Inter,sans-serif;letter-spacing:0;color:var(--faint);}
+.pl{font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.2px;max-width:240px;}
+.pl .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pl small{font:600 10.5px Inter,sans-serif;color:var(--faint);}
+.pl.w{color:var(--gold);}.pl.l{opacity:.5;}
+.pl.t{color:var(--faint);font-style:italic;font-weight:600;}
+.pl.ph{color:var(--amber);font-style:italic;font-weight:600;}
+.pl .seed{font:800 9px Inter,sans-serif;color:var(--gold);border:1px solid rgba(240,192,64,.45);border-radius:4px;padding:0 4px;}
+.sc{justify-content:center;font:400 21px/1 'Bebas Neue',sans-serif;letter-spacing:1px;min-width:74px;}
+.sc.none{font:600 12px Inter,sans-serif;color:var(--faint);}
+.sc small{font:600 10px Inter,sans-serif;color:var(--dim);margin-left:4px;}
+.sc .wo{font:800 11px Inter,sans-serif;color:var(--blue);}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font:800 10.5px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;background:rgba(255,255,255,.06);color:var(--dim);white-space:nowrap;}
+.pill.live{background:rgba(46,204,113,.15);color:#59e08a;}.pill.done{background:rgba(95,184,255,.12);color:var(--blue);}.pill.ready{background:rgba(240,192,64,.12);color:var(--gold);}
+.cb{width:17px;height:17px;accent-color:var(--gold);cursor:pointer;margin:0 6px;}
+/* popover editor */
+#pop{position:fixed;z-index:50;display:none;width:330px;max-width:calc(100vw - 20px);padding:14px;border-radius:14px;background:#0b1610;border:1px solid rgba(240,192,64,.45);box-shadow:0 20px 50px rgba(0,0,0,.65);}
+#pop.on{display:block;}
+#pop h4{font:900 15px 'Barlow Condensed',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;}
+#pop h4 span{flex:1;}#pop h4 small{font:600 11px Inter,sans-serif;letter-spacing:0;color:var(--faint);text-transform:none;}
+#pop label{display:block;font:700 11px Inter,sans-serif;color:var(--dim);margin:8px 0 4px;}
+#pop input,#pop select{width:100%;height:36px;border-radius:9px;border:1px solid var(--line2);background:#06100a;color:#fff;padding:0 10px;font:500 14px Inter,sans-serif;}
+#pop input:focus{outline:none;border-color:var(--gold);}
+#pop .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+#pop .grid{display:flex;flex-wrap:wrap;gap:6px;}
+#pop .grid button{min-width:44px;height:34px;border-radius:8px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--text);font:800 13px Inter,sans-serif;cursor:pointer;}
+#pop .grid button.on{background:var(--gold);border-color:var(--gold);color:#111;}
+#pop .acts{display:flex;gap:6px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;}
+#pop .hint{font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.4;}
+#pop .sc2{display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center;margin-top:6px;}
+#pop .sc2 b{font:800 15px 'Barlow Condensed',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#pop .sc2 input{text-align:center;font:400 24px 'Bebas Neue',sans-serif;}
+#pop .err{color:var(--red);font-size:12px;margin-top:6px;min-height:14px;}
+/* toast */
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;display:none;align-items:center;gap:12px;padding:10px 14px 10px 18px;border-radius:12px;background:#123321;border:1px solid var(--green);color:#bff5d2;font:600 13.5px Inter,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+#toast.on{display:flex;}#toast.er{background:#331512;border-color:var(--red);color:#ffd4cc;}
+#toast button{height:28px;padding:0 10px;border-radius:7px;border:1px solid rgba(255,255,255,.3);background:none;color:#fff;font:700 12px Inter,sans-serif;cursor:pointer;}
+/* players / settings */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px;}
+.pc{display:grid;grid-template-columns:1fr 110px auto;gap:6px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--card);border:1px solid var(--line);}
+.pc input{height:34px;border-radius:8px;border:1px solid var(--line2);background:#06100a;color:#fff;padding:0 9px;font:600 13.5px Inter,sans-serif;min-width:0;}
+.pc.ph input:first-child{border-color:rgba(255,199,112,.5);}
+.pc small{grid-column:1/-1;font-size:11px;color:var(--faint);}
+.pc.changed{border-color:rgba(240,192,64,.55);}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:16px;border-radius:14px;background:var(--card);border:1px solid var(--line);}
+.form label{display:block;font:700 11.5px Inter,sans-serif;color:var(--dim);margin-bottom:5px;}
+.form input,.form select{width:100%;height:38px;border-radius:9px;border:1px solid var(--line2);background:#06100a;color:#fff;padding:0 10px;font:500 14px Inter,sans-serif;}
+.sec{display:flex;align-items:center;gap:10px;margin:22px 0 10px;font:900 13px 'Barlow Condensed',sans-serif;letter-spacing:3px;text-transform:uppercase;color:var(--dim);}
+.sec:after{content:'';flex:1;height:1px;background:var(--line);}
+.danger{padding:14px 16px;border-radius:14px;border:1px solid rgba(255,123,107,.3);background:rgba(255,123,107,.05);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.danger p{flex:1;color:var(--dim);font-size:13px;min-width:220px;}
+.note{font-size:12.5px;color:var(--faint);margin:6px 2px;}
+@media (max-width:900px){
+  .stats{margin-left:0;width:100%;}.st{flex:1;min-width:0;}
+  .tbl .hide-s{display:none;}
+  .find{width:100%;}
+  .top h1{font-size:18px;}
+  .top{position:static;}.top .btn{height:30px;font-size:11.5px;padding:0 9px;}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;}
+  .tbl{min-width:760px;}.tbl th{top:0;}.bulk{top:6px;}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Tournament <i>Manager</i></h1>
+  <select id="evsel"></select>
+  <span class="sp"></span>
+  <a class="btn" href="draw-entry.html">⬆ Import / enter a draw</a>
+  <a class="btn" id="pubbtn" href="bracket.html#events" target="_blank">👁 Public page</a>
+  <a class="btn" href="control.html">🎛 Control Room</a>
+  <a class="btn" href="tournament.html" title="The old manager — create an event and generate a draw from the player list">Classic</a>
+  <a class="btn" href="admin.html">← Admin</a>
+</div>
+<div class="wrap" id="view"><div class="empty">Loading…</div></div>
+<div id="pop"></div>
+<div id="toast"><span id="toast-t"></span><button id="toast-u" style="display:none">Undo</button></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database(), esc = BK.esc;
+var T = {}, M = {}, REG = {}, PL = {}, loaded = { t:0 };
+var S = { tid:'', ck:'', tab:'matches', q:'', status:'all', round:'', day:'', table:'', sel:{}, attention:false };
+try { var saved = JSON.parse(localStorage.getItem('upbsa_mgr') || '{}'); ['tid','ck','tab'].forEach(function(k){ if(saved[k]) S[k] = saved[k]; }); } catch(e){}
+function remember(){ try { localStorage.setItem('upbsa_mgr', JSON.stringify({ tid:S.tid, ck:S.ck, tab:S.tab })); } catch(e){} }
+function g(id){ return document.getElementById(id); }
+var SPORT = { snooker:'Snooker', billiards:'Billiards', '8ball':'8 Ball', '9ball':'9 Ball', '10ball':'10 Ball', heyball:'Heyball', shootout:'Shoot Out' };
+function realP(p){ return p && p.name && !p.tbd && !p.bye && !/^(tbd|bye)$/i.test(p.name); }
+function pname(p){ return !p ? 'TBD' : p.bye ? 'BYE' : realP(p) ? p.name : (p.placeholder || p.from || 'TBD'); }
+function dparse(s){ if(!s) return null; var d = new Date(String(s).replace(' ', 'T')); return isNaN(d) ? null : d; }
+function dayKey(s){ var d = dparse(s); return d ? s.slice(0, 10) : ''; }
+function dayName(k){ var d = dparse(k + ' 00:00'); return d ? d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) : 'No date'; }
+function hhmm(s){ var d = dparse(s); return d ? d.toLocaleTimeString('en-GB', { hour:'numeric', minute:'2-digit', hour12:true }).replace(' ', '').toLowerCase() : ''; }
+
+/* ── toast with undo ── */
+var toastT = null, lastUndo = null;
+function toast(t, undo, er){
+  var e = g('toast'); g('toast-t').textContent = t; e.className = 'on' + (er ? ' er' : '');
+  lastUndo = undo || null; g('toast-u').style.display = undo ? '' : 'none';
+  clearTimeout(toastT); toastT = setTimeout(function(){ e.className = ''; lastUndo = null; }, undo ? 9000 : 3500);
+}
+g('toast-u').onclick = function(){ var u = lastUndo; if(!u) return; lastUndo = null; db.ref().update(u).then(function(){ toast('Undone'); }, function(e){ toast('Could not undo: ' + e.message, null, 1); }); };
+
+/* ── saving: every edit is one update; the toast offers to put the old values back ── */
+function save(up, undo, label){
+  var keys = Object.keys(up); if(!keys.length) return Promise.resolve();
+  return db.ref().update(up).then(function(){ toast(label || 'Saved', undo); }, function(e){ toast('Not saved: ' + e.message, null, 1); throw e; });
+}
+function before(paths){   // current values, for undo
+  var u = {}; paths.forEach(function(p){ var v = p.split('/').reduce(function(o, k){ return o == null ? undefined : o[k]; }, ROOT()); u[p] = v === undefined ? null : v; }); return u;
+}
+function ROOT(){ return { tournaments:T, match_registry:REG, matches:M, results:BK.results || {} }; }
+
+/* ── the current event / category, as the bracket engine sees it ── */
+function cur(){
+  var t = T[S.tid]; if(!t) return null;
+  var cks = Object.keys(t.draw || {}).filter(function(k){ return t.draw[k] && !t.draw[k].empty; });
+  if(cks.indexOf(S.ck) < 0) S.ck = cks[0] || '';
+  var md = S.ck ? BK.model(t, S.ck, BK.ctx(M, REG)) : null;
+  return { t:t, cks:cks, md:md };
+}
+function rows(md){
+  var out = [];
+  md.stages.forEach(function(st){
+    if(st.kind === 'ko'){ var first = st.rounds[0] && st.rounds[0].matches[0] ? st.rounds[0].matches[0].round : null; st.rounds.forEach(function(r){ r.matches.forEach(function(v){ v._first = first; v._linked = !!st.linked; out.push(v); }); }); }
+    else if(st.kind === 'groups') st.groups.forEach(function(gp){ gp.matches.forEach(function(v){ out.push(v); }); });
+    else (st.matches || []).forEach(function(v){ out.push(v); });
+  });
+  return out.filter(function(v){ return !(v.p1 && v.p1.bye && v.p2 && v.p2.bye) && !(BK.isBye(v.p1) && BK.isBye(v.p2)); });
+}
+/* can this player slot be typed into? (not when it is filled by the winner of an earlier match) */
+function slotEditable(v, side){
+  if(v.virtual || v['src' + side]) return false;
+  if(v.stage === 'part2' || v.stage === 'part3') return false;                 // filled from the group / league standings
+  if(v.stage === 'ko' || !v.stage){ if(!v._linked && v._first != null && v.round > v._first) return false; }   // normal knockout: first round only
+  return !BK.isBye(v['p' + side]);
+}
+function attention(v){
+  var r = [];
+  if(v.status === 'pending'){
+    if((v.p1 && v.p1.placeholder) || (v.p2 && v.p2.placeholder)) r.push('Player to be named');
+    if(!v.datetime) r.push('No time');
+    if(!v.table) r.push('No table');
+  }
+  if(v.status === 'live' && v.live && v.table && v.stored && v.stored.table && +v.stored.table !== +v.table) r.push('Playing on T' + v.table + ', set for T' + v.stored.table);
+  return r;
+}
+function readyToPlay(v){ return v.status === 'pending' && realP(v.p1) && realP(v.p2); }
+
+/* ── paths ── */
+function base(v){ return 'tournaments/' + S.tid + '/draw/' + S.ck + '/matches/' + v.key; }
+/* later knockout rounds that only exist in the engine yet: write the whole match first */
+function materialize(v, up){
+  if(!v.virtual) return false;
+  var t = T[S.tid], mid = v.matchId || BK.vid(t, S.ck, v.id);
+  up[base(v)] = { id:v.id, matchId:mid, stage:v.stage || 'ko', round:v.round, roundName:v.roundName, bo:v.bo || 5, status:'pending', table:0,
+    p1:realP(v.p1) ? { name:v.p1.name, state:v.p1.state || '' } : { name:'TBD', tbd:true }, p2:realP(v.p2) ? { name:v.p2.name, state:v.p2.state || '' } : { name:'TBD', tbd:true } };
+  up['match_registry/' + mid] = { matchId:mid, tournament:t.name || '', bestOf:v.bo || 5, tableNumber:0, status:'pending', p1:realP(v.p1) ? v.p1.name : 'TBD', p1state:(v.p1 && v.p1.state) || '', p2:realP(v.p2) ? v.p2.name : 'TBD', p2state:(v.p2 && v.p2.state) || '', stage:v.stage || 'ko', roundName:v.roundName || '', createdAt:Date.now() };
+  v._mid = mid; return true;
+}
+function setField(v, field, value, regField, up){
+  var mat = materialize(v, up), mid = v.matchId || v._mid;
+  if(mat){ up[base(v)][field] = value; if(regField && mid) up['match_registry/' + mid][regField] = value; }
+  else { up[base(v) + '/' + field] = value; if(regField && mid && REG[mid]) up['match_registry/' + mid + '/' + regField] = value; }
+}
+
+/* ════════════ VIEW ════════════ */
+var popOpen = false, dirty = false;
+function render(){ if(popOpen){ dirty = true; return; } draw(); }
+function draw(){
+  var ids = Object.keys(T).filter(function(id){ return T[id] && T[id].name; }).sort(function(a, b){ return (T[b].createdAt || 0) - (T[a].createdAt || 0); });
+  if(!S.tid || !T[S.tid]) S.tid = ids.filter(function(id){ return T[id].status === 'active'; })[0] || ids[0] || '';
+  g('evsel').innerHTML = ids.map(function(id){ var t = T[id]; return '<option value="' + id + '"' + (id === S.tid ? ' selected' : '') + '>' + esc(t.name) + (t.status === 'finished' ? ' (finished)' : t.status === 'draft' ? ' (draft)' : '') + '</option>'; }).join('') + '<option value="__new">+ New event…</option>';
+  var v = g('view'), y = window.scrollY;
+  if(!loaded.t){ v.innerHTML = '<div class="empty">Loading…</div>'; return; }
+  if(!S.tid){ v.innerHTML = newEventForm(); wireNew(); return; }
+  var c = cur(); remember();
+  g('pubbtn').href = 'bracket.html#e/' + S.tid + (S.ck ? '/' + S.ck : '');
+  var h = head(c);
+  if(S.tab === 'players') h += viewPlayers(c);
+  else if(S.tab === 'settings') h += viewSettings(c);
+  else h += viewMatches(c);
+  v.innerHTML = h; wire(c);
+  window.scrollTo(0, y);
+}
+function head(c){
+  var t = c.t, all = c.md ? rows(c.md) : [], live = all.filter(function(v){ return v.status === 'live'; }).length;
+  var done = all.filter(function(v){ return v.status === 'done' || v.status === 'bye'; }).length, att = all.filter(function(v){ return attention(v).length; }).length;
+  var dates = [t.startDate, t.endDate && t.endDate !== t.startDate ? t.endDate : ''].filter(Boolean).join(' → ');
+  var h = '<div class="ev"><div style="min-width:0;flex:1 1 380px">' + (t.subtitle ? '<div class="sub">' + esc(t.subtitle) + '</div>' : '') + '<div class="nm">' + esc(t.name) + '</div><div class="facts">' +
+    '<span><b>' + esc((t.reds && t.sport === 'snooker' ? t.reds + ' Red ' : '') + (SPORT[t.sport] || t.sport || '')) + '</b></span>' + (dates ? '<span>' + esc(dates) + '</span>' : '') + (t.venue ? '<span>' + esc(t.venue) + '</span>' : '') +
+    '<span>' + esc((t.status || 'draft').toUpperCase()) + '</span></div></div>' +
+    '<div class="stats"><div class="st"><b>' + done + '/' + all.length + '</b><span>Played</span></div><div class="st live"><b>' + live + '</b><span>Live</span></div><div class="st warn"><b>' + att + '</b><span>To check</span></div></div></div>';
+  h += '<div class="tabs">' + [['matches','Matches', all.length], ['players','Players', c.md ? players(c).length : 0], ['settings','Event settings','']].map(function(x){ return '<button class="tab' + (S.tab === x[0] ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + (x[2] !== '' ? '<small>' + x[2] + '</small>' : '') + '</button>'; }).join('') + '</div>';
+  if(c.cks.length > 1) h += '<div class="cats">' + c.cks.map(function(k){ return '<button class="cat' + (k === S.ck ? ' on' : '') + '" data-ck="' + k + '">' + esc(t.draw[k].catName || k) + '</button>'; }).join('') + '</div>';
+  return h;
+}
+
+/* ── MATCHES ── */
+function filtered(c){
+  var q = S.q.toLowerCase();
+  return rows(c.md).filter(function(v){
+    if(S.status === 'live' && v.status !== 'live') return false;
+    if(S.status === 'ready' && !readyToPlay(v)) return false;
+    if(S.status === 'later' && !(v.status === 'pending' && !readyToPlay(v))) return false;
+    if(S.status === 'done' && !(v.status === 'done' || v.status === 'bye')) return false;
+    if(S.attention && !attention(v).length) return false;
+    if(S.round && v.roundName !== S.round && v.group !== S.round) return false;
+    if(S.day && dayKey(v.datetime) !== S.day) return false;
+    if(S.table && String(v.table || '') !== S.table) return false;
+    if(q && !((pname(v.p1) + ' ' + pname(v.p2) + ' ' + (v.p1 && v.p1.state || '') + ' ' + (v.p2 && v.p2.state || '') + ' ' + (v.matchId || '')).toLowerCase().indexOf(q) >= 0)) return false;
+    return true;
+  });
+}
+function viewMatches(c){
+  if(!c.md) return '<div class="empty" style="margin-top:16px">No draw yet for this event. <a class="btn gold" href="draw-entry.html" style="margin-left:8px">⬆ Import or enter a draw</a> <a class="btn" href="tournament.html" style="margin-left:6px">Generate from the player list (Classic)</a></div>';
+  var all = rows(c.md), list = filtered(c);
+  var rounds = [], days = [], tables = [];
+  all.forEach(function(v){ var rn = v.group || v.roundName; if(rn && rounds.indexOf(rn) < 0) rounds.push(rn); var d = dayKey(v.datetime); if(d && days.indexOf(d) < 0) days.push(d); if(v.table && tables.indexOf(String(v.table)) < 0) tables.push(String(v.table)); });
+  days.sort(); tables.sort(function(a, b){ return a - b; });
+  var cnt = function(f){ return all.filter(f).length; };
+  var F = [['all','All', all.length], ['live','Live', cnt(function(v){ return v.status === 'live'; })], ['ready','Ready to play', cnt(readyToPlay)], ['later','Waiting for players', cnt(function(v){ return v.status === 'pending' && !readyToPlay(v); })], ['done','Finished', cnt(function(v){ return v.status === 'done' || v.status === 'bye'; })]];
+  var att = cnt(function(v){ return attention(v).length; });
+  var h = '<div class="tools"><input class="find" id="q" placeholder="Find a player, district or match ID…" value="' + esc(S.q) + '">' +
+    F.map(function(x){ return '<button class="chip' + (S.status === x[0] ? ' on' : '') + '" data-st="' + x[0] + '">' + x[1] + ' <small>' + x[2] + '</small></button>'; }).join('') +
+    '<button class="chip warn' + (S.attention ? ' on' : '') + '" data-att="1" title="Missing time or table, or a player still to be named">⚠ To check <small>' + att + '</small></button>' +
+    '<select id="f-round"><option value="">All rounds</option>' + rounds.map(function(r){ return '<option' + (S.round === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
+    '<select id="f-day"><option value="">All days</option>' + days.map(function(d){ return '<option value="' + d + '"' + (S.day === d ? ' selected' : '') + '>' + esc(dayName(d)) + '</option>'; }).join('') + '</select>' +
+    '<select id="f-table"><option value="">All tables</option>' + tables.map(function(x){ return '<option value="' + x + '"' + (S.table === x ? ' selected' : '') + '>Table ' + x + '</option>'; }).join('') + '</select></div>';
+  var nsel = Object.keys(S.sel).filter(function(k){ return S.sel[k]; }).length;
+  h += '<div class="bulk' + (nsel ? ' on' : '') + '" id="bulk"><b>' + nsel + ' selected</b><button class="btn sm" data-bulk="time">🕑 Set day & time</button><button class="btn sm" data-bulk="shift">± Move times</button><button class="btn sm" data-bulk="table">Set table</button><button class="btn sm" data-bulk="bo">Set best of</button><span class="sp"></span><button class="btn sm" data-bulk="none">Clear selection</button></div>';
+  if(!list.length) return h + '<div class="empty">No matches match these filters.</div>';
+  h += '<div class="tw"><table class="tbl"><thead><tr><th style="width:34px"><input type="checkbox" class="cb" id="selall"' + (nsel && nsel >= list.length ? ' checked' : '') + '></th><th>Match</th><th>Day & time</th><th>Table</th><th class="hide-s">Best of</th><th>Player 1</th><th style="text-align:center">Score</th><th>Player 2</th><th class="hide-s">Status</th></tr></thead><tbody>';
+  var lastR = null;
+  list.forEach(function(v){
+    var rn = v.group || v.roundName;
+    if(rn !== lastR){ lastR = rn; var inR = list.filter(function(x){ return (x.group || x.roundName) === rn; }), dn = inR.filter(function(x){ return x.status === 'done' || x.status === 'bye'; }).length;
+      h += '<tr class="rh"><td colspan="9">' + esc(rn || 'Matches') + '<small>' + dn + '/' + inR.length + ' played' + (inR[0] && inR[0].bo ? ' · best of ' + inR[0].bo : '') + '</small></td></tr>'; }
+    h += rowHtml(v);
+  });
+  return h + '</tbody></table></div><div class="note">Click any cell to change it. Every change is saved straight away and shows up on the public page, the remotes and the Control Room — use Undo on the message if you slip.</div>';
+}
+function rowHtml(v){
+  var k = esc(v.key), a = attention(v), live = v.status === 'live', fin = v.status === 'done' || v.status === 'bye';
+  var pc = function(side){
+    var p = v['p' + side], cls = p && p.placeholder ? 'ph' : !realP(p) ? 't' : v.w === side ? 'w' : v.w ? 'l' : '';
+    var ed = slotEditable(v, side);
+    return '<button class="c pl ' + cls + (ed ? '' : ' ro') + '" data-ed="player" data-side="' + side + '" data-k="' + k + '"' + (ed ? '' : ' title="Filled in by the winner of an earlier match"') + '><span class="n">' + esc(pname(p)) + '</span>' + (realP(p) && p.state ? '<small>' + esc(p.state) + '</small>' : '') + (v['seed' + side] && realP(p) ? '<span class="seed">SEED</span>' : '') + '</button>';
+  };
+  var sc = live ? '<button class="c sc" data-ed="result" data-k="' + k + '" style="color:#7ff0a7">' + esc(v.f1) + '–' + esc(v.f2) + (v.live ? '<small>' + esc(v.live.pts1 || 0) + '–' + esc(v.live.pts2 || 0) + '</small>' : '') + '</button>'
+    : v.status === 'done' ? '<button class="c sc" data-ed="result" data-k="' + k + '">' + (v.wo ? '<span class="wo">W/O</span>' : esc(v.f1) + '–' + esc(v.f2)) + '</button>'
+    : v.status === 'bye' ? '<span class="c sc ro none">bye</span>' : '<button class="c sc none" data-ed="result" data-k="' + k + '">enter</button>';
+  var tm = v.datetime ? '<b>' + esc(hhmm(v.datetime)) + '</b><span class="d">' + esc(dayName(dayKey(v.datetime))) + '</span>' : 'Set time';
+  var status = live ? '<span class="pill live">● Live T' + esc(v.table) + '</span>' : fin ? '<span class="pill done">' + (v.wo || v.status === 'bye' ? 'Walkover' : 'Finished') + '</span>' : readyToPlay(v) ? '<span class="pill ready">Ready</span>' : '<span class="pill">Waiting</span>';
+  if(a.length) status += ' <span class="pill" style="color:var(--amber)" title="' + esc(a.join(' · ')) + '">⚠ ' + esc(a[0]) + (a.length > 1 ? ' +' + (a.length - 1) : '') + '</span>';
+  return '<tr class="' + (S.sel[v.key] ? 'sel ' : '') + (live ? 'live' : '') + '" data-row="' + k + '"><td><input type="checkbox" class="cb" data-sel="' + k + '"' + (S.sel[v.key] ? ' checked' : '') + '></td>' +
+    '<td><span class="lbl">' + esc(v.label || BK.shortRound(v.roundName)) + '<small>' + esc(v.matchId || '—') + '</small></span></td>' +
+    '<td><button class="c' + (v.datetime ? '' : ' miss') + '" data-ed="time" data-k="' + k + '">' + tm + '</button></td>' +
+    '<td><button class="c' + (v.table ? '' : ' miss') + '" data-ed="table" data-k="' + k + '">' + (v.table ? 'T' + esc(v.table) : 'Set') + '</button></td>' +
+    '<td class="hide-s"><button class="c" data-ed="bo" data-k="' + k + '">' + (v.bo ? 'BO' + esc(v.bo) : 'Set') + '</button></td>' +
+    '<td>' + pc(1) + '</td><td>' + sc + '</td><td>' + pc(2) + '</td><td class="hide-s">' + status + '</td></tr>';
+}
+
+/* ── popover editors ── */
+function byKey(k){ var c = cur(); return c && c.md ? rows(c.md).filter(function(v){ return v.key === k; })[0] : null; }
+function openPop(anchor, html, init){
+  var p = g('pop'); p.innerHTML = html; p.classList.add('on'); popOpen = true;
+  var r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+  var left = Math.min(window.innerWidth - w - 10, Math.max(10, r.left)), top = r.bottom + 6; if(top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 6);
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  if(init) init(p);
+  var f = p.querySelector('input:not([type=hidden])'); if(f) setTimeout(function(){ f.focus(); f.select && f.select(); }, 30);
+}
+function closePop(){ var p = g('pop'); p.classList.remove('on'); p.innerHTML = ''; popOpen = false; if(dirty){ dirty = false; draw(); } }
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && popOpen) closePop(); if(e.key === 'Enter' && popOpen && e.target.tagName === 'INPUT'){ var b = g('pop').querySelector('[data-ok]'); if(b){ e.preventDefault(); b.click(); } } });
+document.addEventListener('mousedown', function(e){ if(popOpen && !e.target.closest('#pop') && !e.target.closest('[data-ed]') && !e.target.closest('[data-bulk]')) closePop(); });
+
+function edTime(v, a){
+  var dk = dayKey(v.datetime), tm = v.datetime ? String(v.datetime).slice(11, 16) : '';
+  var t = T[S.tid], days = []; if(t.startDate){ var d0 = dparse(t.startDate + ' 00:00'), d1 = dparse((t.endDate || t.startDate) + ' 00:00'); for(var d = d0; d && d1 && d <= d1 && days.length < 14; d = new Date(d.getTime() + 864e5)) days.push(d.toISOString().slice(0, 10)); }
+  openPop(a, '<h4><span>Day & time</span><small>' + esc(v.label || '') + '</small></h4>' +
+    (days.length ? '<div class="grid" id="e-days">' + days.map(function(x){ return '<button data-day="' + x + '"' + (x === dk ? ' class="on"' : '') + '>' + esc(dayName(x).replace(/^\w+, /, '').replace(/^\w+ /, '')) + '</button>'; }).join('') + '</div>' : '') +
+    '<div class="row"><div><label>Date</label><input type="date" id="e-d" value="' + dk + '"></div><div><label>Time</label><input type="time" id="e-t" value="' + tm + '" step="900"></div></div>' +
+    '<div class="acts"><button class="btn sm red" id="e-clr">Clear</button><span class="sp"></span><button class="btn sm" onclick="closePop()">Cancel</button><button class="btn sm gold" data-ok id="e-ok">Save</button></div>', function(p){
+      p.querySelectorAll('[data-day]').forEach(function(b){ b.onclick = function(){ g('e-d').value = b.dataset.day; p.querySelectorAll('[data-day]').forEach(function(x){ x.classList.toggle('on', x === b); }); g('e-t').focus(); }; });
+      g('e-ok').onclick = function(){ var d = g('e-d').value, t2 = g('e-t').value; setTime([v], d && t2 ? d + ' ' + t2 : d || ''); closePop(); };
+      g('e-clr').onclick = function(){ setTime([v], ''); closePop(); };
+    });
+}
+function setTime(vs, val){
+  var up = {}; vs.forEach(function(v){ setField(v, 'datetime', val, 'datetime', up); });
+  save(up, before(Object.keys(up)), vs.length > 1 ? vs.length + ' matches moved' : (val ? 'Time set: ' + dayName(val.slice(0, 10)) + ' ' + hhmm(val) : 'Time cleared'));
+}
+function edTable(v, a){
+  var n = UPT.count || 6, h = '<h4><span>Table</span><small>' + esc(v.label || '') + '</small></h4><div class="grid">';
+  for(var i = 1; i <= n; i++){ var lm = M['table-' + i], busy = lm && lm.player1 && lm.status !== 'finished' && lm.matchId !== v.matchId; h += '<button data-t="' + i + '"' + (+v.table === i ? ' class="on"' : '') + ' title="' + (busy ? 'A match is on this table now' : '') + '">T' + i + (busy ? '•' : '') + '</button>'; }
+  h += '<button data-t="0"' + (!v.table ? ' class="on"' : '') + '>None</button></div><div class="hint">• = a match is being played on that table right now. Matches with no table go to whichever table is free.</div>';
+  openPop(a, h, function(p){ p.querySelectorAll('[data-t]').forEach(function(b){ b.onclick = function(){ setTable([v], +b.dataset.t); closePop(); }; }); });
+}
+function setTable(vs, n){ var up = {}; vs.forEach(function(v){ setField(v, 'table', n, 'tableNumber', up); }); save(up, before(Object.keys(up)), vs.length > 1 ? vs.length + ' matches → ' + (n ? 'Table ' + n : 'no table') : (n ? 'Table ' + n : 'Table cleared')); }
+function edBo(v, a){
+  openPop(a, '<h4><span>Best of</span><small>' + esc(v.label || '') + '</small></h4><div class="grid">' + [1,3,5,7,9,11,13,15,17,19,21,25,35].map(function(n){ return '<button data-b="' + n + '"' + (+v.bo === n ? ' class="on"' : '') + '>' + n + '</button>'; }).join('') + '</div>' +
+    (v.status === 'live' ? '<div class="hint" style="color:var(--amber)">This match is being played — the remote keeps the best-of it started with.</div>' : ''),
+    function(p){ p.querySelectorAll('[data-b]').forEach(function(b){ b.onclick = function(){ setBo([v], +b.dataset.b); closePop(); }; }); });
+}
+function setBo(vs, n){ var up = {}; vs.forEach(function(v){ setField(v, 'bo', n, 'bestOf', up); }); save(up, before(Object.keys(up)), (vs.length > 1 ? vs.length + ' matches: ' : '') + 'best of ' + n); }
+
+/* players: type a name, pick from the registry list, or swap with another slot */
+function entrySlots(){
+  var c = cur(), out = []; if(!c || !c.md) return out;
+  rows(c.md).forEach(function(v){ [1, 2].forEach(function(s){ if(slotEditable(v, s) && !v.virtual) out.push({ v:v, s:s, p:v['p' + s] }); }); });
+  return out;
+}
+function edPlayer(v, side, a){
+  if(!slotEditable(v, side)){ toast('This slot is filled by the winner of ' + (pname(v['p' + side]).replace(/^Winner /, '') || 'an earlier match') + ' — change the earlier result instead.'); return; }
+  var p = v['p' + side] || {}, other = v['p' + (side === 1 ? 2 : 1)];
+  var names = {}; Object.keys(PL).forEach(function(k){ var x = PL[k]; if(x && x.name) names[x.name] = x.state || ''; });
+  entrySlots().forEach(function(x){ if(realP(x.p)) names[x.p.name] = x.p.state || ''; });
+  var swaps = entrySlots().filter(function(x){ return !(x.v.key === v.key && x.s === side) && x.v.status !== 'done' && x.v.status !== 'live'; });
+  openPop(a, '<h4><span>Player ' + side + '</span><small>' + esc(v.label || '') + ' · v ' + esc(pname(other)) + '</small></h4>' +
+    '<label>Name</label><input id="e-n" list="e-names" value="' + esc(realP(p) ? p.name : '') + '" placeholder="Player to be named" autocomplete="off"><datalist id="e-names">' + Object.keys(names).sort().map(function(n){ return '<option value="' + esc(n) + '">' + esc(names[n]) + '</option>'; }).join('') + '</datalist>' +
+    '<label>District / state</label><input id="e-s" value="' + esc(p.state || '') + '">' +
+    (v.status === 'live' ? '<div class="hint" style="color:var(--amber)">Being played now — the new name also goes to the table.</div>' : '') +
+    '<label>…or swap places with</label><select id="e-sw"><option value="">— choose a player —</option>' + swaps.map(function(x, i){ return '<option value="' + i + '">' + esc(pname(x.p)) + ' · ' + esc(x.v.label || '') + (x.v.datetime ? ' · ' + esc(dayName(dayKey(x.v.datetime)).replace(/^\w+, /, '') + ' ' + hhmm(x.v.datetime)) : '') + '</option>'; }).join('') + '</select>' +
+    '<div class="acts"><button class="btn sm red" id="e-empty">Make it “to be named”</button><span class="sp"></span><button class="btn sm" onclick="closePop()">Cancel</button><button class="btn sm gold" data-ok id="e-ok">Save</button></div>', function(){
+      var nm = g('e-n'); nm.onchange = function(){ if(names[nm.value] && !g('e-s').value) g('e-s').value = names[nm.value]; };
+      g('e-ok').onclick = function(){
+        var sw = g('e-sw').value;
+        if(sw !== ''){ var x = swaps[+sw]; swapSlots({ v:v, s:side, p:p }, x); closePop(); return; }
+        var n = nm.value.trim(), st = g('e-s').value.trim();
+        if(realP(p) && n === p.name && st === (p.state || '')){ closePop(); return; }
+        setPlayer(v, side, n ? { name:n, state:st } : null); closePop();
+      };
+      g('e-empty').onclick = function(){ setPlayer(v, side, null); closePop(); };
+    });
+}
+function playerObj(p){ return p ? { name:p.name, state:p.state || '' } : { name:'TBD', tbd:true, placeholder:'Player to be named' }; }
+function writeSlot(v, side, p, up){
+  up[base(v) + '/p' + side] = playerObj(p);
+  /* groups and leagues also keep a list of their players: rename there too */
+  var old = v['p' + side], dr = T[S.tid].draw[S.ck];
+  if(realP(old) && p && (v.stage === 'part1' || v.stage === 'rr')){
+    (dr.groups || []).forEach(function(gp, gi){ (gp.players || []).forEach(function(x, xi){ if(x && x.name === old.name) up['tournaments/' + S.tid + '/draw/' + S.ck + '/groups/' + gi + '/players/' + xi] = { name:p.name, state:p.state || '' }; }); });
+    (dr.players || []).forEach(function(x, xi){ if(x && x.name === old.name) up['tournaments/' + S.tid + '/draw/' + S.ck + '/players/' + xi] = { name:p.name, state:p.state || '' }; });
+  }
+  var mid = v.matchId; if(mid && REG[mid]){ up['match_registry/' + mid + '/p' + side] = p ? p.name : 'TBD'; up['match_registry/' + mid + '/p' + side + 'state'] = p ? (p.state || '') : ''; }
+  /* being played: rename on the table too */
+  if(p && v.status === 'live' && mid) Object.keys(M).forEach(function(tk){ var lm = M[tk]; if(!lm || lm.matchId !== mid) return;
+    var old = realP(v['p' + side]) ? v['p' + side].name.toLowerCase() : '', hit = null;
+    ['player1','player2'].forEach(function(pk, i){ var cn = String((lm[pk] || {}).name || '').toLowerCase(); if(old ? cn === old : (i + 1) === side) hit = pk; });
+    if(hit){ up['matches/' + tk + '/' + hit + '/name'] = p.name; up['matches/' + tk + '/' + hit + '/state'] = p.state || ''; } });
+}
+function setPlayer(v, side, p){
+  var dup = p && entrySlots().filter(function(x){ return realP(x.p) && x.p.name.toLowerCase() === p.name.toLowerCase() && !(x.v.key === v.key && x.s === side); })[0];
+  if(dup && !confirm(p.name + ' is already in the draw (' + (dup.v.label || '') + '). Put them here as well?')) return;
+  var up = {}, old = v['p' + side];
+  if(p && realP(old) && (v.stage === 'part1' || v.stage === 'rr')){   // groups / leagues: a player plays several matches — rename them all
+    entrySlots().forEach(function(x){ if(realP(x.p) && x.p.name === old.name) writeSlot(x.v, x.s, p, up); });
+  } else writeSlot(v, side, p, up);
+  save(up, before(Object.keys(up)), p ? 'Player ' + side + ': ' + p.name : 'Slot set to “to be named”');
+}
+function swapSlots(a, b){
+  var pa = realP(a.p) ? { name:a.p.name, state:a.p.state || '' } : null, pb = realP(b.p) ? { name:b.p.name, state:b.p.state || '' } : null;
+  var up = {}; writeSlot(a.v, a.s, pb, up); writeSlot(b.v, b.s, pa, up);
+  save(up, before(Object.keys(up)), 'Swapped ' + pname(a.p) + ' ⇄ ' + pname(b.p));
+}
+
+/* results: score, walkover, or clear */
+function edResult(v, a){
+  if(!realP(v.p1) && !realP(v.p2)){ toast('Both players still to be decided'); return; }
+  var need = Math.ceil((v.bo || 5) / 2), r = v.stored && v.stored.result || {};
+  var n1 = pname(v.p1), n2 = pname(v.p2), ok1 = realP(v.p1), ok2 = realP(v.p2);
+  openPop(a, '<h4><span>Result</span><small>' + esc(v.label || '') + ' · best of ' + esc(v.bo || '?') + ' · first to ' + need + '</small></h4>' +
+    (v.status === 'live' ? '<div class="hint" style="color:var(--amber);margin-bottom:6px">Live on Table ' + esc(v.table) + ' (' + esc(v.f1) + '–' + esc(v.f2) + '). A score saved here overrides the table.</div>' : '') +
+    (ok1 && ok2 ? '<div class="sc2"><b>' + esc(n1) + '</b><input id="r1" type="number" min="0" value="' + (v.status === 'done' && !v.wo ? esc(v.f1) : '') + '"><b>' + esc(n2) + '</b><input id="r2" type="number" min="0" value="' + (v.status === 'done' && !v.wo ? esc(v.f2) : '') + '"></div>' : '<div class="hint">One player is still to be named — you can only give a walkover.</div>') +
+    '<label>Walkover / no-show</label><div class="grid">' + (ok1 ? '<button id="wo1">' + esc(n1) + ' wins</button>' : '') + (ok2 ? '<button id="wo2">' + esc(n2) + ' wins</button>' : '') + '</div>' +
+    '<div class="err" id="r-err"></div><div class="acts">' + (v.status === 'done' || r.w ? '<button class="btn sm red" id="r-clr">Clear result</button>' : '') + '<span class="sp"></span><button class="btn sm" onclick="closePop()">Cancel</button>' + (ok1 && ok2 ? '<button class="btn sm gold" data-ok id="r-ok">Save score</button>' : '') + '</div>', function(){
+      var err = function(t){ g('r-err').textContent = t; };
+      if(g('r-ok')) g('r-ok').onclick = function(){
+        var f1 = parseInt(g('r1').value, 10), f2 = parseInt(g('r2').value, 10);
+        if(isNaN(f1) || isNaN(f2) || f1 < 0 || f2 < 0) return err('Enter both frame scores.');
+        if(f1 === f2) return err('The scores can\'t be level.');
+        if(Math.max(f1, f2) !== need && !confirm('In a best of ' + v.bo + ' the winner usually has ' + need + ' frames. Save ' + f1 + '–' + f2 + ' anyway?')) return;
+        setResult(v, { f1:f1, f2:f2, w:f1 > f2 ? 1 : 2 }); closePop();
+      };
+      if(g('wo1')) g('wo1').onclick = function(){ setResult(v, { f1:need, f2:0, w:1, wo:true }); closePop(); };
+      if(g('wo2')) g('wo2').onclick = function(){ setResult(v, { f1:0, f2:need, w:2, wo:true }); closePop(); };
+      if(g('r-clr')) g('r-clr').onclick = function(){ if(confirm('Clear this result? The match goes back to “to be played”.')){ setResult(v, null); closePop(); } };
+    });
+}
+function setResult(v, res){
+  var up = {};
+  materialize(v, up);
+  var b = base(v), mid = v.matchId || v._mid, mat = !!up[b];
+  var winner = res ? (res.w === 1 ? pname(v.p1) : pname(v.p2)) : null;
+  /* winner changed after the next round was played? warn */
+  var oldW = v.winner && realP(v.winner) ? v.winner.name : null;
+  if(oldW && winner !== oldW){
+    var later = rows(cur().md).filter(function(x){ return (x.status === 'done' || x.status === 'live') && x.round > v.round && ((realP(x.p1) && x.p1.name === oldW) || (realP(x.p2) && x.p2.name === oldW)); })[0];
+    if(later && !confirm(oldW + ' has already played ' + (later.label || 'the next round') + '. Changing this result does not undo that match. Continue?')) return;
+  }
+  if(res){ res.manual = true; res.at = Date.now(); }
+  if(mat){ up[b].result = res; up[b].status = res ? 'done' : 'pending'; }
+  else { up[b + '/result'] = res; up[b + '/status'] = res ? 'done' : 'pending'; }
+  if(mid){
+    if(up['match_registry/' + mid]){ var rr = up['match_registry/' + mid]; rr.status = res ? (res.wo ? 'walkover' : 'finished') : 'pending'; if(res){ rr.winner = winner; rr.p1frames = res.f1; rr.p2frames = res.f2; rr.endTime = Date.now(); } }
+    else if(REG[mid]){ var rp = 'match_registry/' + mid + '/'; up[rp + 'status'] = res ? (res.wo ? 'walkover' : 'finished') : 'pending'; up[rp + 'winner'] = winner; up[rp + 'p1frames'] = res ? res.f1 : null; up[rp + 'p2frames'] = res ? res.f2 : null; if(res) up[rp + 'endTime'] = Date.now(); }
+    if((BK.results || {})[mid]) up['results/' + mid] = null;
+  }
+  save(up, before(Object.keys(up)), res ? (res.wo ? 'Walkover: ' + winner : 'Result saved: ' + pname(v.p1) + ' ' + res.f1 + '–' + res.f2 + ' ' + pname(v.p2)) : 'Result cleared');
+}
+
+/* bulk */
+function selected(){ var c = cur(); return rows(c.md).filter(function(v){ return S.sel[v.key]; }); }
+function bulk(kind, a){
+  var vs = selected(); if(!vs.length) return;
+  if(kind === 'none'){ S.sel = {}; draw(); return; }
+  if(kind === 'table'){ var n = UPT.count || 6, h = '<h4><span>Table for ' + vs.length + ' matches</span></h4><div class="grid">'; for(var i = 1; i <= n; i++) h += '<button data-t="' + i + '">T' + i + '</button>'; h += '<button data-t="0">None</button></div>';
+    openPop(a, h, function(p){ p.querySelectorAll('[data-t]').forEach(function(b){ b.onclick = function(){ setTable(vs, +b.dataset.t); closePop(); }; }); }); return; }
+  if(kind === 'bo'){ openPop(a, '<h4><span>Best of for ' + vs.length + ' matches</span></h4><div class="grid">' + [1,3,5,7,9,11,13,15,17,19,21,25].map(function(n){ return '<button data-b="' + n + '">' + n + '</button>'; }).join('') + '</div>',
+    function(p){ p.querySelectorAll('[data-b]').forEach(function(b){ b.onclick = function(){ setBo(vs, +b.dataset.b); closePop(); }; }); }); return; }
+  if(kind === 'time'){ openPop(a, '<h4><span>Day & time for ' + vs.length + ' matches</span></h4><div class="row"><div><label>Date</label><input type="date" id="b-d"></div><div><label>First match at</label><input type="time" id="b-t" step="900"></div></div>' +
+      '<label>Then every</label><select id="b-gap"><option value="0">same time (on different tables)</option><option value="60">1 hour</option><option value="90">1½ hours</option><option value="120" selected>2 hours</option><option value="150">2½ hours</option><option value="180">3 hours</option></select>' +
+      '<div class="hint">Matches get times in the order shown on the list.</div><div class="acts"><button class="btn sm" onclick="closePop()">Cancel</button><button class="btn sm gold" data-ok id="b-ok">Save</button></div>', function(){
+      g('b-ok').onclick = function(){ var d = g('b-d').value, t0 = g('b-t').value, gap = +g('b-gap').value; if(!d || !t0){ toast('Pick a date and a time'); return; }
+        var up = {}, st = dparse(d + ' ' + t0).getTime();
+        vs.forEach(function(v, i){ var x = new Date(st + i * gap * 60000); var s = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0') + ' ' + String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); setField(v, 'datetime', s, 'datetime', up); });
+        save(up, before(Object.keys(up)), vs.length + ' matches scheduled'); closePop(); };
+    }); return; }
+  if(kind === 'shift'){ openPop(a, '<h4><span>Move ' + vs.length + ' matches</span></h4><div class="grid">' + [-120,-60,-30,30,60,120,1440].map(function(m){ return '<button data-m="' + m + '">' + (m > 0 ? '+' : '−') + (Math.abs(m) >= 1440 ? '1 day' : Math.abs(m) >= 60 ? Math.abs(m) / 60 + 'h' : Math.abs(m) + 'm') + '</button>'; }).join('') + '</div><div class="hint">Moves each selected match by the same amount (matches without a time are skipped).</div>',
+    function(p){ p.querySelectorAll('[data-m]').forEach(function(b){ b.onclick = function(){ var m = +b.dataset.m, up = {};
+      vs.forEach(function(v){ var d = dparse(v.datetime); if(!d) return; var x = new Date(d.getTime() + m * 60000); setField(v, 'datetime', x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0') + ' ' + String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'), 'datetime', up); });
+      save(up, before(Object.keys(up)), 'Times moved'); closePop(); }; }); }); }
+}
+
+/* ── PLAYERS: every name in the draw, rename everywhere at once ── */
+function players(c){
+  var map = {}, order = [];
+  entrySlots().forEach(function(x){ var key = realP(x.p) ? 'n:' + x.p.name.toLowerCase() : 'e:' + x.v.key + ':' + x.s;
+    if(!map[key]){ map[key] = { name:realP(x.p) ? x.p.name : '', state:realP(x.p) ? (x.p.state || '') : '', slots:[], ph:!realP(x.p) }; order.push(key); } map[key].slots.push(x); });
+  return order.map(function(k){ return map[k]; });
+}
+function viewPlayers(c){
+  if(!c.md) return '<div class="empty" style="margin-top:16px">No draw yet.</div>';
+  var ps = players(c), q = S.q.toLowerCase(), list = ps.filter(function(p){ return !q || (p.name + ' ' + p.state).toLowerCase().indexOf(q) >= 0 || (p.ph && 'to be named'.indexOf(q) >= 0); });
+  list.sort(function(a, b){ return (b.ph - a.ph) || a.name.localeCompare(b.name); });
+  var nph = ps.filter(function(p){ return p.ph; }).length;
+  var h = '<div class="tools"><input class="find" id="q" placeholder="Find a player or district…" value="' + esc(S.q) + '"><span class="note">' + ps.length + ' entries' + (nph ? ' · <b style="color:var(--amber)">' + nph + ' still to be named</b>' : '') + '. Change names or districts, then press Save — every match they are in updates.</span><span class="sp"></span><button class="btn gold" id="pl-save">💾 Save changes</button></div>';
+  return h + '<div class="pgrid">' + list.map(function(p){ var i = ps.indexOf(p), s0 = p.slots[0];
+    return '<div class="pc' + (p.ph ? ' ph' : '') + '" data-pi="' + i + '"><input data-n value="' + esc(p.name) + '" placeholder="Player to be named"><input data-s value="' + esc(p.state) + '" placeholder="District"><span class="pill' + (p.ph ? '' : ' ready') + '">' + esc(s0.v.label || '') + '</span>' +
+      '<small>' + esc(s0.v.datetime ? dayName(dayKey(s0.v.datetime)) + ' · ' + hhmm(s0.v.datetime) : 'No time') + (s0.v.table ? ' · T' + s0.v.table : '') + ' · v ' + esc(pname(s0.v['p' + (s0.s === 1 ? 2 : 1)])) + (p.slots.length > 1 ? ' · in ' + p.slots.length + ' slots' : '') + '</small></div>'; }).join('') + '</div>';
+}
+function savePlayers(){
+  var c = cur(), ps = players(c), up = {}, n = 0;
+  document.querySelectorAll('.pc[data-pi]').forEach(function(el){
+    var p = ps[+el.dataset.pi], nm = el.querySelector('[data-n]').value.trim(), st = el.querySelector('[data-s]').value.trim();
+    if(nm === p.name && st === p.state) return;
+    n++; p.slots.forEach(function(x){ writeSlot(x.v, x.s, nm ? { name:nm, state:st } : null, up); });
+  });
+  if(!n){ toast('Nothing changed'); return; }
+  save(up, before(Object.keys(up)), n + ' player' + (n > 1 ? 's' : '') + ' updated');
+}
+
+/* ── SETTINGS ── */
+function viewSettings(c){
+  var t = c.t;
+  var h = '<div class="sec">Event</div><div class="form">' +
+    fld('Event name', 's-name', t.name) + fld('Line above the name (memorial, sponsor…)', 's-sub', t.subtitle) +
+    '<div><label>Sport</label><select id="s-sport">' + Object.keys(SPORT).map(function(k){ return '<option value="' + k + '"' + (t.sport === k ? ' selected' : '') + '>' + SPORT[k] + '</option>'; }).join('') + '</select></div>' +
+    '<div><label>Reds (snooker)</label><select id="s-reds">' + [15, 10, 6].map(function(r){ return '<option' + (+(t.reds || 15) === r ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select></div>' +
+    fld('Venue', 's-venue', t.venue) + fld('Start date', 's-start', t.startDate, 'date') + fld('End date', 's-end', t.endDate, 'date') +
+    '<div><label>Status</label><select id="s-status">' + [['draft','Draft — not started'], ['active','Active — being played'], ['finished','Finished']].map(function(x){ return '<option value="' + x[0] + '"' + ((t.status || 'draft') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></div>' +
+    '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn gold" id="s-save">💾 Save event</button></div>';
+  if(c.cks.length){
+    h += '<div class="sec">Categories</div><div class="form">' + c.cks.map(function(k){ return fld('Category name', 'cat-' + k, t.draw[k].catName || k); }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn" id="c-save">Save names</button></div>';
+  }
+  h += '<div class="sec">Draws</div><div class="danger" style="border-color:var(--line);background:none"><p>Add another category, replace a draw with a new file, or type a draw by hand.</p><a class="btn" href="draw-entry.html">⬆ Import / enter a draw</a><a class="btn" href="tournament.html">Generate from the player list (Classic)</a></div>';
+  h += '<div class="sec">Danger zone</div><div class="danger"><p>Delete this event, its draw and its schedule. Results already saved are lost. A backup copy is saved first.</p><button class="btn red" id="s-del">🗑 Delete event</button></div>';
+  return h;
+}
+function fld(l, id, v, type){ return '<div><label>' + esc(l) + '</label><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(v || '') + '"></div>'; }
+
+/* ── new event ── */
+function newEventForm(){
+  return '<div class="sec">New event</div><div class="form">' + fld('Event name', 'n-name', '') + fld('Line above the name (optional)', 'n-sub', '') +
+    '<div><label>Sport</label><select id="n-sport">' + Object.keys(SPORT).map(function(k){ return '<option value="' + k + '">' + SPORT[k] + '</option>'; }).join('') + '</select></div>' +
+    '<div><label>Reds (snooker)</label><select id="n-reds"><option>15</option><option>10</option><option>6</option></select></div>' +
+    fld('Venue', 'n-venue', '') + fld('Start date', 'n-start', '', 'date') + fld('End date', 'n-end', '', 'date') + '</div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn" id="n-cancel">Cancel</button><button class="btn gold" id="n-make">Create event</button></div>' +
+    '<p class="note" style="margin-top:12px">Then add its draw: import a draw file or type one in <a href="draw-entry.html" style="color:var(--gold)">Enter a Draw</a>, or generate one from the player list in the Classic manager.</p>';
+}
+function wireNew(){
+  g('n-cancel').onclick = function(){ S.tid = Object.keys(T)[0] || ''; draw(); };
+  g('n-make').onclick = function(){
+    var name = g('n-name').value.trim(); if(!name){ toast('Give the event a name', null, 1); return; }
+    var ref = db.ref('tournaments').push();
+    ref.set({ name:name, subtitle:g('n-sub').value.trim(), sport:g('n-sport').value, reds:+g('n-reds').value, venue:g('n-venue').value.trim(), startDate:g('n-start').value, endDate:g('n-end').value || g('n-start').value,
+      tables:UPT.count || 6, tvTable:1, status:'draft', createdAt:Date.now(), categories:{} }).then(function(){ S.tid = ref.key; S.tab = 'matches'; toast('Event created'); draw(); }, function(e){ toast('Not saved: ' + e.message, null, 1); });
+  };
+}
+
+/* ── wiring ── */
+function wire(c){
+  document.querySelectorAll('[data-tab]').forEach(function(b){ b.onclick = function(){ S.tab = b.dataset.tab; S.q = ''; draw(); }; });
+  document.querySelectorAll('[data-ck]').forEach(function(b){ b.onclick = function(){ S.ck = b.dataset.ck; S.sel = {}; draw(); }; });
+  var q = g('q'); if(q){ q.oninput = function(){ S.q = q.value; var pos = q.selectionStart; draw(); var q2 = g('q'); if(q2){ q2.focus(); try { q2.setSelectionRange(pos, pos); } catch(e){} } }; }
+  document.querySelectorAll('[data-st]').forEach(function(b){ b.onclick = function(){ S.status = b.dataset.st; draw(); }; });
+  var at = document.querySelector('[data-att]'); if(at) at.onclick = function(){ S.attention = !S.attention; draw(); };
+  [['f-round','round'], ['f-day','day'], ['f-table','table']].forEach(function(x){ var e = g(x[0]); if(e) e.onchange = function(){ S[x[1]] = e.value; draw(); }; });
+  document.querySelectorAll('[data-sel]').forEach(function(cb){ cb.onchange = function(){ S.sel[cb.dataset.sel] = cb.checked; draw(); }; });
+  var sa = g('selall'); if(sa) sa.onchange = function(){ var list = filtered(cur()); S.sel = {}; if(sa.checked) list.forEach(function(v){ S.sel[v.key] = true; }); draw(); };
+  document.querySelectorAll('[data-bulk]').forEach(function(b){ b.onclick = function(){ bulk(b.dataset.bulk, b); }; });
+  document.querySelectorAll('[data-ed]').forEach(function(b){ b.onclick = function(){
+    var v = byKey(b.dataset.k); if(!v) return;
+    var e = b.dataset.ed; if(e === 'time') edTime(v, b); else if(e === 'table') edTable(v, b); else if(e === 'bo') edBo(v, b); else if(e === 'player') edPlayer(v, +b.dataset.side, b); else if(e === 'result') edResult(v, b);
+  }; });
+  var ps = g('pl-save'); if(ps){ ps.onclick = savePlayers; document.querySelectorAll('.pc input').forEach(function(i){ i.oninput = function(){ i.closest('.pc').classList.add('changed'); }; }); }
+  var ss = g('s-save'); if(ss) ss.onclick = function(){
+    var b = 'tournaments/' + S.tid + '/', up = {};
+    up[b + 'name'] = g('s-name').value.trim() || c.t.name; up[b + 'subtitle'] = g('s-sub').value.trim(); up[b + 'sport'] = g('s-sport').value; up[b + 'reds'] = +g('s-reds').value;
+    up[b + 'venue'] = g('s-venue').value.trim(); up[b + 'startDate'] = g('s-start').value; up[b + 'endDate'] = g('s-end').value; up[b + 'status'] = g('s-status').value;
+    /* the schedule carries the event name: keep it matching */
+    if(up[b + 'name'] !== c.t.name) Object.keys(REG).forEach(function(id){ if(REG[id] && REG[id].tournament === c.t.name) up['match_registry/' + id + '/tournament'] = up[b + 'name']; });
+    save(up, before(Object.keys(up)), 'Event saved');
+  };
+  var cs = g('c-save'); if(cs) cs.onclick = function(){ var up = {}; c.cks.forEach(function(k){ var v = g('cat-' + k).value.trim(); if(v && v !== c.t.draw[k].catName) up['tournaments/' + S.tid + '/draw/' + k + '/catName'] = v; }); if(!Object.keys(up).length){ toast('Nothing changed'); return; } save(up, before(Object.keys(up)), 'Category names saved'); };
+  var sd = g('s-del'); if(sd) sd.onclick = function(){
+    if(!confirm('Delete “' + c.t.name + '” with its draw and schedule?')) return;
+    var typed = prompt('Type DELETE to confirm:', ''); if(!typed || typed.trim().toUpperCase() !== 'DELETE') return;
+    var up = {}; up['tournaments/' + S.tid] = null;
+    Object.keys(c.t.draw || {}).forEach(function(k){ Object.keys((c.t.draw[k] || {}).matches || {}).forEach(function(mk){ var m = c.t.draw[k].matches[mk]; if(m && m.matchId){ up['match_registry/' + m.matchId] = null; up['results/' + m.matchId] = null; } }); });
+    (window.BACKUP ? BACKUP.snapshot('Before deleting ' + c.t.name) : Promise.resolve()).then(function(){ return db.ref().update(up); }).then(function(){ S.tid = ''; toast('Event deleted'); draw(); }, function(e){ toast('Not deleted: ' + e.message, null, 1); });
+  };
+}
+g('evsel').onchange = function(){ if(this.value === '__new'){ S.tid = ''; g('view').innerHTML = newEventForm(); wireNew(); return; } S.tid = this.value; S.ck = ''; S.sel = {}; S.q = ''; S.round = S.day = S.table = ''; draw(); };
+
+/* ── data ── */
+db.ref('tournaments').on('value', function(s){ T = s.val() || {}; loaded.t = 1; render(); });
+db.ref('matches').on('value', function(s){ M = s.val() || {}; render(); });
+db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; render(); });
+db.ref('players').on('value', function(s){ PL = s.val() || {}; });
+BK.watchResults(db, render);
+UPT.on(render);
+BK.autoSync(db);   // results into the draw, winners into the next round, while this page is open
+</script>
+<script src="backup.js?v=20261028h"></script>
+</body>
+</html>
