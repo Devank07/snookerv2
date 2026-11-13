@@ -77,6 +77,8 @@ a{color:inherit;}
 #obs-pop button{display:block;width:100%;text-align:left;margin:0 0 6px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:700 13px Inter,sans-serif;cursor:pointer;}
 #obs-pop button small{display:block;font-weight:500;color:rgba(232,244,224,.5);margin-top:2px;}
 #obs-pop button:hover{border-color:rgba(240,192,64,.5);}
+.aud{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(95,184,255,.07);border:1px solid rgba(95,184,255,.25);font:600 13px Inter,sans-serif;color:rgba(232,244,224,.65);}
+.aud b{color:#fff;font-weight:800;}.aud .aud-n{color:#7fc8ff;font-size:16px;}.aud .aud-l{font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#7fc8ff;}.aud .aud-w{flex-basis:100%;font-size:12px;color:rgba(232,244,224,.45);}
 #mo-pop{position:fixed;top:70px;right:20px;z-index:30;width:360px;background:#0b1610;border:1px solid rgba(240,192,64,.4);border-radius:14px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.6);}
 .mo-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(255,255,255,.03);margin-top:8px;cursor:pointer;font-size:12px;color:var(--dim);}
 .mo-row input{width:18px;height:18px;margin-top:2px;accent-color:#f0c040;}.mo-row b{display:block;color:var(--text);font-size:14px;margin-bottom:2px;}
@@ -170,6 +172,7 @@ html{background-color:#050a06;}body{background-color:#050a06;}
     <span class="seg"><button data-scope="today" class="on">Today</button><button data-scope="event" id="sc-ev">This event</button></span>
     <span class="sp"></span><button class="tbtn" id="sum-copy" title="Copy a ready-to-read summary for the stream">📋 Copy for commentary</button></div>
   <div class="sum-g" id="sum-g"></div>
+  <div class="aud" id="aud"></div>
 </div>
 <div class="sec">On the tables</div>
 <div class="grid" id="grid"></div>
@@ -470,6 +473,31 @@ g('reloadall').onclick = function(){
   if(!confirm('Reload every OBS overlay and venue board now? Each one blinks for a second and comes back on the latest version.')) return;
   db.ref('settings/reload').set(Date.now()).then(function(){ toast('Screens are reloading'); }, function(){ toast('Could not send — check you are signed in as staff'); });
 };
+
+/* ── audience on the public page (bracket.html): live viewers + visits ── */
+var AUD = { pres:{}, days:{}, views:0, total:0, peak:0 };
+function audDay(){ var d = new Date(now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+(function(){
+  var day = audDay();
+  db.ref('presence/bracket').on('value', function(s){ AUD.pres = s.val() || {}; drawAud(); });
+  db.ref('stats/bracket/days/' + day).on('value', function(s){ AUD.days = s.val() || {}; drawAud(); });
+  db.ref('stats/bracket/views/' + day).on('value', function(s){ AUD.views = s.val() || 0; drawAud(); });
+  db.ref('stats/bracket/total').on('value', function(s){ AUD.total = s.val() || 0; drawAud(); });
+  db.ref('stats/bracket/peak/' + day).on('value', function(s){ AUD.peak = s.val() || 0; drawAud(); });
+})();
+function audLive(){ var t = now(), out = []; Object.keys(AUD.pres).forEach(function(k){ var x = AUD.pres[k]; if(x && x.at && t - x.at < 3 * 60e3) out.push(x); }); return out; }
+function audWhere(p){ p = String(p || ''); var m = /^#e\/[^/]+\/[^/]+\/?(\w+)?/.exec(p); if(m) return m[1] === 'bracket' || /^\d+$/.test(m[1] || '') ? 'Bracket' : m[1] === 'matches' ? 'Matches' : m[1] === 'players' ? 'Players' : 'Event overview';
+  return /^#results/.test(p) ? 'Results' : /^#events/.test(p) ? 'Events list' : 'Live page'; }
+function drawAud(){
+  var el = g('aud'); if(!el) return;
+  var live = audLive(), n = live.length, day = audDay();
+  if(n > AUD.peak){ AUD.peak = n; db.ref('stats/bracket/peak/' + day).set(n).catch(function(){}); }
+  var by = {}; live.forEach(function(x){ var w = audWhere(x.p); by[w] = (by[w] || 0) + 1; });
+  var parts = Object.keys(by).sort(function(a, b){ return by[b] - by[a]; }).map(function(k){ return k + ' ' + by[k]; });
+  el.innerHTML = '<span class="aud-l">🌐 Public page</span><span><b class="aud-n">' + n + '</b> watching now</span><span>peak today <b>' + AUD.peak + '</b></span><span><b>' + Object.keys(AUD.days).length + '</b> visitors today</span><span><b>' + AUD.views + '</b> page views today</span><span><b>' + AUD.total + '</b> visitors in total</span>' +
+    (parts.length ? '<span class="aud-w">' + esc(parts.join(' · ')) + '</span>' : '');
+}
+setInterval(drawAud, 30000);
 
 /* ── stream moments (cards the OBS overlay shows by itself) ── */
 var MOM = {};

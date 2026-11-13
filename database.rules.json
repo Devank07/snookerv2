@@ -111,6 +111,33 @@
       "$mid": {
         ".write": "auth != null && $mid.length < 40 && ((newData.exists() && newData.child('table').isString() && newData.child('w').isNumber() && (!data.exists() || data.child('table').val() === newData.child('table').val()) && root.child('secret/pins').child(newData.child('table').val()).exists() && root.child('refPass').child(newData.child('table').val()).child(auth.uid).child('pin').val() === root.child('secret/pins').child(newData.child('table').val()).val()) || (!newData.exists() && data.exists() && root.child('secret/pins').child(data.child('table').val()).exists() && root.child('refPass').child(data.child('table').val()).child(auth.uid).child('pin').val() === root.child('secret/pins').child(data.child('table').val()).val()))"
       }
+    },
+    "presence": {
+      ".read": true,
+      "$page": {
+        "$id": {
+          ".write": "$page.length < 20 && $id.length < 40 && (!newData.exists() || (newData.child('at').val() === now && newData.child('p').isString() && newData.child('p').val().length < 100))"
+        }
+      }
+    },
+    "stats": {
+      "$page": {
+        "days": {
+          "$day": {
+            "$vid": {
+              ".write": "$page.length < 20 && $day.length === 10 && $vid.length < 40 && !data.exists() && newData.val() === true"
+            }
+          }
+        },
+        "views": {
+          "$day": {
+            ".write": "$page.length < 20 && $day.length === 10 && newData.isNumber() && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
+          }
+        },
+        "total": {
+          ".write": "$page.length < 20 && newData.isNumber() && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
+        }
+      }
     }
   }
 }

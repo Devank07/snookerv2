@@ -586,5 +586,6 @@ db.ref('match_history').limitToLast(400).on('value', function(s){ HIST = s.val()
 setInterval(function(){ g('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }, 1000);
 render();
 </script>
+<script src="visit-stats.js?v=20261113a"></script>
 </body>
 </html>
