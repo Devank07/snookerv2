@@ -146,5 +146,6 @@ db.ref('matches').on('value', function(s){ M = s.val() || {}; render(); });
 db.ref('match_registry').on('value', function(s){ R = s.val() || {}; render(); });
 BK.watchResults(db, render);
 </script>
+<script src="auto-reload.js?v=20261113b"></script>
 </body>
 </html>

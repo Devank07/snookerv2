@@ -1,5 +1,5 @@
 // UPBSA.TV Service Worker
-const CACHE = 'upbsa-tv-v25';
+const CACHE = 'upbsa-tv-v26';
 
 // Files to cache for offline use
 const STATIC_FILES = [
@@ -34,6 +34,7 @@ const STATIC_FILES = [
   './next-match.js',
   './moments.js',
   './overlay-finish.js',
+  './auto-reload.js',
   './backup.js',
   './bracket.html',
   './draw-entry.html',

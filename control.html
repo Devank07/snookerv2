@@ -153,6 +153,7 @@ html{background-color:#050a06;}body{background-color:#050a06;}
   <span class="pill" id="p-alert"><b>0</b> alerts</span>
   <span class="sp"></span>
   <span class="clock" id="clock">--:--:--</span>
+  <button class="tbtn" id="reloadall" title="Reload every OBS overlay and venue board so they run the latest version">🔄 Refresh screens</button>
   <button class="tbtn" id="moset" title="Cards the OBS overlay shows by itself">🎬 Moments</button>
   <button class="tbtn" id="ytset" title="YouTube channel and live streams">▶ <span id="yt-n">YouTube</span></button>
   <button class="tbtn" id="tblset" title="How many tables the venue has">⚙ <span id="tblset-n">6</span> tables</button>
@@ -464,6 +465,11 @@ function summaryText(){
 }
 document.querySelectorAll('[data-scope]').forEach(function(b){ b.onclick = function(){ scope = b.dataset.scope; document.querySelectorAll('[data-scope]').forEach(function(x){ x.classList.toggle('on', x === b); }); drawSum(); }; });
 g('sum-copy').onclick = function(){ var t = summaryText(); try { navigator.clipboard.writeText(t).then(function(){ toast('Summary copied'); }, function(){ prompt('Summary', t); }); } catch(e){ prompt('Summary', t); } };
+
+g('reloadall').onclick = function(){
+  if(!confirm('Reload every OBS overlay and venue board now? Each one blinks for a second and comes back on the latest version.')) return;
+  db.ref('settings/reload').set(Date.now()).then(function(){ toast('Screens are reloading'); }, function(){ toast('Could not send — check you are signed in as staff'); });
+};
 
 /* ── stream moments (cards the OBS overlay shows by itself) ── */
 var MOM = {};
