@@ -805,7 +805,7 @@ function award(n){
   if(f1 >= need) winner = 1; else if(f2 >= need) winner = 2;
   else if(s.so.matchUp){ if(f1 !== f2) winner = f1>f2?1:2; else s.so.decider = true; }
   if(winner){
-    s.status = 'finished'; s.matchWinner = winner;
+    s.status = 'finished'; s.matchWinner = winner; s.finishedAt = Date.now();
     ev(s, 'win', pname(s,winner), 'WINS '+Math.max(f1,f2)+'–'+Math.min(f1,f2));
     db.ref('match_registry/'+s.matchId).update({ tableKey:'table-'+tbl, status:'finished', winner:winner, score:f1+'-'+f2, endTime:SO.now() });
   } else {

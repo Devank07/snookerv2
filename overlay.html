@@ -530,7 +530,10 @@ db.ref('matches/table-'+tbl).on('value',function(snap){
 function onMatch(s){
   if(s&&s.sport==='shootout'&&!soDesign()){ goBuiltInShootout(); return; }
   var ov=g('overlay');
-  if(!s){if(ov)ov.classList.remove('visible');return;}
+  if(!s){if(ov)ov.classList.remove('visible');hideWinner();return;}
+  /* match over: show the result for a short while, then clear the screen until the next match */
+  if(window.OVF && OVF.gone(s, function(){ if(matchState) onMatch(matchState); })){ if(ov) ov.classList.remove('visible'); hideWinner(); return; }
+  if(s.status!=='finished') hideWinner();
   if(ov) ov.classList.add('visible');
 
   var design=curDesign();
@@ -609,7 +612,8 @@ function onMatch(s){
   // Winner flash
   if(s.matchWinner&&s.status==='finished'){
     var wf=g('winner-flash');
-    if(wf&&!wf.classList.contains('show')){
+    if(wf&&celebWinner!==s.matchId){
+      celebWinner=s.matchId; clearTimeout(wfT); wfT=setTimeout(hideWinner,12000);
       g('wf-name').textContent=s['player'+s.matchWinner].name;
       g('wf-score').textContent=s.player1.name+' '+s.player1.frames+' – '+s.player2.frames+' '+s.player2.name;
       wf.classList.add('show');
@@ -628,7 +632,8 @@ function onMatch(s){
 }
 
 // Century + match-winner flashes, also for builder designs
-var celebWinner=null;
+var celebWinner=null, wfT=null;
+function hideWinner(){ var wf=g('winner-flash'); if(wf) wf.classList.remove('show'); }
 function celebrate(s){
   var brk=s.currentBreak||0;
   if(brk>=100&&prevBrk<100){
@@ -639,7 +644,7 @@ function celebrate(s){
   if(s.matchWinner&&s.status==='finished'){
     var wf=g('winner-flash');
     if(wf&&celebWinner!==s.matchId){
-      celebWinner=s.matchId;
+      celebWinner=s.matchId; clearTimeout(wfT); wfT=setTimeout(hideWinner,12000);
       g('wf-name').textContent=s['player'+s.matchWinner].name;
       g('wf-score').textContent=s.player1.name+' '+s.player1.frames+' – '+s.player2.frames+' '+s.player2.name;
       wf.classList.add('show');
@@ -936,6 +941,7 @@ function buildEl(el,m,lH){
 (function(){var t=new URLSearchParams(location.search).get('table')||'1';if(!t)return;
 function b(){try{firebase.database().ref('seen/table-'+t+'/obs').set(firebase.database.ServerValue.TIMESTAMP).catch(function(){});}catch(e){}}
 setTimeout(b,3000);setInterval(b,20000);})();</script>
+<script src="overlay-finish.js?v=20261113a"></script>
 <script src="bracket-core.js?v=20261113a"></script>
 <script>if((new URLSearchParams(location.search).get('part')||'')!=='break') document.write('<script src="moments.js?v=20261111d"><\/script>');</script>
 </body>

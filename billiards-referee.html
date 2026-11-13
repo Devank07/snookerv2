@@ -792,7 +792,7 @@ function doAddPts(pts){
       s[pl].frames=(s[pl].frames||0)+1;
       var needed=Math.ceil(s.bestOf/2);
       if(s[pl].frames>=needed){
-        s.matchWinner=s.turn; s.status='finished';
+        s.matchWinner=s.turn; s.status='finished'; s.finishedAt=Date.now();
       } else {
         // Reset for next frame
         s.currentFrame=(s.currentFrame||1)+1;
@@ -802,7 +802,7 @@ function doAddPts(pts){
         s.frameStartTime=Date.now();
       }
     } else {
-      s.matchWinner=s.turn; s.status='finished';
+      s.matchWinner=s.turn; s.status='finished'; s.finishedAt=Date.now();
     }
   }
   safeSet(matchRef, s);
@@ -863,7 +863,7 @@ function doFrameWon(p){
     s['player'+p].frames=(s['player'+p].frames||0)+1;
     var needed=Math.ceil(s.bestOf/2);
     if(s['player'+p].frames>=needed){
-      s.matchWinner=p; s.status='finished';
+      s.matchWinner=p; s.status='finished'; s.finishedAt=Date.now();
     } else {
       s.currentFrame=(s.currentFrame||1)+1;
       s.player1.score=0; s.player2.score=0;
@@ -872,7 +872,7 @@ function doFrameWon(p){
       s.frameStartTime=Date.now();
     }
   } else {
-    s.matchWinner=p; s.status='finished';
+    s.matchWinner=p; s.status='finished'; s.finishedAt=Date.now();
   }
   safeSet(matchRef, s);
   if(navigator.vibrate) navigator.vibrate([100,50,100,50,100]);

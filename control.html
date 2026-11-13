@@ -476,9 +476,13 @@ g('moset').onclick = function(){
     row('intro', 'Match intro', 'Players, round and best-of when a match starts (8 s)') +
     row('frame', 'Frame result', 'Who won the frame, points, match score, best breaks (7 s)') +
     row('after', 'After the match', 'Who the winner plays next in the bracket, or champion (11 s)') +
+    '<div class="tp-h" style="margin-top:12px">Clear the screen after a match</div><div class="tp-note">The final score stays on the overlay this long, then the screen is clear until the next match starts on that table.</div>' +
+    '<select id="mo-hide" style="width:100%;height:36px;border-radius:9px;border:1px solid rgba(255,255,255,.15);background:#06100a;color:#fff;padding:0 8px;font:600 13px Inter,sans-serif">' +
+    [[10,'10 seconds'],[25,'25 seconds (default)'],[45,'45 seconds'],[60,'1 minute'],[120,'2 minutes'],[0,'Keep it until the table is cleared']].map(function(x){ var cur = MOM.hideAfter == null ? 25 : +MOM.hideAfter; return '<option value="' + x[0] + '"' + (cur === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
     '<div class="tp-acts"><button id="mo-close">Close</button></div>';
   document.body.appendChild(p);
   p.querySelectorAll('[data-k]').forEach(function(c){ c.onchange = function(){ db.ref('settings/moments/' + c.dataset.k).set(c.checked).then(function(){ toast((c.checked ? 'On: ' : 'Off: ') + c.parentNode.querySelector('b').textContent); }); }; });
+  g('mo-hide').onchange = function(){ var v = +this.value; db.ref('settings/moments/hideAfter').set(v).then(function(){ toast(v ? 'Overlay clears ' + (v >= 60 ? v / 60 + ' min' : v + ' s') + ' after a match' : 'Overlay keeps the result until the table is cleared'); }); };
   g('mo-close').onclick = function(){ p.remove(); };
 };
 

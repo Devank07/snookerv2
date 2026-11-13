@@ -193,6 +193,7 @@ function render(){
   var s = S;
   g('bug').classList.toggle('show', !!(s && s.status==='active'));
   if(!s){ g('fmt').classList.remove('show'); g('win').classList.remove('show'); return; }
+  if(window.OVF && OVF.gone(s, render)){ g('fmt').classList.remove('show'); g('win').classList.remove('show'); g('bug').classList.remove('show'); return; }   // match over a while ago: clear the screen
   var c = SO.cfgOf(s), so = s.so || {};
   [1,2].forEach(function(n){
     var p = s['player'+n];
@@ -314,6 +315,7 @@ requestAnimationFrame(frame);
 (function(){var t=new URLSearchParams(location.search).get('table')||'1';if(!t)return;
 function b(){try{firebase.database().ref('seen/table-'+t+'/obs').set(firebase.database.ServerValue.TIMESTAMP).catch(function(){});}catch(e){}}
 setTimeout(b,3000);setInterval(b,20000);})();</script>
+<script src="overlay-finish.js?v=20261113a"></script>
 <script src="bracket-core.js?v=20261113a"></script>
 <script src="moments.js?v=20261111d"></script>
 </body>

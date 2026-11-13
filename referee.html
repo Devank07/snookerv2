@@ -1170,7 +1170,7 @@ function doFrameWon(playerNum) {
   s.frameStartTime   = Date.now();
   s.shotClockStarted = Date.now();
   var needed = Math.ceil(s.bestOf / 2);
-  if (s[pl].frames >= needed) { s.matchWinner = playerNum; s.status = 'finished'; }
+  if (s[pl].frames >= needed) { s.matchWinner = playerNum; s.status = 'finished'; s.finishedAt = Date.now(); }
   vibe([100, 50, 100, 50, 100]);
   safeSet(matchRef, s);
 }
