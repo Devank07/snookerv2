@@ -1,5 +1,5 @@
 // UPBSA.TV Service Worker
-const CACHE = 'upbsa-tv-v27';
+const CACHE = 'upbsa-tv-v28';
 
 // Files to cache for offline use
 const STATIC_FILES = [

@@ -208,6 +208,34 @@ table.st tr.hl td{background:rgba(95,184,255,.12);}
 .pc .ds b{color:var(--text);font-weight:600;}
 .pc.out{opacity:.6;}
 .pc .tag{white-space:nowrap;margin-left:auto;align-self:flex-start;padding:2px 7px;border-radius:5px;font:800 10px 'Inter',sans-serif;letter-spacing:.5px;text-transform:uppercase;border:1px solid rgba(240,192,64,.45);color:var(--gold);}
+/* stats */
+.stg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:16px;}
+.stt{padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--line);}
+.stt b{display:block;font:400 34px/1 'Bebas Neue',sans-serif;letter-spacing:1px;}.stt b i{font-style:normal;font-size:20px;color:var(--faint);}
+.stt span{display:block;margin-top:4px;font:800 12px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--dim);}
+.stt small{display:block;margin-top:3px;font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stt.gold{border-color:rgba(240,192,64,.4);background:linear-gradient(180deg,rgba(240,192,64,.12),var(--card));}.stt.gold b{color:var(--gold);}
+.brr{display:grid;grid-template-columns:30px 56px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid rgba(255,255,255,.05);}
+.brr:first-child{border-top:0;}.brr.live{background:rgba(46,204,113,.07);}
+.brr .rk{font:700 12px Inter,sans-serif;color:var(--faint);text-align:center;}
+.brr .bv{font:400 28px/1 'Bebas Neue',sans-serif;color:var(--gold);text-align:center;}
+.brr .bn{font:800 16px 'Barlow Condensed',sans-serif;text-transform:uppercase;min-width:0;}
+.brr .bn small{display:block;font:500 11.5px Inter,sans-serif;text-transform:none;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dst{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);}
+.dr{display:grid;grid-template-columns:70px minmax(0,1fr) 92px;align-items:center;gap:10px;font:700 13px Inter,sans-serif;}
+.dr .dn{font:800 14px 'Barlow Condensed',sans-serif;letter-spacing:1px;}
+.dr .db{position:relative;height:10px;border-radius:5px;background:rgba(255,255,255,.05);}
+.dr .db i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:rgba(255,255,255,.12);}.dr .db i.in{background:var(--green);opacity:.75;}
+.dr .dc{text-align:right;}.dr .dc small{color:var(--faint);font-weight:500;}
+.pst-w{overflow-x:auto;border-radius:14px;border:1px solid var(--line);}
+table.pst{width:100%;border-collapse:collapse;background:var(--card);font-size:14px;min-width:640px;}
+table.pst th{padding:10px 8px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--faint);text-align:center;cursor:pointer;white-space:nowrap;background:rgba(0,0,0,.25);}
+table.pst th.on{color:var(--gold);}table.pst th:nth-child(2){text-align:left;}
+table.pst td{padding:9px 8px;border-top:1px solid rgba(255,255,255,.05);text-align:center;font-variant-numeric:tabular-nums;}
+table.pst td:first-child{color:var(--faint);font-size:12px;width:34px;}
+table.pst td.nm{text-align:left;font:800 15.5px 'Barlow Condensed',sans-serif;text-transform:uppercase;}table.pst td.nm small{font:600 10.5px Inter,sans-serif;color:var(--faint);margin-left:6px;text-transform:none;}
+table.pst td.w{font:400 20px 'Bebas Neue',sans-serif;color:var(--gold);}table.pst td.hb{font-weight:800;}
+table.pst tr.out td{opacity:.55;}table.pst tbody tr{cursor:pointer;}table.pst tbody tr:hover td{background:rgba(255,255,255,.025);}
 @media (max-width:980px){.watch{grid-template-columns:1fr;}.ov-grid{grid-template-columns:1fr;}}
 @media (max-width:760px){
   .mi{grid-template-columns:60px minmax(0,1fr) 52px minmax(0,1fr);gap:8px;padding:10px 12px;font-size:15px;}
@@ -347,7 +375,8 @@ function stageHtml(s, md){
     '<div class="gc"><div class="gc-h"><b>Matches</b><span>' + s.matches.length + '</span></div><div class="gm">' + s.matches.map(mrow).join('') + '</div></div></div>';
 }
 /* the event page: Overview · Bracket · Matches · Players (one category at a time) */
-var VIEWS = [['overview','Overview'],['bracket','Bracket'],['matches','Matches'],['players','Players']];
+var VIEWS = [['overview','Overview'],['bracket','Bracket'],['matches','Matches'],['players','Players'],['stats','Stats']];
+var BRK = {}, statSort = 'won';
 var secSel = {}, mfilt = 'all', jumpTo = '';
 function pname(p){ return BK.isBye(p) ? 'BYE' : BK.isTbd(p) ? (p && p.placeholder ? p.placeholder : p && p.from ? p.from : 'TBD') : p.name; }
 function realP(p){ return p && !BK.isTbd(p) && !BK.isBye(p); }
@@ -410,6 +439,7 @@ function pageEvent(r){
   if(md.champion) h += '<div class="champ"><span class="tr">🏆</span><div><span>' + esc(c.name) + ' champion</span><b>' + esc(md.champion.name) + '</b></div></div>';
   if(r.view === 'matches') return h + viewMatches(r, c, md);
   if(r.view === 'players') return h + viewPlayers(r, c, md);
+  if(r.view === 'stats') return h + viewStats(r, c, md, t);
   if(r.view === 'bracket') return h + viewBracket(r, c, md);
   return h + viewOverview(r, c, md, t);
 }
@@ -473,6 +503,66 @@ function viewPlayers(r, c, md){
     return '<div class="pc ' + (p.champion ? 'ch in' : p.out ? 'out' : 'in') + '" data-follow="' + esc(p.name) + '"><div class="av">' + esc(ini) + '</div><div style="min-width:0"><div class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</div><div class="ds">' + ds + '</div></div>' +
       (p.seeded ? '<span class="tag" title="Joins the draw in ' + esc(p.entry) + '">Seed · ' + esc(BK.shortRound(p.entry)) + '</span>' : '') + '</div>';
   }).join('') + '</div>';
+}
+/* ── tournament statistics (from results, breaks the remotes log, and match times) ── */
+function tiersFor(t){ var r = +(t.reds || 15); return r <= 6 ? [30, 50] : r <= 10 ? [40, 70] : [50, 100]; }
+function statsData(c, md, t){
+  var ms = vmatches(md), ids = {}, byId = {};
+  ms.forEach(function(v){ if(v.matchId){ ids[v.matchId] = 1; byId[v.matchId] = v; } });
+  /* breaks of this category: logged when a break ends, plus a break still going on a table */
+  var br = [];
+  Object.keys(BRK).forEach(function(tk){ var b = BRK[tk] || {}; Object.keys(b).forEach(function(k){ var x = b[k]; if(x && x.v && ids[x.matchId]) br.push({ v:+x.v, name:x.name, mid:x.matchId, frame:x.frame, at:x.at }); }); });
+  Object.keys(M).forEach(function(k){ var m = M[k]; if(m && m.player1 && m.status !== 'finished' && ids[m.matchId] && (m.currentBreak || 0) >= 10){ var p = (m.breakPlayer || m.turn) === 2 ? m.player2 : m.player1; br.push({ v:m.currentBreak, name:p.name, mid:m.matchId, frame:m.currentFrame, live:true }); } });
+  br.sort(function(a, b){ return b.v - a.v || (a.at || 0) - (b.at || 0); });
+  var done = ms.filter(function(v){ return v.status === 'done'; }), played = done.filter(function(v){ return !v.wo; });
+  var frames = 0, deciders = [], whites = 0, durs = [];
+  played.forEach(function(v){ var f = (+v.f1 || 0) + (+v.f2 || 0); frames += f; if(v.bo && f === v.bo) deciders.push(v); if(v.bo && Math.min(+v.f1 || 0, +v.f2 || 0) === 0 && f > 1) whites++;
+    var rg = R[v.matchId]; if(rg && rg.startTime && rg.endTime && rg.endTime > rg.startTime && rg.endTime - rg.startTime < 6 * 3600e3) durs.push(rg.endTime - rg.startTime); });
+  /* players */
+  var P = {}, key = function(p){ return p.name.toLowerCase(); };
+  players(md).forEach(function(p){ P[key(p)] = { name:p.name, state:p.state, pl:0, w:0, l:0, fw:0, fl:0, hb:0, t1:0, t2:0, out:p.out, champ:p.champion, seeded:p.seeded }; });
+  done.forEach(function(v){ [[v.p1, v.f1, v.f2, 1], [v.p2, v.f2, v.f1, 2]].forEach(function(x){ if(!realP(x[0])) return; var r = P[key(x[0])]; if(!r) return;
+    if(v.wo){ if(v.w === x[3]) r.w++; else r.l++; return; }
+    r.pl++; r.fw += +x[1] || 0; r.fl += +x[2] || 0; if(v.w === x[3]) r.w++; else r.l++; }); });
+  var T2 = tiersFor(t);
+  br.forEach(function(b){ var r = P[String(b.name || '').toLowerCase()]; if(!r) return; if(b.v > r.hb) r.hb = b.v; if(b.v >= T2[0]) r.t1++; if(b.v >= T2[1]) r.t2++; });
+  return { ms:ms, done:done, played:played, frames:frames, deciders:deciders, whites:whites, durs:durs, br:br, P:Object.keys(P).map(function(k){ return P[k]; }), byId:byId, tiers:T2 };
+}
+function viewStats(r, c, md, t){
+  var S = statsData(c, md, t), T2 = S.tiers, top = S.br[0];
+  var avg = S.durs.length ? S.durs.reduce(function(a, b){ return a + b; }, 0) / S.durs.length : 0;
+  var mins = function(ms){ var m = Math.round(ms / 60000); return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + ' min'; };
+  var tile = function(n, l, sub, cls){ return '<div class="stt' + (cls ? ' ' + cls : '') + '"><b>' + n + '</b><span>' + l + '</span>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>'; };
+  var h = '<div class="stg">' +
+    tile(S.done.length + '<i>/' + S.ms.filter(function(v){ return !(BK.isBye(v.p1) || BK.isBye(v.p2)); }).length + '</i>', 'Matches played', S.ms.filter(function(v){ return v.status === 'live'; }).length ? S.ms.filter(function(v){ return v.status === 'live'; }).length + ' live now' : '') +
+    tile(S.frames, 'Frames played', S.played.length ? (S.frames / S.played.length).toFixed(1) + ' per match' : '') +
+    tile(top ? top.v : '–', 'Highest break', top ? esc(top.name) + (top.live ? ' · at the table now' : '') : 'no breaks of 10+ yet', 'gold') +
+    tile(S.br.filter(function(b){ return b.v >= T2[0]; }).length, T2[0] + '+ breaks', S.br.filter(function(b){ return b.v >= T2[1]; }).length + ' of ' + T2[1] + '+') +
+    tile(S.deciders.length, 'Deciding frames', 'matches that went the distance') +
+    tile(S.whites, 'Whitewashes', 'won without dropping a frame') +
+    (avg ? tile(mins(avg), 'Average match', 'from start to finish') : '') +
+    tile(S.done.filter(function(v){ return v.wo; }).length, 'Walkovers', '') + '</div>';
+  /* top breaks */
+  h += '<div class="ov-grid"><div><div class="sec">Highest breaks</div>' + (S.br.length ? '<div class="ml">' + S.br.slice(0, 12).map(function(b, i){
+    var v = S.byId[b.mid], opp = v ? (String(pname(v.p1)).toLowerCase() === String(b.name).toLowerCase() ? pname(v.p2) : pname(v.p1)) : '';
+    return '<div class="brr' + (b.live ? ' live' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="bv">' + esc(b.v) + '</span><span class="bn">' + esc(b.name) + '<small>' + esc([v ? v.roundName : '', opp ? 'v ' + opp : '', b.frame ? 'frame ' + b.frame : ''].filter(Boolean).join(' · ')) + '</small></span>' + (b.live ? '<span class="soon" style="color:#59e08a">● at the table</span>' : '') + '</div>'; }).join('') + '</div>' : '<div class="empty">Breaks of 10 or more appear here as they are made.</div>');
+  /* matches that went the distance */
+  var dec = S.deciders.slice().sort(function(a, b){ return String(b.datetime || '').localeCompare(String(a.datetime || '')); }).slice(0, 8);
+  h += '</div><div><div class="sec">Went the distance</div>' + (dec.length ? '<div class="ml compact">' + dec.map(matchRow).join('') + '</div>' : '<div class="empty">No deciding frames yet.</div>');
+  /* districts */
+  var D = {}; S.P.forEach(function(p){ var k = p.state || '—'; D[k] = D[k] || { n:0, in:0 }; D[k].n++; if(!p.out) D[k].in++; });
+  var dk = Object.keys(D).sort(function(a, b){ return D[b].in - D[a].in || D[b].n - D[a].n; }), dmax = Math.max.apply(null, dk.map(function(k){ return D[k].n; }).concat([1]));
+  h += '<div class="sec">Districts</div><div class="dst">' + dk.map(function(k){ return '<div class="dr"><span class="dn">' + esc(k) + '</span><span class="db"><i style="width:' + Math.round(D[k].n / dmax * 100) + '%"></i><i class="in" style="width:' + Math.round(D[k].in / dmax * 100) + '%"></i></span><span class="dc">' + D[k].in + ' <small>of ' + D[k].n + ' still in</small></span></div>'; }).join('') + '</div></div></div>';
+  /* players table */
+  var cols = [['name','Player'], ['pl','Played'], ['won','Won'], ['fr','Frames'], ['fd','+/−'], ['hb','High break'], ['t1', T2[0] + '+'], ['st','Status']];
+  var list = S.P.filter(function(p){ return !find || (p.name + ' ' + p.state).toLowerCase().indexOf(find) >= 0; });
+  var sv = { name:function(p){ return p.name.toLowerCase(); }, pl:function(p){ return -p.pl; }, won:function(p){ return -(p.w * 1000 + (p.fw - p.fl)); }, fr:function(p){ return -p.fw; }, fd:function(p){ return -(p.fw - p.fl); }, hb:function(p){ return -p.hb; }, t1:function(p){ return -p.t1; }, st:function(p){ return (p.champ ? 0 : p.out ? 2 : 1); } }[statSort] || function(p){ return -p.w; };
+  list.sort(function(a, b){ var x = sv(a), y = sv(b); return x < y ? -1 : x > y ? 1 : (b.w - a.w) || a.name.localeCompare(b.name); });
+  h += '<div class="sec">Players <b>' + S.P.length + '</b></div><div class="tools"><input class="find" id="find" placeholder="Find a player or district…" value="' + esc(find) + '"><div class="legend">Tap a column to sort</div></div>' +
+    '<div class="pst-w"><table class="pst"><thead><tr><th>#</th>' + cols.map(function(x){ return '<th data-sort="' + x[0] + '" class="' + (statSort === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    list.map(function(p, i){ var fd = p.fw - p.fl;
+      return '<tr class="' + (p.out ? 'out' : '') + '" data-follow="' + esc(p.name) + '"><td>' + (i + 1) + '</td><td class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</td><td>' + p.pl + '</td><td class="w">' + p.w + '</td><td>' + p.fw + '–' + p.fl + '</td><td>' + (fd > 0 ? '+' : '') + fd + '</td><td class="hb">' + (p.hb || '–') + '</td><td>' + (p.t1 || '–') + '</td><td>' + (p.champ ? '🏆 Champion' : p.out ? 'Out' : '<span style="color:#59e08a">Still in</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  return h;
 }
 function viewBracket(r, c, md){
   var stages = md.stages, sel = stageSel[c.key] != null ? stageSel[c.key] : (function(){
@@ -538,6 +628,7 @@ function topButton(){
 document.addEventListener('click', function(e){
   var sc = e.target.closest('[data-sec]'); if(sc){ var r = route(); secSel[r.ck + ':' + (stageSel[r.ck] || 0)] = sc.dataset.sec; var w0 = document.querySelector('.bt-wrap'); if(w0){ w0.scrollTop = 0; w0.scrollLeft = 0; } jumpTo = find ? 'sec' : ''; draw(); var w1 = document.querySelector('.bt-wrap'); if(w1 && !find){ w1.scrollTop = 0; w1.scrollLeft = 0; } return; }
   var mf = e.target.closest('[data-mf]'); if(mf){ mfilt = mf.dataset.mf; draw(); return; }
+  var so = e.target.closest('[data-sort]'); if(so){ statSort = so.dataset.sort; draw(); return; }
   var fo = e.target.closest('[data-follow]'); if(fo){ find = fo.dataset.follow.toLowerCase(); var r2 = route(); jumpTo = 'follow'; location.hash = '#e/' + r2.tid + '/' + r2.ck + '/bracket'; draw(); return; }
   var bp = e.target.closest('.bt-p[data-p]'); if(bp && bp.dataset.p && !e.target.closest('a')){ find = find === bp.dataset.p ? '' : bp.dataset.p; draw(); return; }
 });
@@ -582,6 +673,7 @@ BK.watchResults(db, render);
 db.ref('settings/youtube').on('value', function(s){ YC = s.val() || {}; watchKey = ''; render(); });
 db.ref('live/youtube').on('value', function(s){ YA = s.val() || {}; render(); });
 db.ref('live/streams').on('value', function(s){ YM = s.val() || {}; render(); });
+db.ref('breaks').on('value', function(s){ BRK = s.val() || {}; if(route().view === 'stats' || route().view === 'overview') render(); });
 db.ref('match_history').limitToLast(400).on('value', function(s){ HIST = s.val() || {}; if(route().page === 'results') render(); });
 setInterval(function(){ g('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }, 1000);
 render();
