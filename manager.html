@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <script src="tables.js?v=20261028c"></script>
-<script src="bracket-core.js?v=20261113a"></script>
+<script src="bracket-core.js?v=20261118a"></script>
 <style>
 :root{--bg:#050a06;--card:#0c1912;--card2:#10221a;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#e8f4e0;--dim:rgba(232,244,224,.58);--faint:rgba(232,244,224,.34);--gold:#f0c040;--green:#2ecc71;--red:#ff7b6b;--blue:#5fb8ff;--amber:#ffc770;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -312,6 +312,7 @@ function viewMatches(c){
   var h = '<div class="tools"><input class="find" id="q" placeholder="Find a player, district or match ID…" value="' + esc(S.q) + '">' +
     F.map(function(x){ return '<button class="chip' + (S.status === x[0] ? ' on' : '') + '" data-st="' + x[0] + '">' + x[1] + ' <small>' + x[2] + '</small></button>'; }).join('') +
     '<button class="chip warn' + (S.attention ? ' on' : '') + '" data-att="1" title="Missing time or table, or a player still to be named">⚠ To check <small>' + att + '</small></button>' +
+    (function(){ var ko = mainKO(c.md), qf = ko && ko.rounds.some(function(r){ return r.left === 3 && r.matches.length === 4; }), ps = placeStage(c.md); return qf && !ps ? '<button class="chip" data-place="5" title="Quarter-final losers play for 5th–8th">＋ Matches for 5th–8th</button>' : ''; })() +
     '<select id="f-round"><option value="">All rounds</option>' + rounds.map(function(r){ return '<option' + (S.round === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
     '<select id="f-day"><option value="">All days</option>' + days.map(function(d){ return '<option value="' + d + '"' + (S.day === d ? ' selected' : '') + '>' + esc(dayName(d)) + '</option>'; }).join('') + '</select>' +
     '<select id="f-table"><option value="">All tables</option>' + tables.map(function(x){ return '<option value="' + x + '"' + (S.table === x ? ' selected' : '') + '>Table ' + x + '</option>'; }).join('') + '</select></div>';
@@ -562,9 +563,60 @@ function viewSettings(c){
   if(c.cks.length){
     h += '<div class="sec">Categories</div><div class="form">' + c.cks.map(function(k){ return fld('Category name', 'cat-' + k, t.draw[k].catName || k); }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn" id="c-save">Save names</button></div>';
   }
+  h += placingHtml(c);
   h += '<div class="sec">Draws</div><div class="danger" style="border-color:var(--line);background:none"><p>Add another category, replace a draw with a new file, or type a draw by hand.</p><a class="btn" href="draw-entry.html">⬆ Import / enter a draw</a><a class="btn" href="tournament.html">Generate from the player list (Classic)</a></div>';
   h += '<div class="sec">Danger zone</div><div class="danger"><p>Delete this event, its draw and its schedule. Results already saved are lost. A backup copy is saved first.</p><button class="btn red" id="s-del">🗑 Delete event</button></div>';
   return h;
+}
+/* ── placing matches: the losers of the quarter finals play for 5th–8th, semi-final losers for 3rd ── */
+function mainKO(md){ return md ? md.stages.filter(function(st){ return st.kind === 'ko' && !st.place; }).pop() : null; }
+function placeStage(md){ return md ? md.stages.filter(function(st){ return st.place; })[0] : null; }
+function placingHtml(c){
+  var ko = mainKO(c.md); if(!ko) return '';
+  var qf = ko.rounds.filter(function(r){ return r.left === 3 && r.matches.length === 4; })[0], sf = ko.rounds.filter(function(r){ return r.left === 2 && r.matches.length === 2; })[0];
+  var ps = placeStage(c.md), have = {}; if(ps) ps.rounds.forEach(function(r){ r.matches.forEach(function(v){ (v.places || []).forEach(function(n){ have[n] = 1; }); }); });
+  var h = '<div class="sec">Placing matches</div><div class="danger" style="border-color:var(--line);background:none;flex-direction:column;align-items:stretch">';
+  h += '<p>Players knocked out still play for their final position. They show on the public page under <b>' + (ps ? esc(ps.title) : 'Placings') + '</b>, on the remotes, and in this list.</p><div style="display:flex;gap:8px;flex-wrap:wrap">';
+  if(qf) h += have[5] ? '<span class="pill done">5th–8th added</span><button class="btn sm red" data-unplace="5">Remove 5th–8th</button>' : '<button class="btn gold" data-place="5">+ Add matches for 5th–8th</button>';
+  if(sf) h += have[3] ? '<span class="pill done">3rd place added</span><button class="btn sm red" data-unplace="3">Remove 3rd place</button>' : '<button class="btn" data-place="3">+ Add 3rd place match</button>';
+  if(!qf && !sf) h += '<span class="note">This draw has no quarter finals or semi finals to place from.</span>';
+  return h + '</div>' + (qf && !have[5] ? '<p class="note" style="margin-top:8px">5th–8th: the 4 quarter-final losers play two semis (loser QF1 v loser QF2, loser QF3 v loser QF4); the winners play for 5th, the losers for 7th.</p>' : '') + '</div>';
+}
+function addPlacings(from){
+  var c = cur(), ko = mainKO(c.md), t = T[S.tid];
+  var qf = ko.rounds.filter(function(r){ return r.left === 3 && r.matches.length === 4; })[0], sf = ko.rounds.filter(function(r){ return r.left === 2 && r.matches.length === 2; })[0];
+  var list = [];
+  if(from === 5 && qf){
+    var q = qf.matches, bo = q[0].bo || 5, pre = 'pl5_';
+    list.push({ id:pre + 'r1_m0', round:1, col:'5th–8th semi-finals', roundName:'5th–8th Semi-final', label:'5–8 SF 1', bo:bo, src1:q[0].key, take1:'loser', src2:q[1].key, take2:'loser' });
+    list.push({ id:pre + 'r1_m1', round:1, col:'5th–8th semi-finals', roundName:'5th–8th Semi-final', label:'5–8 SF 2', bo:bo, src1:q[2].key, take1:'loser', src2:q[3].key, take2:'loser' });
+    list.push({ id:pre + 'r2_m0', round:2, col:'Placing finals', roundName:'5th Place Match', label:'5th place', bo:bo, src1:pre + 'r1_m0', take1:'winner', src2:pre + 'r1_m1', take2:'winner', places:[5, 6] });
+    list.push({ id:pre + 'r2_m1', round:2, col:'Placing finals', roundName:'7th Place Match', label:'7th place', bo:bo, src1:pre + 'r1_m0', take1:'loser', src2:pre + 'r1_m1', take2:'loser', places:[7, 8] });
+  }
+  if(from === 3 && sf){
+    var sm = sf.matches;
+    list.push({ id:'pl3_r3_m0', round:3, col:'3rd place', roundName:'3rd Place Match', label:'3rd place', bo:sm[0].bo || 7, src1:sm[0].key, take1:'loser', src2:sm[1].key, take2:'loser', places:[3, 4] });
+  }
+  if(!list.length) return;
+  db.ref('meta/matchCounter').transaction(function(n){ return (n || 0) + list.length; }, function(err, ok, snap){
+    if(err || !ok){ toast('Could not get match numbers', null, 1); return; }
+    var end = snap.val(), start = end - list.length + 1, up = {};
+    list.forEach(function(m, i){
+      m.matchId = 'UPBSA-' + String(start + i).padStart(4, '0'); m.stage = 'place'; m.status = 'pending'; m.table = 0;
+      m.p1 = { name:'TBD', tbd:true }; m.p2 = { name:'TBD', tbd:true };
+      up['tournaments/' + S.tid + '/draw/' + S.ck + '/matches/' + m.id] = m;
+      up['match_registry/' + m.matchId] = { matchId:m.matchId, tournament:t.name || '', bestOf:m.bo, tableNumber:0, status:'pending', p1:'TBD', p2:'TBD', stage:'place', roundName:m.roundName, createdAt:Date.now() };
+    });
+    save(up, before(Object.keys(up)), from === 5 ? 'Matches for 5th–8th added' : '3rd place match added').then(function(){ S.tab = 'matches'; draw(); });
+  });
+}
+function removePlacings(from){
+  var c = cur(), up = {}, ms = T[S.tid].draw[S.ck].matches || {}, played = false;
+  Object.keys(ms).forEach(function(k){ var m = ms[k]; if(!m || m.stage !== 'place' || k.indexOf('pl' + from + '_') !== 0) return;
+    if(m.result) played = true; up['tournaments/' + S.tid + '/draw/' + S.ck + '/matches/' + k] = null; if(m.matchId){ up['match_registry/' + m.matchId] = null; up['results/' + m.matchId] = null; } });
+  if(!Object.keys(up).length) return;
+  if(!confirm((played ? 'Some of these matches already have results. ' : '') + 'Remove the placing matches for ' + (from === 5 ? '5th–8th' : '3rd place') + '?')) return;
+  save(up, before(Object.keys(up)), 'Placing matches removed');
 }
 function fld(l, id, v, type){ return '<div><label>' + esc(l) + '</label><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(v || '') + '"></div>'; }
 
@@ -598,6 +650,7 @@ function wire(c){
   document.querySelectorAll('[data-sel]').forEach(function(cb){ cb.onchange = function(){ S.sel[cb.dataset.sel] = cb.checked; draw(); }; });
   var sa = g('selall'); if(sa) sa.onchange = function(){ var list = filtered(cur()); S.sel = {}; if(sa.checked) list.forEach(function(v){ S.sel[v.key] = true; }); draw(); };
   document.querySelectorAll('[data-bulk]').forEach(function(b){ b.onclick = function(){ bulk(b.dataset.bulk, b); }; });
+  document.querySelectorAll('.tools [data-place]').forEach(function(b){ b.onclick = function(){ if(confirm('Add 4 placing matches for 5th–8th, played by the quarter-final losers?')) addPlacings(5); }; });
   document.querySelectorAll('[data-ed]').forEach(function(b){ b.onclick = function(){
     var v = byKey(b.dataset.k); if(!v) return;
     var e = b.dataset.ed; if(e === 'time') edTime(v, b); else if(e === 'table') edTable(v, b); else if(e === 'bo') edBo(v, b); else if(e === 'player') edPlayer(v, +b.dataset.side, b); else if(e === 'result') edResult(v, b);
@@ -612,6 +665,8 @@ function wire(c){
     save(up, before(Object.keys(up)), 'Event saved');
   };
   var cs = g('c-save'); if(cs) cs.onclick = function(){ var up = {}; c.cks.forEach(function(k){ var v = g('cat-' + k).value.trim(); if(v && v !== c.t.draw[k].catName) up['tournaments/' + S.tid + '/draw/' + k + '/catName'] = v; }); if(!Object.keys(up).length){ toast('Nothing changed'); return; } save(up, before(Object.keys(up)), 'Category names saved'); };
+  document.querySelectorAll('.danger [data-place]').forEach(function(b){ b.onclick = function(){ addPlacings(+b.dataset.place); }; });
+  document.querySelectorAll('[data-unplace]').forEach(function(b){ b.onclick = function(){ removePlacings(+b.dataset.unplace); }; });
   var sd = g('s-del'); if(sd) sd.onclick = function(){
     if(!confirm('Delete “' + c.t.name + '” with its draw and schedule?')) return;
     var typed = prompt('Type DELETE to confirm:', ''); if(!typed || typed.trim().toUpperCase() !== 'DELETE') return;

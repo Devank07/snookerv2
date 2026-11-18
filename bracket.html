@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261113a"></script>
+<script src="bracket-core.js?v=20261118a"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#050a06;--card:#0d1b12;--card2:#102218;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.12);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--faint:rgba(232,244,224,.32);--gold:#f0c040;--green:#2ecc71;--blue:#5fb8ff;
@@ -425,7 +425,11 @@ function players(md){
   return order.map(function(k){ var p = map[k], last = null, next = null, lost = null;
     p.ms.forEach(function(x){ var v = x.v; if(v.status === 'done' || v.status === 'bye'){ last = x; if(v.w && v.w !== x.side) lost = x; } else if(!next) next = x; });
     p.champion = md.champion && md.champion.name.toLowerCase() === k;
-    p.out = !!lost && !p.champion; p.lost = lost; p.next = next; p.live = next && next.v.status === 'live'; return p; });
+    /* finishing position from a placing match (5th/6th, 7th/8th…) or the final */
+    p.place = 0; p.ms.forEach(function(x){ var v = x.v; if(v.status !== 'done' && v.status !== 'bye') return;
+      if(v.places && v.w) p.place = v.w === x.side ? v.places[0] : v.places[1];
+      else if(v.roundName === 'Final' && v.w && v.w !== x.side && !v.places) p.place = 2; });
+    p.out = !!lost && !next && !p.champion; p.lost = lost; p.next = next; p.live = next && next.v.status === 'live'; return p; });
 }
 function pageEvent(r){
   var t = T[r.tid]; if(!t) return '<a class="back" href="#events">← All events</a><div class="empty">This event isn\'t available.</div>';
@@ -494,7 +498,9 @@ function viewPlayers(r, c, md){
   return h + '<div class="pl-grid">' + list.map(function(p){
     var ini = p.name.split(/\s+/).map(function(x){ return x[0]; }).slice(0, 2).join('');
     var ds;
+    var ord = function(n){ return n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'); };
     if(p.champion) ds = '🏆 <b>Champion</b>';
+    else if(p.place && !p.next) ds = (p.place === 2 ? '🥈 <b>Runner-up</b>' : 'Finished <b>' + ord(p.place) + '</b>');
     else if(p.out){ var v = p.lost.v, opp = p.lost.side === 1 ? v.p2 : v.p1, me = p.lost.side === 1 ? v.f1 : v.f2, them = p.lost.side === 1 ? v.f2 : v.f1;
       ds = 'Out in <b>' + esc(v.roundName) + '</b>' + (v.wo ? ' (walkover)' : ' · lost ' + esc(me) + '–' + esc(them)) + ' to ' + esc(pname(opp)); }
     else if(p.next){ var n = p.next.v, op = p.next.side === 1 ? n.p2 : n.p1, d = dt(n);
@@ -520,7 +526,7 @@ function statsData(c, md, t){
     var rg = R[v.matchId]; if(rg && rg.startTime && rg.endTime && rg.endTime > rg.startTime && rg.endTime - rg.startTime < 6 * 3600e3) durs.push(rg.endTime - rg.startTime); });
   /* players */
   var P = {}, key = function(p){ return p.name.toLowerCase(); };
-  players(md).forEach(function(p){ P[key(p)] = { name:p.name, state:p.state, pl:0, w:0, l:0, fw:0, fl:0, hb:0, t1:0, t2:0, out:p.out, champ:p.champion, seeded:p.seeded }; });
+  players(md).forEach(function(p){ P[key(p)] = { name:p.name, state:p.state, pl:0, w:0, l:0, fw:0, fl:0, hb:0, t1:0, t2:0, out:p.out, champ:p.champion, seeded:p.seeded, place:p.place && !p.next ? p.place : 0 }; });
   done.forEach(function(v){ [[v.p1, v.f1, v.f2, 1], [v.p2, v.f2, v.f1, 2]].forEach(function(x){ if(!realP(x[0])) return; var r = P[key(x[0])]; if(!r) return;
     if(v.wo){ if(v.w === x[3]) r.w++; else r.l++; return; }
     r.pl++; r.fw += +x[1] || 0; r.fl += +x[2] || 0; if(v.w === x[3]) r.w++; else r.l++; }); });
@@ -556,12 +562,12 @@ function viewStats(r, c, md, t){
   /* players table */
   var cols = [['name','Player'], ['pl','Played'], ['won','Won'], ['fr','Frames'], ['fd','+/−'], ['hb','High break'], ['t1', T2[0] + '+'], ['st','Status']];
   var list = S.P.filter(function(p){ return !find || (p.name + ' ' + p.state).toLowerCase().indexOf(find) >= 0; });
-  var sv = { name:function(p){ return p.name.toLowerCase(); }, pl:function(p){ return -p.pl; }, won:function(p){ return -(p.w * 1000 + (p.fw - p.fl)); }, fr:function(p){ return -p.fw; }, fd:function(p){ return -(p.fw - p.fl); }, hb:function(p){ return -p.hb; }, t1:function(p){ return -p.t1; }, st:function(p){ return (p.champ ? 0 : p.out ? 2 : 1); } }[statSort] || function(p){ return -p.w; };
+  var sv = { name:function(p){ return p.name.toLowerCase(); }, pl:function(p){ return -p.pl; }, won:function(p){ return -(p.w * 1000 + (p.fw - p.fl)); }, fr:function(p){ return -p.fw; }, fd:function(p){ return -(p.fw - p.fl); }, hb:function(p){ return -p.hb; }, t1:function(p){ return -p.t1; }, st:function(p){ return p.champ ? 0 : p.place ? p.place : p.out ? 99 : 1; } }[statSort] || function(p){ return -p.w; };
   list.sort(function(a, b){ var x = sv(a), y = sv(b); return x < y ? -1 : x > y ? 1 : (b.w - a.w) || a.name.localeCompare(b.name); });
   h += '<div class="sec">Players <b>' + S.P.length + '</b></div><div class="tools"><input class="find" id="find" placeholder="Find a player or district…" value="' + esc(find) + '"><div class="legend">Tap a column to sort</div></div>' +
     '<div class="pst-w"><table class="pst"><thead><tr><th>#</th>' + cols.map(function(x){ return '<th data-sort="' + x[0] + '" class="' + (statSort === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
     list.map(function(p, i){ var fd = p.fw - p.fl;
-      return '<tr class="' + (p.out ? 'out' : '') + '" data-follow="' + esc(p.name) + '"><td>' + (i + 1) + '</td><td class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</td><td>' + p.pl + '</td><td class="w">' + p.w + '</td><td>' + p.fw + '–' + p.fl + '</td><td>' + (fd > 0 ? '+' : '') + fd + '</td><td class="hb">' + (p.hb || '–') + '</td><td>' + (p.t1 || '–') + '</td><td>' + (p.champ ? '🏆 Champion' : p.out ? 'Out' : '<span style="color:#59e08a">Still in</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      return '<tr class="' + (p.out ? 'out' : '') + '" data-follow="' + esc(p.name) + '"><td>' + (i + 1) + '</td><td class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + '</td><td>' + p.pl + '</td><td class="w">' + p.w + '</td><td>' + p.fw + '–' + p.fl + '</td><td>' + (fd > 0 ? '+' : '') + fd + '</td><td class="hb">' + (p.hb || '–') + '</td><td>' + (p.t1 || '–') + '</td><td>' + (p.champ ? '🏆 Champion' : p.place === 2 ? '🥈 Runner-up' : p.place ? 'Finished ' + p.place + (p.place === 3 ? 'rd' : 'th') : p.out ? 'Out' : '<span style="color:#59e08a">Still in</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
   return h;
 }
 function viewBracket(r, c, md){
@@ -592,7 +598,7 @@ function viewBracket(r, c, md){
   h += '<div class="tools"><div class="chips"><button class="chip' + (cur === 'full' ? ' on' : '') + '" data-sec="full">Full draw</button>' + secs.map(function(x){ return '<button class="chip' + (cur === x.id ? ' on' : '') + '" data-sec="' + x.id + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' +
     '<input class="find" id="find" placeholder="Find a player…" value="' + esc(find) + '"></div>';
   h += '<div class="legend" style="margin:0 0 10px">Tap a player to follow them through the draw · <span><i style="background:#2ecc71"></i>Live</span> <span><i style="background:#f0c040"></i>Winner</span> <span><i style="background:#5fb8ff"></i>Following</span></div>';
-  return h + '<div id="stage">' + BK.renderTree(s, { mw: window.innerWidth < 600 ? 206 : 236, gap: window.innerWidth < 600 ? 30 : 44, root: sec && sec.root, fromLeft: sec && sec.fromLeft, champion: md.champion && sel === stages.length - 1 ? md.champion : null }) + '</div>';
+  return h + '<div id="stage">' + BK.renderTree(s, { mw: window.innerWidth < 600 ? 206 : 236, gap: window.innerWidth < 600 ? 30 : 44, root: sec && sec.root, fromLeft: sec && sec.fromLeft, champion: md.champion && !s.place && stages.filter(function(x){ return x.kind === 'ko' && !x.place; }).pop() === s ? md.champion : null }) + '</div>';
 }
 
 /* ── results ── */

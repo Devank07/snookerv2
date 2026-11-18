@@ -116,26 +116,28 @@
     var r = /^round of (\d+)/i.exec(s); return r ? 'R' + r[1] : s;
   }
   BK.shortRound = shortRound;
-  function linkedKO(list, ctx) {
+  function linkedKO(list, ctx, ext) {
     var byKey = {}, byRound = {};
     list.forEach(function (m) { byKey[m.key || m.id] = m; var r = +m.round || 1; (byRound[r] = byRound[r] || []).push(m); });
     var rks = Object.keys(byRound).map(Number).sort(function (a, b) { return a - b; }), maxR = rks[rks.length - 1], minR = rks[0];
     var vm = {}, rounds = [];
     rks.forEach(function (r) {
       var ms = byRound[r].sort(function (a, b) { return idx(a.id || a.key) - idx(b.id || b.key); });
-      var name = (ms[0] && ms[0].roundName) || roundName(maxR - r + 1, 0), short = shortRound(name);
+      var name = (ms[0] && (ms[0].col || ms[0].roundName)) || roundName(maxR - r + 1, 0), short = shortRound(name);
       var out = ms.map(function (m, i) {
         var k = m.key || m.id;
-        function side(src, stored) {
+        function side(src, stored, take) {
           if (!src) return stored;
-          var f = vm[src]; if (f && f.winner) return f.winner;
-          return P('TBD', '', { tbd: true, from: f ? 'Winner ' + f.label : 'TBD' });
+          var f = vm[src] || (ext && ext[src]), lose = take === 'loser';
+          if (f && (lose ? f.loser : f.winner)) return lose ? f.loser : f.winner;
+          return P('TBD', '', { tbd: true, from: f ? (lose ? 'Loser ' : 'Winner ') + f.label : 'TBD' });
         }
-        var p1 = side(m.src1, m.p1), p2 = side(m.src2, m.p2), res = resolve(m, p1, p2, ctx);
-        var v = { key: k, id: m.id || k, stage: m.stage || 'ko', matchId: m.matchId || '', round: r, roundName: name, p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo,
-          live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0, datetime: m.datetime || '', label: short + (ms.length > 1 ? ' ' + (i + 1) : ''),
-          src1: m.src1 || '', src2: m.src2 || '', seed1: !m.src1 && r > minR, seed2: !m.src2 && r > minR, stored: m };
+        var p1 = side(m.src1, m.p1, m.take1), p2 = side(m.src2, m.p2, m.take2), res = resolve(m, p1, p2, ctx);
+        var v = { key: k, id: m.id || k, stage: m.stage || 'ko', matchId: m.matchId || '', round: r, roundName: m.col ? (m.roundName || name) : name, p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo,
+          live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0, datetime: m.datetime || '', label: m.label || (short + (ms.length > 1 ? ' ' + (i + 1) : '')),
+          src1: m.src1 || '', src2: m.src2 || '', take1: m.take1 || '', take2: m.take2 || '', places: m.places || null, seed1: !m.src1 && r > minR, seed2: !m.src2 && r > minR, stored: m };
         v.winner = res.w === 1 ? (res.byeBoth ? P('BYE', '', { bye: true }) : p1) : res.w === 2 ? p2 : null;
+        v.loser = res.w === 1 ? p2 : res.w === 2 ? p1 : null;
         vm[k] = v; return v;
       });
       rounds.push({ name: name, left: maxR - r + 1, matches: out });
@@ -189,6 +191,7 @@
           p1: p1, p2: p2, status: res.status, f1: res.f1, f2: res.f2, w: res.w, wo: !!res.wo, live: res.live, bo: m.bo || 0, table: (res.live && res.live.table) || m.table || 0,
           datetime: m.datetime || '', label: rd.name.replace('Round of ', 'R') + (rd.list.length > 1 ? ' ' + (i + 1) : ''), stored: m };
         v.winner = res.w === 1 ? (res.byeBoth ? P('BYE', '', { bye: true }) : p1) : res.w === 2 ? p2 : null;
+        v.loser = res.w === 1 ? p2 : res.w === 2 ? p1 : null;
         return v;
       });
       vRounds.push(vms);
@@ -215,6 +218,8 @@
     Object.keys(draw.matches || {}).forEach(function (k) { var m = draw.matches[k]; if (m) { m.key = k; m.id = m.id || k; all.push(m); } });
     var bo = function (left) { return boFor(cfg, left); }, vid = function (id) { return BK.vid(t, catKey, id); };
     var out = { format: draw.format, catName: draw.catName || catKey, catKey: catKey, manual: !!draw.manual, stages: [], champion: null, all: [] };
+    var placeList = all.filter(function (m) { return m.stage === 'place'; });
+    all = all.filter(function (m) { return m.stage !== 'place'; });
     if (draw.format === 'knockout') {
       var ko = knockout(all, ctx, { stage: 'ko', prefix: 'ko_r', bo: bo, vid: vid });
       out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko.rounds, linked: !!ko.linked }); out.champion = ko.champion;
@@ -257,6 +262,13 @@
         var ko3 = knockout(p3m, ctx, { stage: 'part3', prefix: 'p3_r', seeds: seeds, bo: bo, vid: vid });
         out.stages.push({ kind: 'ko', title: 'Knockout', rounds: ko3.rounds }); out.champion = ko3.champion;
       }
+    }
+    /* placing matches (5th–8th…): fed by the losers of main-draw matches */
+    if (placeList.length) {
+      var ext = {}; out.stages.forEach(function (st) { if (st.kind === 'ko') st.rounds.forEach(function (r) { r.matches.forEach(function (v) { ext[v.key] = v; }); }); });
+      var pl = linkedKO(placeList, ctx, ext);
+      var lo = 99, hi = 0; placeList.forEach(function (m) { (m.places || []).forEach(function (n) { if (n < lo) lo = n; if (n > hi) hi = n; }); });
+      out.stages.push({ kind: 'ko', title: hi ? 'Places ' + lo + '–' + hi : 'Placings', rounds: pl.rounds, linked: true, place: true });
     }
     out.stages.forEach(function (st) {
       if (st.kind === 'ko') st.rounds.forEach(function (r) { out.all = out.all.concat(r.matches); });
@@ -465,6 +477,7 @@
   }
   BK.treeCard = function (v, style) {
     var top = v.status === 'live' ? '<span class="lv">Live' + (v.table ? ' · T' + v.table : '') + '</span>' + (v.live ? '<span>Frame ' + esc(v.live.frame || 1) + (v.live.brk ? ' · Break ' + esc(v.live.brk) : '') + '</span>' : '') : v.status === 'done' ? '<span class="dn">' + (v.wo ? 'Walkover' : 'Final score') + '</span>' : v.status === 'bye' ? '<span class="dn">Walkover</span>' : '<span>' + esc(when(v) || (v.table ? '' : 'Time to be set')) + '</span>';
+    if (v.places) { var n = v.places[0]; top = '<span style="color:#f0c040;font-weight:800">For ' + n + (n === 3 ? 'rd' : n === 1 ? 'st' : n === 2 ? 'nd' : 'th') + ' place</span>' + top; }
     var yu = BK.watchUrl ? BK.watchUrl(v) : '';
     var right = (yu ? '<a class="bk-yt" href="' + esc(yu) + '" target="_blank" rel="noopener">▶ Watch</a>' : '') + (v.table && v.status !== 'live' ? '<span>T' + v.table + '</span>' : '') + (v.bo ? '<span>BO' + v.bo + '</span>' : '');
     return '<div class="bt-m ' + v.status + '" data-key="' + esc(v.key) + '" data-mid="' + esc(v.matchId) + '" style="' + (style || '') + '"><div class="bt-h">' + top + '<i></i>' + right + '</div>' + tRow(v, 'p1') + tRow(v, 'p2') + '</div>';
@@ -492,6 +505,10 @@
     }
     var roots = Object.keys(show).filter(function (k) { return !consumed[k]; }).sort(function (a, b) { return roundOf[a] - roundOf[b] || idx(a) - idx(b); });
     roots.forEach(place);
+    /* two matches fed by the same pair (e.g. 5th and 7th place) would sit on top of each other: spread them */
+    cols.forEach(function (ri) { var ks = rs[ri].matches.filter(function (v) { return show[v.key] && y[v.key] != null; }).map(function (v) { return v.key; }).sort(function (a, b) { return y[a] - y[b]; });
+      for (var i = 1; i < ks.length; i++) if (y[ks[i]] < y[ks[i - 1]] + U) y[ks[i]] = y[ks[i - 1]] + U; });
+    Object.keys(y).forEach(function (k) { if (y[k] + MH > slot * U) slot = Math.ceil((y[k] + MH) / U); });
     var HEAD = 0, H = Math.max(1, slot) * U - VG, W = cols.length * MW + (cols.length - 1) * GAP;
     var champ = opts.champion && (!opts.root || opts.root === rs[rs.length - 1].matches[0].key) && cols[cols.length - 1] === rs.length - 1;
     if (champ) W += GAP + 190;
@@ -506,7 +523,8 @@
         (fd[v.key] || []).forEach(function (f, si) {
           if (!f || !show[f]) return;
           var fv = byKey[f], fx = colOf[roundOf[f]] * (MW + GAP) + MW, fy = y[f] + HEAD + MH / 2 + 9, ty = top + 18 + (si ? 45 : 15), mx = x - GAP / 2;
-          paths += '<path class="' + (fv.winner && real(fv.winner) ? 'won' : '') + '" data-from="' + esc(f) + '" d="M' + fx + ' ' + fy + ' H' + mx + ' V' + ty + ' H' + x + '"/>';
+          var lose = v['take' + (si + 1)] === 'loser';
+          paths += '<path class="' + (lose ? 'lose' : fv.winner && real(fv.winner) ? 'won' : '') + '" data-from="' + esc(f) + '" d="M' + fx + ' ' + fy + ' H' + mx + ' V' + ty + ' H' + x + '"/>';
         });
       });
     });
@@ -524,7 +542,7 @@
       '.bt-rh b{font:900 14px "Barlow Condensed",sans-serif;letter-spacing:2px;text-transform:uppercase;color:#e8f4e0;}.bt-rh span{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}' +
       '.bt-rh.fin{background:rgba(240,192,64,.12);border-color:rgba(240,192,64,.35);}.bt-rh.fin b{color:#f0c040;}' +
       '.bt-tree{position:relative;}.bt-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}' +
-      '.bt-svg path{fill:none;stroke:rgba(255,255,255,.14);stroke-width:2;}.bt-svg path.won{stroke:rgba(240,192,64,.55);}.bt-svg path.path{stroke:#5fb8ff;stroke-width:3;}' +
+      '.bt-svg path{fill:none;stroke:rgba(255,255,255,.14);stroke-width:2;}.bt-svg path.won{stroke:rgba(240,192,64,.55);}.bt-svg path.path{stroke:#5fb8ff;stroke-width:3;}.bt-svg path.lose{stroke-dasharray:5 5;stroke:rgba(255,255,255,.22);}' +
       '.bt-m{position:absolute;border-radius:10px;background:#0f1f15;border:1px solid rgba(255,255,255,.09);overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s;}' +
       '.bt-m:hover{border-color:rgba(240,192,64,.45);}' +
       '.bt-m.live{border-color:rgba(46,204,113,.8);box-shadow:0 0 0 1px rgba(46,204,113,.3),0 0 20px rgba(46,204,113,.18);}' +
