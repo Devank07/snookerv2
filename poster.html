@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Venue Poster — UPBSA.TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="yt-live.js?v=20261028f"></script>
+<style>
+:root{--bg:#F2F3EE;--card:#FFFFFF;--line:#E3E5DD;--line2:#D3D7CC;--text:#15201A;--dim:#3E4A43;--faint:#5E6B63;--acc:#0B6B3F;--gold:#8A6100;--gold-fill:#FFC531;--gold-soft:#FFF3D6;--live:#D7263D;--ink:#15201A;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#DADDD3;color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+a{color:inherit;}
+/* controls */
+.ctl{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line);}
+.ctl h1{font:700 20px 'Space Grotesk',sans-serif;letter-spacing:-.3px;margin-right:8px;align-self:center;}
+.ctl label{display:flex;flex-direction:column;gap:4px;font:700 11.5px Inter,sans-serif;color:var(--faint);}
+.ctl select,.ctl input{height:40px;border-radius:10px;border:1px solid var(--line2);background:#fff;color:var(--text);padding:0 10px;font:600 14px Inter,sans-serif;min-width:120px;}
+.ctl select{min-width:280px;max-width:100%;}
+.btn{height:40px;padding:0 18px;border-radius:10px;border:0;background:var(--ink);color:#fff;font:700 14px Inter,sans-serif;cursor:pointer;}
+.btn.alt{background:#fff;color:var(--text);border:1px solid var(--line2);}
+.note{flex-basis:100%;font-size:12.5px;color:var(--faint);}
+.stage{display:flex;justify-content:center;padding:28px 12px 60px;}
+/* the poster — A4 */
+.poster{position:relative;width:210mm;height:297mm;overflow:hidden;background:var(--bg);box-shadow:0 20px 60px rgba(0,0,0,.18);display:flex;flex-direction:column;}
+.poster:before{content:'';position:absolute;right:-30mm;top:0;width:95mm;height:78mm;background:var(--gold-fill);transform:skewX(-18deg);}
+.poster:after{content:'';position:absolute;right:58mm;top:0;width:10mm;height:78mm;background:var(--gold-fill);opacity:.35;transform:skewX(-18deg);}
+.p-in{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;padding:16mm 16mm 0;}
+.brand{display:flex;align-items:center;gap:4mm;}
+.brand img{width:16mm;height:16mm;border-radius:4mm;object-fit:cover;}
+.brand b{font:700 9mm 'Space Grotesk',sans-serif;letter-spacing:-.2mm;}.brand b i{font-style:normal;color:var(--live);}
+.bar{width:22mm;height:1.3mm;background:var(--gold-fill);margin-top:4mm;}
+.sub{display:inline-flex;align-self:flex-start;margin-top:10mm;padding:1.8mm 4mm;border-radius:99mm;background:var(--gold-soft);color:var(--gold);font:800 3.6mm Inter,sans-serif;letter-spacing:.4mm;text-transform:uppercase;max-width:120mm;}
+.ev{margin-top:4mm;font:700 12mm/1.04 "Space Grotesk",sans-serif;letter-spacing:-.5mm;max-width:128mm;}
+.meta{margin-top:4mm;font:600 4.4mm Inter,sans-serif;color:var(--dim);}
+.scan{margin-top:10mm;display:grid;grid-template-columns:auto 1fr;gap:9mm;align-items:center;}
+.qr{width:92mm;height:92mm;padding:5mm;background:#fff;clip-path:polygon(0 0,calc(100% - 7mm) 0,100% 7mm,100% 100%,7mm 100%,0 calc(100% - 7mm));box-shadow:0 0 0 .6mm var(--line);}
+.qr svg{display:block;width:100%;height:100%;}
+.how h2{font:700 11mm/1 'Space Grotesk',sans-serif;letter-spacing:-.4mm;}
+.how h2 em{font-style:normal;color:var(--live);}
+.how ul{list-style:none;margin-top:6mm;display:flex;flex-direction:column;gap:3mm;}
+.how li{display:flex;align-items:center;gap:3mm;font:600 4.6mm Inter,sans-serif;color:var(--dim);}
+.how li:before{content:'';width:3mm;height:3mm;background:var(--acc);transform:skewX(-14deg);flex:none;}
+.url{margin-top:6mm;font:600 3.4mm Inter,sans-serif;color:var(--faint);word-break:break-all;}
+.table{margin-top:9mm;display:flex;align-items:center;gap:5mm;}
+.table span{font:800 4mm Inter,sans-serif;letter-spacing:.6mm;color:var(--faint);text-transform:uppercase;}
+.table b{display:inline-flex;align-items:center;justify-content:center;min-width:26mm;height:26mm;padding:0 5mm;background:var(--ink);color:var(--gold-fill);font:700 17mm/1 'Space Grotesk',sans-serif;clip-path:polygon(0 0,calc(100% - 4mm) 0,100% 4mm,100% 100%,4mm 100%,0 calc(100% - 4mm));}
+.foot{position:relative;z-index:1;display:flex;align-items:center;gap:7mm;padding:9mm 16mm;background:var(--ink);color:#fff;}
+.foot:before{content:'';position:absolute;left:0;top:0;width:50mm;height:1.4mm;background:var(--gold-fill);}
+.foot .yq{width:30mm;height:30mm;padding:2mm;background:#fff;border-radius:2mm;flex:none;}
+.foot .yq svg{display:block;width:100%;height:100%;}
+.foot b{display:block;font:700 7.5mm/1.05 'Space Grotesk',sans-serif;letter-spacing:-.2mm;}
+.foot span{display:block;margin-top:2mm;font:600 4.2mm Inter,sans-serif;color:#B8C2BC;}
+.foot .yt{margin-left:auto;display:inline-flex;align-items:center;gap:2mm;padding:3mm 5mm;border-radius:2.5mm;background:#E3002B;font:800 4.6mm Inter,sans-serif;white-space:nowrap;}
+@page{size:A4 portrait;margin:0;}
+@media print{
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .ctl{display:none;}.stage{padding:0;}.poster{box-shadow:none;}
+}
+@media (max-width:860px){.stage{overflow-x:auto;justify-content:flex-start;}}
+</style>
+</head>
+<body>
+<div class="ctl">
+  <h1>Venue poster</h1>
+  <label>Event<select id="ev"></select></label>
+  <label>Table number (optional)<input id="tb" type="number" min="1" max="99" placeholder="—"></label>
+  <button class="btn" id="pr" type="button">🖨 Print / save as PDF</button>
+  <a class="btn alt" href="manager.html" style="display:inline-flex;align-items:center;text-decoration:none">← Manager</a>
+  <div class="note">Prints on A4. Put one on each table: add the table number, print, change the number, print again. The QR opens the event's live draw.</div>
+</div>
+<div class="stage"><div class="poster" id="poster"></div></div>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAxNVCaOyZvk69fqR-qTCyjbvE1gAbiBXE",
+  authDomain:"snooker-scorer-56573.firebaseapp.com",
+  databaseURL:"https://snooker-scorer-56573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"snooker-scorer-56573",
+  storageBucket:"snooker-scorer-56573.firebasestorage.app",
+  messagingSenderId:"774218957368",
+  appId:"1:774218957368:web:3b2c9cc363c0627ab35ccd"
+});
+var db = firebase.database(), T = {}, YC = {}, sel = new URLSearchParams(location.search).get('e') || '';
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function qrSvg(text){
+  var q = qrcode(0, 'M'); q.addData(text); q.make();
+  var n = q.getModuleCount(), d = '';
+  for(var r = 0; r < n; r++) for(var c = 0; c < n; c++) if(q.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+  return '<svg viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges" role="img" aria-label="QR code"><path fill="#15201A" d="' + d + '"/></svg>';
+}
+function fmtD(s){ var d = new Date(String(s) + 'T00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }); }
+function draw(){
+  var ids = Object.keys(T).filter(function(id){ return T[id] && T[id].name; }).sort(function(a, b){ return (T[b].createdAt || 0) - (T[a].createdAt || 0); });
+  if(!sel || !T[sel]) sel = ids.filter(function(id){ return T[id].status === 'active'; })[0] || ids[0] || '';
+  g('ev').innerHTML = ids.map(function(id){ return '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + esc(T[id].name) + '</option>'; }).join('');
+  var t = T[sel]; if(!t){ g('poster').innerHTML = '<div class="p-in"><div class="ev">No events yet</div></div>'; return; }
+  var url = new URL('bracket.html#e/' + sel, location.href).href, yt = window.YT ? YT.channelUrl(YC) : 'https://www.youtube.com/@upbsa';
+  var handle = (yt.match(/@[\w.\-]+/) || ['@upbsa'])[0], tb = +g('tb').value || 0;
+  var dates = t.startDate ? fmtD(t.startDate) + (t.endDate && t.endDate !== t.startDate ? ' – ' + fmtD(t.endDate) : '') : '';
+  g('poster').innerHTML = '<div class="p-in"><div class="brand"><img src="upbsa-logo.jpg" alt=""><b>UPBSA<i>.TV</i></b></div><div class="bar"></div>' +
+    (t.subtitle ? '<div class="sub">' + esc(t.subtitle) + '</div>' : '<div style="height:10mm"></div>') +
+    '<div class="ev">' + esc(t.name) + '</div><div class="meta">' + esc([dates, t.venue].filter(Boolean).join('  ·  ')) + '</div>' +
+    '<div class="scan"><div class="qr">' + qrSvg(url) + '</div><div class="how"><h2>Scan for<br><em>live</em> scores</h2><ul><li>Live scores from every table</li><li>The full draw, updated as matches finish</li><li>Results, rankings &amp; player stats</li></ul><div class="url">' + esc(url.replace(/^https?:\/\//, '')) + '</div></div></div>' +
+    (tb ? '<div class="table"><span>This is</span><b>Table ' + tb + '</b></div>' : '') + '</div>' +
+    '<div class="foot"><div class="yq">' + qrSvg(yt) + '</div><div><b>Watch every match live</b><span>Streamed on YouTube by UPBSA.TV</span></div><span class="yt">▶ ' + esc(handle) + '</span></div>';
+  document.title = 'Poster — ' + t.name;
+}
+g('ev').onchange = function(){ sel = g('ev').value; history.replaceState(null, '', '?e=' + sel); draw(); };
+g('tb').oninput = draw;
+g('pr').onclick = function(){ window.print(); };
+db.ref('tournaments').on('value', function(s){ T = s.val() || {}; draw(); });
+db.ref('settings/youtube').on('value', function(s){ YC = s.val() || {}; draw(); });
+</script>
+</body>
+</html>

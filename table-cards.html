@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QR Table Cards — UPBSA.TV</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028c"></script>
@@ -13,19 +13,19 @@
 <script src="qrcode.js?v=20261028c"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:#0b1610;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
-.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 18px;background:#08100a;border-bottom:1px solid rgba(240,192,64,.3);}
-.bar h1{font:900 22px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:#f0c040;text-transform:uppercase;margin-right:8px;}
+body{background:#12161B;color:#E9EEF2;font-family:'Inter',system-ui,sans-serif;}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 18px;background:#08100a;border-bottom:1px solid rgba(255,197,49,.3);}
+.bar h1{font:900 22px 'Barlow Condensed',sans-serif;letter-spacing:1px;color:#FFC531;text-transform:uppercase;margin-right:8px;}
 .bar input[type=text]{height:38px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;padding:0 10px;font:500 14px 'Inter',sans-serif;min-width:240px;}
-.bar label{font-size:13px;color:rgba(232,244,224,.75);display:flex;align-items:center;gap:6px;cursor:pointer;}
+.bar label{font-size:13px;color:rgba(233,238,242,.75);display:flex;align-items:center;gap:6px;cursor:pointer;}
 .btn{height:38px;padding:0 16px;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font:700 14px 'Inter',sans-serif;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
-.btn.gold{background:#f0c040;border-color:#f0c040;color:#0b0b0b;}
-.note{padding:10px 18px;font-size:13px;color:rgba(232,244,224,.65);line-height:1.5;}
-.note b{color:#f0c040;}
+.btn.gold{background:#FFC531;border-color:#FFC531;color:#0b0b0b;}
+.note{padding:10px 18px;font-size:13px;color:rgba(233,238,242,.65);line-height:1.5;}
+.note b{color:#FFC531;}
 .warn{color:#ff9d92;}
 .picks{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 10px;}
 .pick{padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);font:800 15px 'Barlow Condensed',sans-serif;letter-spacing:1px;cursor:pointer;user-select:none;}
-.pick.on{background:#f0c040;color:#0b0b0b;border-color:#f0c040;}
+.pick.on{background:#FFC531;color:#0b0b0b;border-color:#FFC531;}
 .pick.nopin{opacity:.45;cursor:not-allowed;}
 .sheet{display:grid;grid-template-columns:repeat(auto-fill,105mm);gap:6mm;justify-content:center;padding:18px;}
 .card{width:105mm;height:148mm;background:#fff;color:#0b0b0b;border-radius:4mm;padding:7mm 7mm 6mm;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;border:0.6mm solid #0b0b0b;}
@@ -40,8 +40,8 @@ body{background:#0b1610;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
 .card .how2{font:500 8pt 'Inter',sans-serif;color:#555;text-align:center;margin-top:1mm;line-height:1.35;}
 .card .pin{margin-top:auto;display:flex;align-items:center;gap:3mm;font:600 8pt 'Inter',sans-serif;color:#555;}
 .card .pin b{font:900 16pt 'Barlow Condensed',sans-serif;letter-spacing:4px;color:#0b0b0b;}
-.card .stripe{position:absolute;left:0;right:0;bottom:0;height:2.2mm;background:linear-gradient(90deg,#f0c040,#b8860b);}
-.empty{padding:40px 18px;text-align:center;color:rgba(232,244,224,.6);}
+.card .stripe{position:absolute;left:0;right:0;bottom:0;height:2.2mm;background:linear-gradient(90deg,#FFC531,#b8860b);}
+.empty{padding:40px 18px;text-align:center;color:rgba(233,238,242,.6);}
 @media print{
   @page{size:A4;margin:8mm;}
   body{background:#fff;}
@@ -50,6 +50,7 @@ body{background:#0b1610;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
   .card{break-inside:avoid;page-break-inside:avoid;}
 }
 </style>
+<link rel="stylesheet" href="upbsa-staff.css?v=20261122">
 </head>
 <body>
 <div class="bar">

@@ -10,15 +10,15 @@
 <script src="bracket-core.js?v=20261122b"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-:root{--bg:#07120d;--bg2:#0a1610;--bg3:#0f1f14;--border:rgba(255,255,255,0.07);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--text:#e8f4e0;--sub:rgba(232,244,224,0.45);}
+:root{--bg:#0A0D10;--bg2:#12161B;--bg3:#161B22;--border:rgba(255,255,255,0.07);--gold:#FFC531;--green:#2ecc71;--red:#e74c3c;--blue:#5dade2;--text:#E9EEF2;--sub:rgba(233,238,242,0.45);}
 html,body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;}
 
 /* Header */
 .hdr{background:var(--bg2);border-bottom:2px solid var(--gold);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
 .hdr-logo{display:flex;align-items:center;gap:10px;}
-.hdr-logo img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid rgba(240,192,64,0.4);}
+.hdr-logo img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,197,49,0.4);}
 .hdr-logo-text{font-size:1rem;font-weight:800;color:var(--gold);letter-spacing:3px;}
-.hdr-logo-dot{color:rgba(240,192,64,0.4);}
+.hdr-logo-dot{color:rgba(255,197,49,0.4);}
 .back-link{font-size:0.7rem;color:var(--sub);text-decoration:none;padding:5px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:5px;}
 
 /* Main content */
@@ -28,13 +28,13 @@ html,body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Ar
 
 /* Step label */
 .step-label{font-size:0.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--sub);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
-.step-label::before{content:attr(data-step);width:20px;height:20px;border-radius:50%;background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--gold);flex-shrink:0;}
+.step-label::before{content:attr(data-step);width:20px;height:20px;border-radius:50%;background:rgba(255,197,49,0.1);border:1px solid rgba(255,197,49,0.3);display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--gold);flex-shrink:0;}
 
 /* Sport selector */
 .sport-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
 .sport-btn{padding:20px 12px;border-radius:12px;border:2px solid rgba(255,255,255,0.07);background:var(--bg2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:10px;transition:all .15s;}
 .sport-btn:active{transform:scale(.97);}
-.sport-btn.on{border-color:var(--gold);background:rgba(240,192,64,0.08);}
+.sport-btn.on{border-color:var(--gold);background:rgba(255,197,49,0.08);}
 .sport-icon{font-size:2rem;}
 .sport-name{font-size:0.88rem;font-weight:700;color:var(--text);letter-spacing:1px;}
 .sport-desc{font-size:0.62rem;color:var(--sub);text-align:center;line-height:1.4;}
@@ -63,12 +63,12 @@ html,body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Ar
   color:var(--gold);border:2px solid var(--gold);
   font-size:1rem;font-weight:800;letter-spacing:3px;
   cursor:pointer;transition:all .15s;
-  box-shadow:0 4px 20px rgba(240,192,64,0.15);
+  box-shadow:0 4px 20px rgba(255,197,49,0.15);
   display:flex;align-items:center;justify-content:center;gap:10px;
   margin-bottom:12px;
 }
 .go-btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:none;}
-.go-btn:not(:disabled):hover{box-shadow:0 6px 28px rgba(240,192,64,0.25);}
+.go-btn:not(:disabled):hover{box-shadow:0 6px 28px rgba(255,197,49,0.25);}
 .go-btn:not(:disabled):active{transform:scale(.98);}
 .go-arrow{font-size:1.2rem;transition:transform .15s;}
 .go-btn:not(:disabled):hover .go-arrow{transform:translateX(4px);}
@@ -85,10 +85,10 @@ html,body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Ar
 .li-match{font-size:0.85rem;font-weight:700;color:var(--text);}
 .li-sub{font-size:0.7rem;color:var(--sub);margin-top:2px;}
 
-footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(232,244,224,0.15);letter-spacing:1px;}
+footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(233,238,242,0.15);letter-spacing:1px;}
 </style>
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="upbsa-theme.css">
 <style id="so-look">/* Shoot Out look — page touches */
 .hdr{border-bottom:2px solid var(--so-gold);}
@@ -116,13 +116,15 @@ footer{padding:16px;text-align:center;font-size:0.62rem;color:rgba(232,244,224,0
 .pk-n span{color:var(--sub);font-weight:600;font-size:.8rem;margin:0 6px;}
 .pk-tables{display:none;gap:6px;flex-wrap:wrap;margin-top:9px;}
 .pk-m.open .pk-tables{display:flex;}
-.pk-tables a{flex:1;min-width:58px;text-align:center;padding:9px 0;border-radius:10px;border:1px solid rgba(240,192,64,.5);color:var(--gold);font-weight:800;text-decoration:none;font-size:.9rem;}
+.pk-tables a{flex:1;min-width:58px;text-align:center;padding:9px 0;border-radius:10px;border:1px solid rgba(255,197,49,.5);color:var(--gold);font-weight:800;text-decoration:none;font-size:.9rem;}
 .pk-tables a.busy{border-color:var(--border);color:var(--sub);}
 .pk-more{display:block;width:100%;padding:10px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--sub);font-weight:700;cursor:pointer;}
 .pk-empty{padding:16px;border-radius:12px;border:1px dashed var(--border);color:var(--sub);font-size:.85rem;text-align:center;}
 .or{display:flex;align-items:center;gap:10px;margin:6px 0 14px;font-size:.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--sub);}
 .or:before,.or:after{content:'';flex:1;height:1px;background:var(--border);}
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="upbsa-staff.css?v=20261122">
 </head>
 <body>
 

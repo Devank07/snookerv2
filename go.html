@@ -10,33 +10,34 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Referee">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="tables.js?v=20261028d"></script>
 <script src="ref-app.js?v=20261028d"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{min-height:100%;background:radial-gradient(ellipse at top,#143322,#050a06 70%) fixed;color:#e8f4e0;font-family:'Inter',system-ui,sans-serif;}
+html,body{min-height:100%;background:radial-gradient(ellipse at top,#141A20,#0A0D10 70%) fixed;color:#E9EEF2;font-family:'Inter',system-ui,sans-serif;}
 .wrap{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 20px;text-align:center;}
-.brand{font:900 14px 'Barlow Condensed',sans-serif;letter-spacing:6px;color:#f0c040;}
+.brand{font:900 14px 'Barlow Condensed',sans-serif;letter-spacing:6px;color:#FFC531;}
 h1{font:900 46px 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:6px 0 4px;}
-.sub{font-size:14px;color:rgba(232,244,224,.6);margin-bottom:26px;line-height:1.45;}
-.spin{width:36px;height:36px;margin:14px auto;border-radius:50%;border:3px solid rgba(240,192,64,.2);border-top-color:#f0c040;animation:s .8s linear infinite;}@keyframes s{to{transform:rotate(360deg)}}
+.sub{font-size:14px;color:rgba(233,238,242,.6);margin-bottom:26px;line-height:1.45;}
+.spin{width:36px;height:36px;margin:14px auto;border-radius:50%;border:3px solid rgba(255,197,49,.2);border-top-color:#FFC531;animation:s .8s linear infinite;}@keyframes s{to{transform:rotate(360deg)}}
 .opts{display:none;flex-direction:column;gap:12px;}
-.opt{display:flex;align-items:center;gap:16px;padding:18px;border-radius:16px;border:1px solid rgba(240,192,64,.25);background:rgba(240,192,64,.07);color:#fff;text-decoration:none;text-align:left;}
-.opt:active{transform:scale(.98);background:rgba(240,192,64,.18);}
+.opt{display:flex;align-items:center;gap:16px;padding:18px;border-radius:16px;border:1px solid rgba(255,197,49,.25);background:rgba(255,197,49,.07);color:#fff;text-decoration:none;text-align:left;}
+.opt:active{transform:scale(.98);background:rgba(255,197,49,.18);}
 .opt .i{font-size:30px;width:40px;text-align:center;}
 .opt b{display:block;font:900 24px 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;}
-.opt span{font-size:13px;color:rgba(232,244,224,.6);}
+.opt span{font-size:13px;color:rgba(233,238,242,.6);}
 .tgrid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;}
 .tb{padding:16px 6px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;text-decoration:none;cursor:pointer;}
 .tb b{display:block;font:400 40px/1 "Bebas Neue","Barlow Condensed",sans-serif;}
-.tb span{display:block;margin-top:4px;font:700 11px "Barlow Condensed",sans-serif;letter-spacing:2px;color:rgba(232,244,224,.55);text-transform:uppercase;}
+.tb span{display:block;margin-top:4px;font:700 11px "Barlow Condensed",sans-serif;letter-spacing:2px;color:rgba(233,238,242,.55);text-transform:uppercase;}
 .tb.live{border-color:rgba(46,204,113,.5);background:rgba(46,204,113,.08);}.tb.live span{color:#59e08a;}
-.tb.last{box-shadow:0 0 0 2px #f0c040;}
+.tb.last{box-shadow:0 0 0 2px #FFC531;}
 .err{color:#ff8a7a;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:1px;}
 </style>
+<link rel="stylesheet" href="upbsa-staff.css?v=20261122">
 </head>
 <body>
 <div class="wrap">

@@ -1,0 +1,34 @@
+/* UPBSA.TV staff pages — the new look (the public page's dark mode): near-black, gold, Space Grotesk + Inter.
+   Loaded last on every staff page, so it re-points each page's own colour variables and display fonts. */
+
+/* the old condensed display fonts now draw in Space Grotesk (served from this site) */
+@font-face{font-family:'Barlow Condensed';src:url(fonts/space-grotesk-latin-500-normal.woff2) format('woff2');font-weight:100 599;font-display:swap;size-adjust:90%;}
+@font-face{font-family:'Barlow Condensed';src:url(fonts/space-grotesk-latin-700-normal.woff2) format('woff2');font-weight:600 1000;font-display:swap;size-adjust:90%;}
+@font-face{font-family:'Bebas Neue';src:url(fonts/space-grotesk-latin-700-normal.woff2) format('woff2');font-weight:100 1000;font-display:swap;size-adjust:84%;}
+@font-face{font-family:'Space Grotesk';src:url(fonts/space-grotesk-latin-500-normal.woff2) format('woff2');font-weight:100 599;font-display:swap;}
+@font-face{font-family:'Space Grotesk';src:url(fonts/space-grotesk-latin-700-normal.woff2) format('woff2');font-weight:600 1000;font-display:swap;}
+
+html:root{
+  --bg:#0A0D10;--bg2:#12161B;--bg3:#161B22;--bg4:#1C222A;--bg5:#232A31;
+  --panel:#12161B;--panel2:#161B22;--card:#12161B;--card2:#161B22;
+  --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.15);
+  --border:rgba(255,255,255,.09);--border2:#2A323B;--border3:#333C46;
+  --text:#E9EEF2;--text2:#9AA5AF;--text3:#5B6670;--dim:rgba(233,238,242,.62);--faint:rgba(233,238,242,.42);--sub:rgba(233,238,242,.5);
+  --gold:#FFC531;--gold2:#FFC531;--green:#34D27B;--red:#FF4D5E;--amber:#FFB547;--orange:#FF9F43;--blue:#5FB8FF;--purple:#A78BFA;
+  --bk-card:#12161B;--bk-gold:#FFC531;
+  /* the older shared skin (upbsa-theme.css) uses these */
+  --so-bg:#0A0D10;--so-bg2:#12161B;--so-bg3:#161B22;--so-bg4:#1C222A;--so-bg5:#232A31;
+  --so-line:rgba(255,255,255,.09);--so-line2:rgba(255,255,255,.14);--so-line3:rgba(255,255,255,.2);
+  --so-gold:#FFC531;--so-gold-d:#E0A800;--so-green:#34D27B;--so-amber:#FFB547;--so-red:#FF4D5E;--so-blue:#5FB8FF;--so-purple:#A78BFA;
+  --so-text:#E9EEF2;--so-sub:rgba(233,238,242,.6);--so-faint:rgba(233,238,242,.4);
+  --so-tag:linear-gradient(90deg,#FFC531,#FF9F43);--so-go:linear-gradient(180deg,#34D27B,#1FA85C);
+  --body:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+html{background:#0A0D10!important;}
+html body{background:radial-gradient(1100px 460px at 88% -8%,rgba(255,197,49,.07),transparent 62%) no-repeat,#0A0D10!important;color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+::selection{background:rgba(255,197,49,.35);color:#fff;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#FFC531!important;box-shadow:0 0 0 3px rgba(255,197,49,.14);}
+*{scrollbar-color:#2E3740 transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}::-webkit-scrollbar-thumb{background:#2E3740;border-radius:6px;border:2px solid #0A0D10;}::-webkit-scrollbar-track{background:transparent;}
+select option{background:#12161B;color:#E9EEF2;}
