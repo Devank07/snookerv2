@@ -536,33 +536,41 @@
     return '<div class="bt-wrap"><div class="bt-heads" style="width:' + W + 'px">' + heads + '</div><div class="bt-tree" style="width:' + W + 'px;height:' + (H + 4) + 'px"><svg class="bt-svg" width="' + W + '" height="' + (H + 4) + '">' + paths + '</svg>' + html + '</div></div>';
   };
   BK.treeCss = function () {
-    return '.bt-wrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 150px);border-radius:16px;border:1px solid var(--line,rgba(255,255,255,.08));background:rgba(0,0,0,.18);padding:0 14px 18px;overscroll-behavior:contain;}' +
-      '.bt-heads{position:sticky;top:0;z-index:5;height:54px;background:linear-gradient(180deg,#07120a 70%,rgba(7,18,10,0));margin-bottom:6px;}' +
-      '.bt-rh{position:absolute;top:10px;height:38px;display:flex;flex-direction:column;justify-content:center;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);}' +
-      '.bt-rh b{font:900 14px "Barlow Condensed",sans-serif;letter-spacing:2px;text-transform:uppercase;color:#e8f4e0;}.bt-rh span{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}' +
-      '.bt-rh.fin{background:rgba(240,192,64,.12);border-color:rgba(240,192,64,.35);}.bt-rh.fin b{color:#f0c040;}' +
+    /* colours come from the page's theme tokens (bracket.html: light and dark); the fallbacks keep it dark elsewhere */
+    var v = function (n, f) { return 'var(--' + n + ',' + f + ')'; };
+    var card = v('card', '#12161B'), card2 = v('card2', '#161B22'), line = v('line', 'rgba(255,255,255,.08)'), line2 = v('line2', 'rgba(255,255,255,.14)'), text = v('text', '#e8f4e0'),
+      faint = v('faint', 'rgba(232,244,224,.45)'), dim = v('dim', 'rgba(232,244,224,.6)'), sunk = v('sunk', 'rgba(0,0,0,.2)'), win = v('win', '#f0c040'), wintx = v('win-tx', '#111'),
+      gold = v('gold', '#f0c040'), goldf = v('gold-fill', '#f0c040'), golds = v('gold-soft', 'rgba(240,192,64,.12)'), live = v('live', '#2ecc71'), lives = v('live-soft', 'rgba(46,204,113,.12)'), livetx = v('live-tx', '#59e08a'),
+      blue = v('blue', '#5fb8ff'), blues = v('blue-soft', 'rgba(95,184,255,.16)'), bg = v('bg', '#07120a');
+    return '.bt-wrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 150px);border-radius:18px;border:1px solid ' + line + ';background:' + card2 + ';padding:0 14px 18px;overscroll-behavior:contain;}' +
+      '.bt-heads{position:sticky;top:0;z-index:5;height:56px;background:' + card2 + ';margin-bottom:6px;}' +
+      '.bt-rh{position:absolute;top:10px;height:40px;display:flex;flex-direction:column;justify-content:center;padding:0 12px;border-left:4px solid ' + goldf + ';background:' + card + ';border-top:1px solid ' + line + ';border-right:1px solid ' + line + ';border-bottom:1px solid ' + line + ';}' +
+      '.bt-rh b{font:700 13.5px "Space Grotesk",Inter,sans-serif;letter-spacing:-.1px;color:' + text + ';}.bt-rh span{font:500 11px Inter,sans-serif;color:' + faint + ';}' +
+      '.bt-rh.fin{background:' + golds + ';}.bt-rh.fin b{color:' + gold + ';}' +
       '.bt-tree{position:relative;}.bt-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}' +
-      '.bt-svg path{fill:none;stroke:rgba(255,255,255,.14);stroke-width:2;}.bt-svg path.won{stroke:rgba(240,192,64,.55);}.bt-svg path.path{stroke:#5fb8ff;stroke-width:3;}.bt-svg path.lose{stroke-dasharray:5 5;stroke:rgba(255,255,255,.22);}' +
-      '.bt-m{position:absolute;border-radius:10px;background:#0f1f15;border:1px solid rgba(255,255,255,.09);overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s;}' +
-      '.bt-m:hover{border-color:rgba(240,192,64,.45);}' +
-      '.bt-m.live{border-color:rgba(46,204,113,.8);box-shadow:0 0 0 1px rgba(46,204,113,.3),0 0 20px rgba(46,204,113,.18);}' +
-      '.bt-h{display:flex;align-items:center;gap:6px;height:18px;padding:0 9px;background:rgba(0,0,0,.28);font:700 10.5px Inter,sans-serif;color:rgba(232,244,224,.5);white-space:nowrap;}' +
-      '.bt-h i{flex:1;}.bt-h .lv{color:#59e08a;font-weight:800;}.bt-h .lv:before{content:"● ";animation:blink 1.2s steps(2) infinite;}.bt-h .dn{color:rgba(232,244,224,.4);}' +
-      '.bt-h span+span{padding-left:6px;border-left:1px solid rgba(255,255,255,.12);}' +
-      '.bt-p{flex:1;display:flex;align-items:center;gap:6px;padding:0 0 0 9px;min-height:0;border-top:1px solid rgba(255,255,255,.05);cursor:pointer;}' +
-      '.bt-p .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 14.5px "Barlow Condensed",sans-serif;letter-spacing:.2px;color:#e8f4e0;}' +
-      '.bt-p .n small{font:600 10px Inter,sans-serif;color:rgba(232,244,224,.42);margin-left:6px;}' +
-      '.bt-p .n em{font:800 9px Inter,sans-serif;font-style:normal;letter-spacing:.5px;text-transform:uppercase;color:#f0c040;border:1px solid rgba(240,192,64,.45);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;}' +
-      '.bt-p .s{align-self:stretch;display:flex;align-items:center;justify-content:center;width:30px;font:400 20px/1 "Bebas Neue",sans-serif;color:#e8f4e0;background:rgba(0,0,0,.18);}' +
-      '.bt-p.w .n{color:#fff;font-weight:900;}.bt-p.w .s{background:rgba(240,192,64,.9);color:#111;}' +
-      '.bt-p.l .n,.bt-p.l .s{opacity:.42;}.bt-p.t{cursor:default;}.bt-p.t .n{color:rgba(232,244,224,.38);font-weight:600;font-style:italic;}.bt-p.b .n{color:rgba(232,244,224,.25);letter-spacing:3px;}' +
-      '.bt-m.live .bt-p .s{background:rgba(46,204,113,.18);color:#bff5d2;}' +
-      '.bt-p .pt{font:700 12px Inter,sans-serif;color:rgba(232,244,224,.55);min-width:22px;text-align:right;padding-right:2px;font-variant-numeric:tabular-nums;}.bt-p .pt.on{color:#f0c040;}' +
-      '.bt-p .at{width:7px;height:7px;border-radius:50%;background:#f0c040;box-shadow:0 0 8px #f0c040;flex:none;font-style:normal;}' +
-      '.bt-p.path{background:rgba(95,184,255,.16);}.bt-p.path .n{color:#9fd3ff!important;opacity:1!important;}' +
-      '.bt-p.hl{background:rgba(95,184,255,.22);}.bt-p.hl .n{color:#cfe8ff!important;opacity:1!important;}' +
-      '.bt-champ{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:12px;border:1px solid rgba(240,192,64,.6);background:linear-gradient(180deg,rgba(240,192,64,.22),rgba(240,192,64,.05));}' +
-      '.bt-champ span{font:800 11px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:rgba(232,244,224,.6);}.bt-champ b{font:400 25px/1.05 "Bebas Neue",sans-serif;color:#f0c040;letter-spacing:1px;padding:0 8px;}.bt-champ small{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}';
+      '.bt-svg path{fill:none;stroke:' + line2 + ';stroke-width:2;}.bt-svg path.won{stroke:' + win + ';opacity:.7;}.bt-svg path.path{stroke:' + blue + ';stroke-width:3;opacity:1;}.bt-svg path.lose{stroke-dasharray:5 5;stroke:' + line2 + ';}' +
+      '.bt-m{position:absolute;border-radius:12px;background:' + card + ';border:1px solid ' + line + ';overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s;box-shadow:' + v('shadow', 'none') + ';}' +
+      '.bt-m:hover{border-color:' + line2 + ';}' +
+      '.bt-m.live{border:2px solid ' + live + ';box-shadow:0 0 0 3px ' + lives + ';}' +
+      '.bt-h{display:flex;align-items:center;gap:6px;height:19px;padding:0 10px;background:' + sunk + ';font:600 10.5px Inter,sans-serif;color:' + faint + ';white-space:nowrap;}' +
+      '.bt-h i{flex:1;}.bt-h .lv{color:' + livetx + ';font-weight:800;}.bt-h .lv:before{content:"● ";animation:blink 1.2s steps(2) infinite;}.bt-h .dn{color:' + faint + ';}' +
+      '.bt-m.live .bt-h{background:' + lives + ';}' +
+      '.bt-h span+span{padding-left:6px;border-left:1px solid ' + line2 + ';}' +
+      '.bt-p{flex:1;display:flex;align-items:center;gap:6px;padding:0 0 0 10px;min-height:0;border-top:1px solid ' + line + ';cursor:pointer;}' +
+      '.bt-p .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:600 13.5px Inter,sans-serif;color:' + text + ';}' +
+      '.bt-p .n small{font:700 9.5px Inter,sans-serif;color:' + faint + ';margin-left:6px;letter-spacing:.4px;}' +
+      '.bt-p .n em{font:800 9px Inter,sans-serif;font-style:normal;letter-spacing:.5px;text-transform:uppercase;color:' + gold + ';background:' + golds + ';border-radius:4px;padding:1px 4px;margin-left:6px;vertical-align:1px;}' +
+      '.bt-p .s{align-self:stretch;display:flex;align-items:center;justify-content:center;width:32px;font:700 16px/1 "Space Grotesk",Inter,sans-serif;color:' + dim + ';background:' + sunk + ';font-variant-numeric:tabular-nums;}' +
+      '.bt-p.w .n{font-weight:800;}.bt-p.w .s{background:' + win + ';color:' + wintx + ';}' +
+      '.bt-p.l .n,.bt-p.l .s{opacity:.5;}.bt-p.t{cursor:default;}.bt-p.t .n{color:' + faint + ';font-weight:500;font-style:italic;}.bt-p.b .n{color:' + faint + ';letter-spacing:3px;opacity:.6;}' +
+      '.bt-m.live .bt-p .s{background:' + live + ';color:#fff;}' +
+      '.bt-p .pt{font:700 11.5px Inter,sans-serif;color:' + faint + ';min-width:22px;text-align:right;padding-right:2px;font-variant-numeric:tabular-nums;}.bt-p .pt.on{color:' + gold + ';}' +
+      '.bt-p .at{width:7px;height:7px;border-radius:50%;background:' + goldf + ';box-shadow:0 0 0 3px ' + golds + ';flex:none;font-style:normal;}' +
+      '.bt-p.path{background:' + blues + ';}.bt-p.path .n{color:' + blue + '!important;opacity:1!important;}' +
+      '.bt-p.hl{background:' + blues + ';}.bt-p.hl .n{color:' + blue + '!important;opacity:1!important;font-weight:800;}' +
+      '.bt-champ{position:absolute;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid ' + goldf + ';background:' + golds + ';clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));}' +
+      '.bt-champ:before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:' + goldf + ';}' +
+      '.bt-champ span{font:700 10.5px Inter,sans-serif;letter-spacing:2px;text-transform:uppercase;color:' + gold + ';}.bt-champ b{font:700 22px/1.1 "Space Grotesk",Inter,sans-serif;color:' + text + ';letter-spacing:-.4px;padding:0 8px;}.bt-champ small{font:500 11px Inter,sans-serif;color:' + faint + ';}';
   };
 
   /* ── standings: where every player in a category stands, from the draw alone.
