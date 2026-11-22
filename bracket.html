@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261118a"></script>
+<script src="bracket-core.js?v=20261122"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#050a06;--card:#0d1b12;--card2:#102218;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.12);--text:#e8f4e0;--dim:rgba(232,244,224,.55);--faint:rgba(232,244,224,.32);--gold:#f0c040;--green:#2ecc71;--blue:#5fb8ff;
@@ -259,7 +259,7 @@ table.rkt td.fn{text-align:left;font:600 13px Inter,sans-serif;color:var(--dim);
 table.rkt tr.in td.fn{color:#7ff0a7;}table.rkt .lv{color:var(--green);}
 table.rkt td.w i{font-style:normal;font-size:15px;color:var(--faint);}
 table.rkt td.pos{color:#7ff0a7;}table.rkt td.neg{color:#ff8a8a;}
-table.rkt td.fm{white-space:nowrap;}
+table.rkt td.fm{white-space:nowrap;}table.rkt td.pt{font:400 21px 'Bebas Neue',sans-serif;color:var(--gold);letter-spacing:.5px;}
 table.rkt td.fm i{display:inline-flex;width:20px;height:20px;margin:0 1.5px;border-radius:5px;align-items:center;justify-content:center;font:800 10.5px Inter,sans-serif;font-style:normal;}
 table.rkt td.fm i.w{background:rgba(46,204,113,.18);color:#7ff0a7;}table.rkt td.fm i.l{background:rgba(255,90,90,.14);color:#ff8a8a;}
 table.rkt td.nm small.sd{color:var(--gold);border:1px solid rgba(240,192,64,.4);border-radius:4px;padding:0 4px;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;}
@@ -602,61 +602,38 @@ function viewStats(r, c, md, t){
 }
 /* ── rankings: where every player stands — final places, the round they reached, then form ── */
 function ordn(n){ return n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'); }
-function rankings(md, S){
-  /* depth of each round of the main draw (placing matches don't move you further) */
-  var dep = new Map(), slots = [0], names = [''], d = 0;
-  md.stages.forEach(function(s){ if(s.place) return;
-    if(s.kind === 'ko') s.rounds.forEach(function(rd){ d++; slots[d] = rd.matches.length * 2; names[d] = rd.name; rd.matches.forEach(function(v){ dep.set(v, d); }); });
-    else { d++; var ms = s.kind === 'groups' ? [].concat.apply([], s.groups.map(function(g){ return g.matches; })) : s.matches, seen = {};
-      ms.forEach(function(v){ dep.set(v, d); [v.p1, v.p2].forEach(function(p){ if(realP(p)) seen[p.name.toLowerCase()] = 1; }); });
-      slots[d] = Object.keys(seen).length; names[d] = s.title; } });
-  var maxD = d, total = S.P.length, info = {};
-  players(md).forEach(function(p){ info[p.name.toLowerCase()] = p; });
-  var rows = S.P.map(function(r){
-    var p = info[r.name.toLowerCase()] || { ms:[] }, reach = 0, form = [];
-    p.ms.forEach(function(x){ var v = x.v, dd = dep.get(v) || 0; if(dd > reach) reach = dd;
-      if(v.status === 'done' && v.w && realP(x.side === 1 ? v.p2 : v.p1)) form.push({ w:v.w === x.side, v:v, side:x.side }); });
-    var lo, hi, alive = !p.out && !p.champion && !r.place, nx = p.next && p.next.v;
-    if(p.champion){ lo = hi = 1; }
-    else if(r.place){ lo = hi = r.place; }
-    else if(nx && nx.places){ lo = nx.places[0]; hi = nx.places[1]; }
-    else if(alive){ lo = 1; hi = Math.min(slots[reach] || total, total); }
-    else { lo = (reach < maxD ? slots[reach + 1] : 1) + 1; hi = Math.min(slots[reach] || total, total); }
-    if(hi < lo) hi = lo;
-    var stage = p.champion ? '🏆 Champion' : r.place === 2 ? '🥈 Runner-up' : r.place ? (r.place === 3 ? '🥉 ' : '') + ordn(r.place) + ' place'
-      : nx && nx.places ? 'Playing for ' + ordn(nx.places[0]) : alive ? (p.live ? 'Playing ' : 'In ') + (names[reach] || 'the draw') : 'Lost in ' + (names[reach] || 'the draw');
-    var best = null; form.forEach(function(f){ if(f.w){ var dd2 = dep.get(f.v) || 0; if(!best || dd2 > best.d) best = { d:dd2, v:f.v, side:f.side }; } });
-    return { r:r, lo:lo, hi:hi, alive:alive, live:!!p.live, stage:stage, reach:reach, form:form.slice(-5), best:best };
-  });
-  rows.sort(function(a, b){ return a.lo - b.lo || a.hi - b.hi || (b.alive - a.alive) || (b.r.w - a.r.w) || ((b.r.fw - b.r.fl) - (a.r.fw - a.r.fl)) || (b.r.fw - a.r.fw) || (b.r.hb - a.r.hb) || a.r.name.localeCompare(b.r.name); });
-  return rows;
+function rankings(md, S, man){
+  var hb = {}; S.P.forEach(function(p){ hb[p.name.toLowerCase()] = p.hb; });
+  var rows = BK.standings(md).map(function(x){ x.hb = hb[x.name.toLowerCase()] || 0; return x; });
+  return BK.applyManual(rows, man);
 }
 function viewRankings(r, c, md, t){
-  var S = statsData(c, md, t), rows = rankings(md, S), h = '';
-  var pos = function(x){ return x.lo === x.hi ? String(x.lo) : x.lo + '–' + x.hi; };
+  var man = (t.rankings || {})[c.key], off = !!(man && man.on), S = statsData(c, md, t), rows = rankings(md, S, man), h = '';
+  var pos = function(x){ return x.lo === x.hi ? (x.joint ? '=' : '') + x.lo : x.lo + '–' + x.hi; };
+  var anyPts = off && rows.some(function(x){ return x.points != null; });
   /* podium once places are decided, otherwise who is still in it */
-  var pod = [1, 2, 3].map(function(n){ return rows.filter(function(x){ return x.lo === n && x.hi === n; })[0]; });
-  if(pod[0] && !pod[2]){ var j3 = rows.filter(function(x){ return x.lo === 3 && x.hi === 4 && !x.alive; }); if(j3.length === 2) pod[2] = { joint:j3, lo:3 }; }
+  var pod = [1, 2, 3].map(function(n){ var g = rows.filter(function(x){ return x.lo === n && x.hi === n; }); return g.length > 1 ? { joint:g, lo:n } : g[0]; });
+  if(pod[0] && !pod[2] && !off){ var j3 = rows.filter(function(x){ return x.lo === 3 && x.hi === 4 && !x.alive; }); if(j3.length === 2) pod[2] = { joint:j3, lo:3 }; }
   if(pod[0]){
     h += '<div class="pod">' + [pod[1], pod[0], pod[2]].map(function(x, i){ if(!x) return '<div class="pd e"></div>'; var n = x.lo;
-      if(x.joint) return '<div class="pd p3"><span class="md">🥉</span>' + x.joint.map(function(y){ return '<b data-follow="' + esc(y.r.name) + '">' + esc(y.r.name) + '</b><small>' + esc(y.r.state || '') + '</small>'; }).join('') + '<span class="pn">Joint 3rd</span></div>';
-      return '<div class="pd p' + n + '" data-follow="' + esc(x.r.name) + '"><span class="md">' + (n === 1 ? '🏆' : n === 2 ? '🥈' : '🥉') + '</span><b>' + esc(x.r.name) + '</b><small>' + esc(x.r.state || '') + '</small><span class="pn">' + ordn(n) + '</span><em>' + x.r.w + 'W · ' + x.r.fw + '–' + x.r.fl + ' frames' + (x.r.hb ? ' · HB ' + x.r.hb : '') + '</em></div>'; }).join('') + '</div>';
+      if(x.joint && x.joint.map) return '<div class="pd p' + n + '"><span class="md">' + (n === 1 ? '🏆' : n === 2 ? '🥈' : '🥉') + '</span>' + x.joint.map(function(y){ return '<b data-follow="' + esc(y.name) + '">' + esc(y.name) + '</b><small>' + esc(y.state || '') + '</small>'; }).join('') + '<span class="pn">Joint ' + ordn(n) + '</span></div>';
+      return '<div class="pd p' + n + '" data-follow="' + esc(x.name) + '"><span class="md">' + (n === 1 ? '🏆' : n === 2 ? '🥈' : '🥉') + '</span><b>' + esc(x.name) + '</b><small>' + esc(x.state || '') + '</small><span class="pn">' + ordn(n) + '</span><em>' + x.w + 'W · ' + x.fw + '–' + x.fl + ' frames' + (x.hb ? ' · HB ' + x.hb : '') + '</em></div>'; }).join('') + '</div>';
   } else {
     var al = rows.filter(function(x){ return x.alive; });
-    if(al.length && al.length <= 16) h += '<div class="sec">Still in the hunt <b>' + al.length + '</b></div><div class="hunt">' + al.map(function(x){ return '<span class="hc' + (x.live ? ' live' : '') + '" data-follow="' + esc(x.r.name) + '">' + (x.live ? '<i></i>' : '') + esc(x.r.name) + '<small>' + esc(x.stage.replace(/^(In|Playing) /, '')) + '</small></span>'; }).join('') + '</div>';
+    if(al.length && al.length <= 16) h += '<div class="sec">Still in the hunt <b>' + al.length + '</b></div><div class="hunt">' + al.map(function(x){ return '<span class="hc' + (x.live ? ' live' : '') + '" data-follow="' + esc(x.name) + '">' + (x.live ? '<i></i>' : '') + esc(x.name) + '<small>' + esc(x.stage.replace(/^(In|Playing) /, '')) + '</small></span>'; }).join('') + '</div>';
   }
-  var list = rows.filter(function(x){ return !find || (x.r.name + ' ' + (x.r.state || '')).toLowerCase().indexOf(find) >= 0; });
-  h += '<div class="sec">Rankings <b>' + rows.length + '</b></div><div class="tools"><input class="find" id="find" placeholder="Find a player or district…" value="' + esc(find) + '"><div class="legend">Ranked by finish, then wins, frame difference and high break · ranges are still to be decided</div></div>';
+  var list = rows.filter(function(x){ return !find || (x.name + ' ' + (x.state || '')).toLowerCase().indexOf(find) >= 0; });
+  h += '<div class="sec">Rankings <b>' + rows.length + '</b></div><div class="tools"><input class="find" id="find" placeholder="Find a player or district…" value="' + esc(find) + '"><div class="legend">' + (off ? '<b style="color:var(--gold)">Official rankings</b> set by the organiser' + (man.updatedAt ? ' · updated ' + esc(new Date(man.updatedAt).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' })) : '') : 'Ranked by finish, then wins, frame difference and high break · ranges are still to be decided') + '</div></div>';
   var prev = null;
-  h += '<div class="pst-w"><table class="pst rkt"><thead><tr><th>Pos</th><th>Player</th><th>Finish</th><th>W–L</th><th>Frames</th><th>+/−</th><th>High break</th><th>Form</th></tr></thead><tbody>' +
-    list.map(function(x){ var p = x.r, fd = p.fw - p.fl, g = pos(x), first = g !== prev; prev = g;
+  h += '<div class="pst-w"><table class="pst rkt"><thead><tr><th>Pos</th><th>Player</th><th>Finish</th><th>W–L</th><th>Frames</th><th>+/−</th><th>High break</th>' + (anyPts ? '<th>Points</th>' : '') + '<th>Form</th></tr></thead><tbody>' +
+    list.map(function(x){ var p = x, fd = p.fw - p.fl, g = pos(x), first = g !== prev; prev = g;
       var bw = x.best ? (function(){ var v = x.best.v, o = x.best.side === 1 ? v.p2 : v.p1; return 'Best win: ' + pname(o) + ' (' + v.roundName + ')'; })() : '';
       return '<tr class="' + (x.alive ? 'in' : p.out && !p.place ? 'out' : '') + (first ? ' gs' : '') + (x.lo <= 3 && x.lo === x.hi ? ' top' + x.lo : '') + '" data-follow="' + esc(p.name) + '" title="' + esc(bw) + '">' +
         '<td class="ps">' + (first ? '<span>' + g + '</span>' : '') + '</td>' +
         '<td class="nm">' + esc(p.name) + (p.state ? '<small>' + esc(p.state) + '</small>' : '') + (p.seeded ? '<small class="sd">seed</small>' : '') + '</td>' +
-        '<td class="fn">' + (x.live ? '<span class="lv">●</span> ' : '') + esc(x.stage) + '</td>' +
+        '<td class="fn">' + (x.live ? '<span class="lv">●</span> ' : '') + esc(off && x.note ? x.note : x.stage) + '</td>' +
         '<td class="w">' + p.w + '<i>–' + p.l + '</i></td><td>' + p.fw + '–' + p.fl + '</td><td class="' + (fd > 0 ? 'pos' : fd < 0 ? 'neg' : '') + '">' + (fd > 0 ? '+' : '') + fd + '</td>' +
-        '<td class="hb">' + (p.hb || '–') + '</td>' +
+        '<td class="hb">' + (p.hb || '–') + '</td>' + (anyPts ? '<td class="pt">' + (p.points != null ? esc(p.points) : '–') + '</td>' : '') +
         '<td class="fm">' + (x.form.length ? x.form.map(function(f){ var v = f.v, o = f.side === 1 ? v.p2 : v.p1; return '<i class="' + (f.w ? 'w' : 'l') + '" title="' + esc((f.w ? 'Beat ' : 'Lost to ') + pname(o) + ' ' + (f.side === 1 ? v.f1 + '–' + v.f2 : v.f2 + '–' + v.f1) + (v.wo ? ' (walkover)' : '') + ' · ' + v.roundName) + '">' + (f.w ? 'W' : 'L') + '</i>'; }).join('') : '<small>–</small>') + '</td></tr>'; }).join('') +
     '</tbody></table></div>';
   if(!list.length) h += '<div class="empty">No players match that search.</div>';

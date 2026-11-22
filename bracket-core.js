@@ -564,5 +564,79 @@
       '.bt-champ{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:12px;border:1px solid rgba(240,192,64,.6);background:linear-gradient(180deg,rgba(240,192,64,.22),rgba(240,192,64,.05));}' +
       '.bt-champ span{font:800 11px "Barlow Condensed",sans-serif;letter-spacing:3px;text-transform:uppercase;color:rgba(232,244,224,.6);}.bt-champ b{font:400 25px/1.05 "Bebas Neue",sans-serif;color:#f0c040;letter-spacing:1px;padding:0 8px;}.bt-champ small{font:600 11px Inter,sans-serif;color:rgba(232,244,224,.5);}';
   };
+
+  /* ── standings: where every player in a category stands, from the draw alone.
+     lo–hi is the range of final positions still possible (a single number once settled). ── */
+  function ordn(n) { return n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'); }
+  BK.ordn = ordn;
+  BK.rkKey = function (name) { return String(name || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, '_') || '_'; };
+  BK.standings = function (md) {
+    var real = function (p) { return p && !isTbd(p) && !isBye(p); };
+    var dep = new Map(), slots = [0], names = [''], d = 0;
+    md.stages.forEach(function (s) {
+      if (s.place) return;
+      if (s.kind === 'ko') s.rounds.forEach(function (rd) { d++; slots[d] = rd.matches.length * 2; names[d] = rd.name; rd.matches.forEach(function (v) { dep.set(v, d); }); });
+      else {
+        d++; var ms = s.kind === 'groups' ? [].concat.apply([], s.groups.map(function (g) { return g.matches; })) : (s.matches || []), seen = {};
+        ms.forEach(function (v) { dep.set(v, d); [v.p1, v.p2].forEach(function (p) { if (real(p)) seen[p.name.toLowerCase()] = 1; }); });
+        slots[d] = Object.keys(seen).length; names[d] = s.title;
+      }
+    });
+    var maxD = d, map = {}, order = [];
+    md.all.filter(function (v) { return !(isBye(v.p1) && isBye(v.p2)); }).forEach(function (v) {
+      ['p1', 'p2'].forEach(function (s, i) {
+        var p = v[s]; if (!real(p)) return; var k = p.name.toLowerCase();
+        if (!map[k]) { map[k] = { name: p.name, state: p.state || '', seeded: !!v['seed' + (i + 1)], ms: [] }; order.push(k); }
+        map[k].ms.push({ v: v, side: i + 1 });
+      });
+    });
+    var total = order.length;
+    return order.map(function (k) {
+      var p = map[k], lost = null, next = null, place = 0, reach = 0, form = [], w = 0, l = 0, fw = 0, fl = 0, best = null;
+      p.ms.forEach(function (x) {
+        var v = x.v, dd = dep.get(v) || 0; if (dd > reach) reach = dd;
+        if (v.status === 'done' || v.status === 'bye') {
+          if (v.w && v.w !== x.side) lost = x;
+          if (v.places && v.w) place = v.w === x.side ? v.places[0] : v.places[1];
+          else if (v.roundName === 'Final' && v.w && v.w !== x.side && !v.places) place = 2;
+          var opp = x.side === 1 ? v.p2 : v.p1;
+          if (v.status === 'done' && v.w && real(opp)) {
+            var won = v.w === x.side; if (won) w++; else l++;
+            if (!v.wo) { fw += +(x.side === 1 ? v.f1 : v.f2) || 0; fl += +(x.side === 1 ? v.f2 : v.f1) || 0; }
+            form.push({ w: won, v: v, side: x.side });
+            if (won && (!best || dd > best.d)) best = { d: dd, v: v, side: x.side };
+          }
+        } else if (!next) next = x;
+      });
+      var champ = !!(md.champion && md.champion.name.toLowerCase() === k);
+      if (champ) place = 1;
+      if (next) place = 0;
+      var out = !!lost && !next && !champ, alive = !out && !place, nx = next && next.v, live = !!(nx && nx.status === 'live'), lo, hi;
+      if (place) lo = hi = place;
+      else if (nx && nx.places) { lo = nx.places[0]; hi = nx.places[1]; }
+      else if (alive) { lo = 1; hi = Math.min(slots[reach] || total, total); }
+      else { lo = (reach < maxD ? slots[reach + 1] : 1) + 1; hi = Math.min(slots[reach] || total, total); }
+      if (hi < lo) hi = lo;
+      var stage = champ ? '🏆 Champion' : place === 2 ? '🥈 Runner-up' : place ? (place === 3 ? '🥉 ' : '') + ordn(place) + ' place'
+        : nx && nx.places ? 'Playing for ' + ordn(nx.places[0]) : alive ? (live ? 'Playing ' : 'In ') + (names[reach] || 'the draw') : 'Lost in ' + (names[reach] || 'the draw');
+      return { name: p.name, key: BK.rkKey(p.name), state: p.state, seeded: p.seeded, champ: champ, place: place, out: out, alive: alive, live: live, lo: lo, hi: hi, stage: stage,
+        reach: reach, w: w, l: l, fw: fw, fl: fl, form: form.slice(-5), best: best, next: next };
+    });
+  };
+  BK.sortStandings = function (rows) {
+    return rows.sort(function (a, b) { return a.lo - b.lo || a.hi - b.hi || (b.alive - a.alive) || (b.w - a.w) || ((b.fw - b.fl) - (a.fw - a.fl)) || (b.fw - a.fw) || ((b.hb || 0) - (a.hb || 0)) || a.name.localeCompare(b.name); });
+  };
+  /* the organiser's own positions (tournaments/<id>/rankings/<cat>) laid over the automatic ones */
+  BK.applyManual = function (rows, man) {
+    var on = !!(man && man.on), pos = (man && man.pos) || {};
+    rows.forEach(function (r) {
+      r.auto = { lo: r.lo, hi: r.hi };
+      var m = pos[r.key]; r.points = m && m.pts != null && m.pts !== '' ? m.pts : null; r.note = (m && m.note) || '';
+      if (on && m && +m.p > 0) { r.lo = r.hi = +m.p; r.manual = true; }
+    });
+    BK.sortStandings(rows);
+    if (on) rows.forEach(function (r) { r.joint = r.lo === r.hi && rows.filter(function (x) { return x.lo === r.lo && x.hi === r.hi; }).length > 1; });
+    return rows;
+  };
   BK.fmtTime = function (dt) { var d = new Date(String(dt).replace(' ', 'T')); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
 })(window);

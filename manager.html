@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <script src="tables.js?v=20261028c"></script>
-<script src="bracket-core.js?v=20261118a"></script>
+<script src="bracket-core.js?v=20261122"></script>
 <style>
 :root{--bg:#050a06;--card:#0c1912;--card2:#10221a;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#e8f4e0;--dim:rgba(232,244,224,.58);--faint:rgba(232,244,224,.34);--gold:#f0c040;--green:#2ecc71;--red:#ff7b6b;--blue:#5fb8ff;--amber:#ffc770;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -130,6 +130,25 @@ a{color:inherit;text-decoration:none;}
 .danger{padding:14px 16px;border-radius:14px;border:1px solid rgba(255,123,107,.3);background:rgba(255,123,107,.05);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .danger p{flex:1;color:var(--dim);font-size:13px;min-width:220px;}
 .note{font-size:12.5px;color:var(--faint);margin:6px 2px;}
+/* rankings */
+.rkbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding:14px 16px;border-radius:14px;background:var(--card);border:1px solid rgba(240,192,64,.3);}
+.rkbar b{font:800 16px 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;}
+.rkbar p{font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.45;}
+.sw{position:relative;width:52px;height:30px;flex:none;cursor:pointer;}
+.sw input{position:absolute;opacity:0;width:0;height:0;}
+.sw span{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid var(--line2);transition:.15s;}
+.sw span:after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#cfd8cf;transition:.15s;}
+.sw input:checked + span{background:var(--gold);border-color:var(--gold);}.sw input:checked + span:after{left:25px;background:#111;}
+.tbl.rk td{padding:0 6px;}
+.rka{font:400 20px 'Bebas Neue',sans-serif;color:var(--faint);letter-spacing:.5px;padding-left:6px;white-space:nowrap;}
+.rki{height:34px;width:78px;border-radius:8px;border:1px solid var(--line2);background:#06100a;color:#fff;padding:0 9px;font:600 14px Inter,sans-serif;}
+.rki.pos{width:70px;font:400 21px 'Bebas Neue',sans-serif;color:var(--gold);text-align:center;letter-spacing:.5px;}
+.rki.note{width:100%;min-width:150px;font-size:13px;}
+.rki:focus{outline:none;border-color:var(--gold);}
+.rki::placeholder{color:rgba(255,255,255,.22);}
+.tbl.rk tr.chg td{background:rgba(240,192,64,.06);}.tbl.rk tr.chg td:first-child{box-shadow:inset 3px 0 0 var(--gold);}
+.rkf{font-size:12.5px;color:var(--dim);white-space:nowrap;}.rkf.in{color:#59e08a;}
+.rkn{font:600 13px Inter,sans-serif;color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums;}
 @media (max-width:900px){
   .stats{margin-left:0;width:100%;}.st{flex:1;min-width:0;}
   .tbl .hide-s{display:none;}
@@ -254,7 +273,9 @@ function setField(v, field, value, regField, up){
 
 /* ════════════ VIEW ════════════ */
 var popOpen = false, dirty = false;
-function render(){ if(popOpen){ dirty = true; return; } draw(); }
+function typingRk(){ var a = document.activeElement; return S.tab === 'rankings' && a && a.classList && a.classList.contains('rki'); }
+function render(){ if(popOpen || typingRk()){ dirty = true; return; } draw(); }
+document.addEventListener('focusout', function(e){ if(!e.target.classList || !e.target.classList.contains('rki')) return; setTimeout(function(){ if(dirty && !popOpen && !typingRk()){ dirty = false; draw(); } }, 400); });
 function draw(){
   var ids = Object.keys(T).filter(function(id){ return T[id] && T[id].name; }).sort(function(a, b){ return (T[b].createdAt || 0) - (T[a].createdAt || 0); });
   if(!S.tid || !T[S.tid]) S.tid = ids.filter(function(id){ return T[id].status === 'active'; })[0] || ids[0] || '';
@@ -267,6 +288,7 @@ function draw(){
   var h = head(c);
   if(S.tab === 'players') h += viewPlayers(c);
   else if(S.tab === 'settings') h += viewSettings(c);
+  else if(S.tab === 'rankings') h += viewRankings(c);
   else h += viewMatches(c);
   v.innerHTML = h; wire(c);
   window.scrollTo(0, y);
@@ -279,7 +301,7 @@ function head(c){
     '<span><b>' + esc((t.reds && t.sport === 'snooker' ? t.reds + ' Red ' : '') + (SPORT[t.sport] || t.sport || '')) + '</b></span>' + (dates ? '<span>' + esc(dates) + '</span>' : '') + (t.venue ? '<span>' + esc(t.venue) + '</span>' : '') +
     '<span>' + esc((t.status || 'draft').toUpperCase()) + '</span></div></div>' +
     '<div class="stats"><div class="st"><b>' + done + '/' + all.length + '</b><span>Played</span></div><div class="st live"><b>' + live + '</b><span>Live</span></div><div class="st warn"><b>' + att + '</b><span>To check</span></div></div></div>';
-  h += '<div class="tabs">' + [['matches','Matches', all.length], ['players','Players', c.md ? players(c).length : 0], ['settings','Event settings','']].map(function(x){ return '<button class="tab' + (S.tab === x[0] ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + (x[2] !== '' ? '<small>' + x[2] + '</small>' : '') + '</button>'; }).join('') + '</div>';
+  h += '<div class="tabs">' + [['matches','Matches', all.length], ['players','Players', c.md ? players(c).length : 0], ['rankings','Rankings', (c.t.rankings && c.t.rankings[S.ck] && c.t.rankings[S.ck].on) ? 'ON' : ''], ['settings','Event settings','']].map(function(x){ return '<button class="tab' + (S.tab === x[0] ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + (x[2] !== '' ? '<small>' + x[2] + '</small>' : '') + '</button>'; }).join('') + '</div>';
   if(c.cks.length > 1) h += '<div class="cats">' + c.cks.map(function(k){ return '<button class="cat' + (k === S.ck ? ' on' : '') + '" data-ck="' + k + '">' + esc(t.draw[k].catName || k) + '</button>'; }).join('') + '</div>';
   return h;
 }
@@ -550,6 +572,71 @@ function savePlayers(){
   save(up, before(Object.keys(up)), n + ' player' + (n > 1 ? 's' : '') + ' updated');
 }
 
+/* ── RANKINGS: the automatic order from the draw, with the organiser's own positions on top ── */
+var RKD = {};   // unsaved edits: { '<tid>/<ck>': { <playerKey>: { p, pts, note } } }
+function rkDraft(){ var k = S.tid + '/' + S.ck; return RKD[k] || (RKD[k] = {}); }
+function rkSaved(c){ return ((c.t.rankings || {})[S.ck]) || {}; }
+function rkVal(c, key, f){ var d = rkDraft()[key]; if(d && d[f] !== undefined) return d[f]; var m = (rkSaved(c).pos || {})[key]; return m && m[f] != null ? m[f] : ''; }
+function viewRankings(c){
+  if(!c.md) return '<div class="empty" style="margin-top:16px">No draw yet.</div>';
+  var man = rkSaved(c), rows = BK.applyManual(BK.standings(c.md), man), q = S.q.toLowerCase(), dn = Object.keys(rkDraft()).length;
+  var list = rows.filter(function(x){ return !q || (x.name + ' ' + (x.state || '')).toLowerCase().indexOf(q) >= 0; });
+  var set = rows.filter(function(x){ return +rkVal(c, x.key, 'p') > 0; }).length;
+  var auto = function(x){ return x.auto.lo === x.auto.hi ? String(x.auto.lo) : x.auto.lo + '–' + x.auto.hi; };
+  var h = '<div class="rkbar"><label class="sw"><input type="checkbox" id="rk-on"' + (man.on ? ' checked' : '') + '><span></span></label><div style="flex:1;min-width:220px"><b>' + (man.on ? 'Your rankings are showing on the public page' : 'The public page shows the automatic rankings') + '</b>' +
+    '<p>Type a position for any player — give two players the same number for a joint position. Players you leave blank keep their automatic position. Points and the note are optional and show on the public page when your rankings are on.</p></div>' +
+    '<a class="btn sm" target="_blank" href="bracket.html#e/' + S.tid + '/' + S.ck + '/rankings">Open public rankings ↗</a></div>';
+  h += '<div class="tools"><input class="find" id="q" placeholder="Find a player or district…" value="' + esc(S.q) + '">' +
+    '<button class="btn sm" id="rk-fill" title="Copy the automatic position into every empty box">⤵ Fill from automatic</button><button class="btn sm red" id="rk-clear">Clear all</button>' +
+    '<span class="note">' + set + ' of ' + rows.length + ' players have a position you set' + (dn ? ' · <b style="color:var(--amber)">' + dn + ' unsaved</b>' : '') + '</span><span class="sp"></span>' +
+    (dn ? '<button class="btn sm" id="rk-undo">Discard changes</button>' : '') + '<button class="btn gold" id="rk-save">💾 Save rankings</button></div>';
+  h += '<div class="tw"><table class="tbl rk"><thead><tr><th>Auto</th><th>Your position</th><th>Points</th><th>Player</th><th class="hide-s">Finish</th><th>W–L</th><th class="hide-s">Frames</th><th>Note on public page</th></tr></thead><tbody>' +
+    list.map(function(x){ var d = rkDraft()[x.key], p = rkVal(c, x.key, 'p');
+      return '<tr data-rk="' + esc(x.key) + '" class="' + (d ? 'chg' : '') + (x.live ? ' live' : '') + '"><td><span class="rka">' + auto(x) + '</span></td>' +
+        '<td><input class="rki pos" data-f="p" type="number" min="1" inputmode="numeric" value="' + esc(p) + '" placeholder="' + esc(x.auto.lo) + '"></td>' +
+        '<td><input class="rki" data-f="pts" inputmode="decimal" value="' + esc(rkVal(c, x.key, 'pts')) + '" placeholder="–"></td>' +
+        '<td><div class="pl' + (x.out && !x.place ? ' l' : '') + '"><div class="n">' + esc(x.name) + (x.seeded ? ' <span class="seed">SEED</span>' : '') + '</div><small>' + esc(x.state || '') + '</small></div></td>' +
+        '<td class="hide-s"><span class="rkf' + (x.alive ? ' in' : '') + '">' + esc(x.stage) + '</span></td>' +
+        '<td class="rkn">' + x.w + '–' + x.l + '</td><td class="hide-s rkn">' + x.fw + '–' + x.fl + '</td>' +
+        '<td><input class="rki note" data-f="note" maxlength="40" value="' + esc(rkVal(c, x.key, 'note')) + '" placeholder="e.g. Best newcomer"></td></tr>'; }).join('') +
+    '</tbody></table></div>';
+  if(!list.length) h += '<div class="empty">No players match that search.</div>';
+  return h;
+}
+function wireRankings(c){
+  var on = g('rk-on'); if(!on) return;
+  on.onchange = function(){ var path = 'tournaments/' + S.tid + '/rankings/' + S.ck, up = {}; up[path + '/on'] = on.checked; up[path + '/updatedAt'] = Date.now();
+    save(up, before(Object.keys(up)), on.checked ? 'Your rankings are now on the public page' : 'Public page back to automatic rankings'); };
+  var inputs = Array.prototype.slice.call(document.querySelectorAll('.rki'));
+  inputs.forEach(function(i){
+    i.oninput = function(){ var tr = i.closest('tr'), k = tr.dataset.rk, d = rkDraft(); d[k] = d[k] || {}; d[k][i.dataset.f] = i.value.trim(); tr.classList.add('chg'); };
+    i.onkeydown = function(e){ if(e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return; if(i.type !== 'number' && e.key !== 'Enter') return;
+      e.preventDefault(); var col = inputs.filter(function(x){ return x.dataset.f === i.dataset.f; }), n = col[col.indexOf(i) + (e.key === 'ArrowUp' ? -1 : 1)]; if(n){ n.focus(); n.select && n.select(); } };
+  });
+  g('rk-save').onclick = function(){ saveRankings(c); };
+  var u = g('rk-undo'); if(u) u.onclick = function(){ RKD[S.tid + '/' + S.ck] = {}; draw(); };
+  g('rk-fill').onclick = function(){ var rows = BK.applyManual(BK.standings(c.md), {}), d = rkDraft(), n = 0;
+    rows.forEach(function(x){ if(rkVal(c, x.key, 'p') === ''){ d[x.key] = d[x.key] || {}; d[x.key].p = String(x.lo); n++; } });
+    draw(); toast(n ? n + ' positions filled in — check them, then Save' : 'Every player already has a position'); };
+  g('rk-clear').onclick = function(){ if(!confirm('Clear every position, points and note you have set for this category?')) return;
+    var path = 'tournaments/' + S.tid + '/rankings/' + S.ck + '/pos', up = {}; up[path] = null; RKD[S.tid + '/' + S.ck] = {}; save(up, before([path]), 'Rankings cleared'); };
+}
+function saveRankings(c){
+  var d = rkDraft(), keys = Object.keys(d); if(!keys.length){ toast('Nothing changed'); return; }
+  var names = {}; BK.standings(c.md).forEach(function(x){ names[x.key] = x.name; });
+  var base = 'tournaments/' + S.tid + '/rankings/' + S.ck, up = {}, bad = 0;
+  keys.forEach(function(k){
+    var cur = (rkSaved(c).pos || {})[k] || {}, x = { name:names[k] || cur.name || k, p:cur.p || null, pts:cur.pts != null ? cur.pts : null, note:cur.note || null };
+    if(d[k].p !== undefined){ var n = parseInt(d[k].p, 10); if(d[k].p !== '' && !(n > 0)) bad++; x.p = n > 0 ? n : null; }
+    if(d[k].pts !== undefined) x.pts = d[k].pts === '' ? null : (isNaN(+d[k].pts) ? d[k].pts : +d[k].pts);
+    if(d[k].note !== undefined) x.note = d[k].note || null;
+    up[base + '/pos/' + k] = (x.p || x.pts != null || x.note) ? x : null;
+  });
+  up[base + '/updatedAt'] = Date.now();
+  var undo = before(Object.keys(up));
+  save(up, undo, keys.length + ' ranking' + (keys.length > 1 ? 's' : '') + ' saved' + (rkSaved(c).on ? '' : ' — turn the switch on to show them publicly') + (bad ? ' (' + bad + ' invalid position ignored)' : '')).then(function(){ RKD[S.tid + '/' + S.ck] = {}; draw(); });
+}
+
 /* ── SETTINGS ── */
 function viewSettings(c){
   var t = c.t;
@@ -642,6 +729,7 @@ function wireNew(){
 /* ── wiring ── */
 function wire(c){
   document.querySelectorAll('[data-tab]').forEach(function(b){ b.onclick = function(){ S.tab = b.dataset.tab; S.q = ''; draw(); }; });
+  if(S.tab === 'rankings') wireRankings(c);
   document.querySelectorAll('[data-ck]').forEach(function(b){ b.onclick = function(){ S.ck = b.dataset.ck; S.sel = {}; draw(); }; });
   var q = g('q'); if(q){ q.oninput = function(){ S.q = q.value; var pos = q.selectionStart; draw(); var q2 = g('q'); if(q2){ q2.focus(); try { q2.setSelectionRange(pos, pos); } catch(e){} } }; }
   document.querySelectorAll('[data-st]').forEach(function(b){ b.onclick = function(){ S.status = b.dataset.st; draw(); }; });
