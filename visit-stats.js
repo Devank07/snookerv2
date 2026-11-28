@@ -18,11 +18,11 @@
   if (first) inc(db.ref('stats/' + PAGE + '/total'));
   inc(db.ref('stats/' + PAGE + '/views/' + day));
   /* live presence: this tab, removed by the server when it disconnects */
-  var me = db.ref('presence/' + PAGE).push(), page = function () { return (location.hash || '#live').slice(0, 90); };
+  var me = db.ref('presence/' + PAGE).push(), page = function () { if (location.hash) return location.hash.slice(0, 90); var b = document.querySelector('base'), rel = b ? location.href.split('?')[0].replace(b.href, '') : ''; return ('/' + (rel || 'live')).slice(0, 90); };
   function here() { me.set({ at: TS, p: page() }).catch(function () { }); }
   db.ref('.info/connected').on('value', function (s) { if (s.val() === true) { try { me.onDisconnect().remove(); } catch (e) { } here(); } });
   here();
-  w.addEventListener('hashchange', here);
+  w.addEventListener('hashchange', here); w.addEventListener('popstate', here); w.addEventListener('upbsa-nav', here);
   setInterval(here, 60000);
   w.addEventListener('pagehide', function () { try { me.remove(); } catch (e) { } });
 })(window);

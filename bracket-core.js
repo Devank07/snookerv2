@@ -646,5 +646,22 @@
     if (on) rows.forEach(function (r) { r.joint = r.lo === r.hi && rows.filter(function (x) { return x.lo === r.lo && x.hi === r.hi; }).length > 1; });
     return rows;
   };
+
+  /* ── clean public links: /event/<link-name>/<category>/<view>, /player/<name> ── */
+  BK.slug = function (s) {
+    return String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70).replace(/-+$/, '');
+  };
+  /* every event's link name: the one saved on the event, else made from its name; repeats get -2, -3 (oldest keeps the plain one) */
+  BK.eventSlugs = function (T) {
+    var out = {}, used = {};
+    Object.keys(T || {}).filter(function (id) { return T[id] && T[id].name; })
+      .sort(function (a, b) { return (!!T[b].slug - !!T[a].slug) || (T[a].createdAt || 0) - (T[b].createdAt || 0); })
+      .forEach(function (id) { var base = BK.slug(T[id].slug || T[id].name) || id.toLowerCase(), s = base, n = 2; while (used[s]) s = base + '-' + n++; used[s] = 1; out[id] = s; });
+    return out;
+  };
+  BK.eventPath = function (T, tid, ck, view) {
+    var sl = BK.eventSlugs(T)[tid] || tid;
+    return 'event/' + sl + (ck ? '/' + ck : '') + (view && view !== 'overview' ? '/' + view : '');
+  };
   BK.fmtTime = function (dt) { var d = new Date(String(dt).replace(' ', 'T')); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
 })(window);

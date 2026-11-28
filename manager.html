@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="upbsa-auth.js?v=20261028c" data-mode="admin"></script>
 <script src="tables.js?v=20261028c"></script>
-<script src="bracket-core.js?v=20261122b"></script>
+<script src="bracket-core.js?v=20261128"></script>
 <style>
 :root{--bg:#0A0D10;--card:#12161B;--card2:#161B22;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#E9EEF2;--dim:rgba(233,238,242,.58);--faint:rgba(233,238,242,.34);--gold:#FFC531;--green:#2ecc71;--red:#ff7b6b;--blue:#5fb8ff;--amber:#ffc770;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -286,7 +286,7 @@ function draw(){
   if(!loaded.t){ v.innerHTML = '<div class="empty">Loading…</div>'; return; }
   if(!S.tid){ v.innerHTML = newEventForm(); wireNew(); return; }
   var c = cur(); remember();
-  g('pubbtn').href = 'bracket.html#e/' + S.tid + (S.ck ? '/' + S.ck : '');
+  g('pubbtn').href = pubUrl(S.tid, S.ck);
   g('posterbtn').href = 'poster.html?e=' + S.tid;
   var h = head(c);
   if(S.tab === 'players') h += viewPlayers(c);
@@ -588,7 +588,7 @@ function viewRankings(c){
   var auto = function(x){ return x.auto.lo === x.auto.hi ? String(x.auto.lo) : x.auto.lo + '–' + x.auto.hi; };
   var h = '<div class="rkbar"><label class="sw"><input type="checkbox" id="rk-on"' + (man.on ? ' checked' : '') + '><span></span></label><div style="flex:1;min-width:220px"><b>' + (man.on ? 'Your rankings are showing on the public page' : 'The public page shows the automatic rankings') + '</b>' +
     '<p>Type a position for any player — give two players the same number for a joint position. Players you leave blank keep their automatic position. Points and the note are optional and show on the public page when your rankings are on.</p></div>' +
-    '<a class="btn sm" target="_blank" href="bracket.html#e/' + S.tid + '/' + S.ck + '/rankings">Open public rankings ↗</a></div>';
+    '<a class="btn sm" target="_blank" href="' + esc(pubUrl(S.tid, S.ck, 'rankings')) + '">Open public rankings ↗</a></div>';
   h += '<div class="tools"><input class="find" id="q" placeholder="Find a player or district…" value="' + esc(S.q) + '">' +
     '<button class="btn sm" id="rk-fill" title="Copy the automatic position into every empty box">⤵ Fill from automatic</button><button class="btn sm red" id="rk-clear">Clear all</button>' +
     '<span class="note">' + set + ' of ' + rows.length + ' players have a position you set' + (dn ? ' · <b style="color:var(--amber)">' + dn + ' unsaved</b>' : '') + '</span><span class="sp"></span>' +
@@ -650,6 +650,12 @@ function viewSettings(c){
     fld('Venue', 's-venue', t.venue) + fld('Start date', 's-start', t.startDate, 'date') + fld('End date', 's-end', t.endDate, 'date') +
     '<div><label>Status</label><select id="s-status">' + [['draft','Draft — not started'], ['active','Active — being played'], ['finished','Finished']].map(function(x){ return '<option value="' + x[0] + '"' + ((t.status || 'draft') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></div>' +
     '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn gold" id="s-save">💾 Save event</button></div>';
+  var sl = BK.eventSlugs(T)[S.tid] || '', full = pubUrl(S.tid);
+  h += '<div class="sec">Public link</div><div class="danger" style="border-color:var(--line);background:none;flex-direction:column;align-items:stretch">' +
+    '<p>The address viewers, QR posters and shared cards use for this event. Change the link name only before you share it — old links with the previous name stop working.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="note" style="margin:0;white-space:nowrap">' + esc(new URL('.', location.href).href.replace(/^https?:\/\//, '')) + 'event/</span>' +
+    '<input id="s-slug" value="' + esc(sl) + '" style="flex:1 1 240px;height:38px;border-radius:9px;border:1px solid var(--line2);background:#0D1014;color:#fff;padding:0 10px;font:600 14px Inter,sans-serif">' +
+    '<button class="btn" id="s-slug-save">Save link name</button><button class="btn" id="s-copy" data-url="' + esc(full) + '">📋 Copy link</button><a class="btn" target="_blank" href="' + esc(full) + '">Open ↗</a></div></div>';
   if(c.cks.length){
     h += '<div class="sec">Categories</div><div class="form">' + c.cks.map(function(k){ return fld('Category name', 'cat-' + k, t.draw[k].catName || k); }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn" id="c-save">Save names</button></div>';
   }
@@ -755,6 +761,13 @@ function wire(c){
     if(up[b + 'name'] !== c.t.name) Object.keys(REG).forEach(function(id){ if(REG[id] && REG[id].tournament === c.t.name) up['match_registry/' + id + '/tournament'] = up[b + 'name']; });
     save(up, before(Object.keys(up)), 'Event saved');
   };
+  var sk = g('s-slug-save'); if(sk) sk.onclick = function(){
+    var v = BK.slug(g('s-slug').value), m = BK.eventSlugs(T), taken = Object.keys(m).some(function(id){ return id !== S.tid && m[id] === v; });
+    if(!v){ toast('Type a link name — letters, numbers and dashes', null, 1); return; }
+    if(taken){ toast('Another event already uses that link name', null, 1); return; }
+    var up = {}; up['tournaments/' + S.tid + '/slug'] = v; save(up, before(Object.keys(up)), 'Link name saved');
+  };
+  var cp = g('s-copy'); if(cp) cp.onclick = function(){ var u = cp.dataset.url; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ toast('Link copied'); }, function(){ prompt('Copy this link', u); }); };
   var cs = g('c-save'); if(cs) cs.onclick = function(){ var up = {}; c.cks.forEach(function(k){ var v = g('cat-' + k).value.trim(); if(v && v !== c.t.draw[k].catName) up['tournaments/' + S.tid + '/draw/' + k + '/catName'] = v; }); if(!Object.keys(up).length){ toast('Nothing changed'); return; } save(up, before(Object.keys(up)), 'Category names saved'); };
   document.querySelectorAll('.danger [data-place]').forEach(function(b){ b.onclick = function(){ addPlacings(+b.dataset.place); }; });
   document.querySelectorAll('[data-unplace]').forEach(function(b){ b.onclick = function(){ removePlacings(+b.dataset.unplace); }; });
@@ -769,7 +782,14 @@ function wire(c){
 g('evsel').onchange = function(){ if(this.value === '__new'){ S.tid = ''; g('view').innerHTML = newEventForm(); wireNew(); return; } S.tid = this.value; S.ck = ''; S.sel = {}; S.q = ''; S.round = S.day = S.table = ''; draw(); };
 
 /* ── data ── */
-db.ref('tournaments').on('value', function(s){ T = s.val() || {}; loaded.t = 1; render(); });
+db.ref('tournaments').on('value', function(s){ T = s.val() || {}; loaded.t = 1; freezeSlugs(); render(); });
+/* every event keeps the link name it was first shared with, even if it is renamed later */
+var frozen = false;
+function freezeSlugs(){ if(frozen || !UA.ready) return; var m = BK.eventSlugs(T), up = {};
+  Object.keys(m).forEach(function(id){ if(!T[id].slug) up['tournaments/' + id + '/slug'] = m[id]; });
+  frozen = true; if(Object.keys(up).length) db.ref().update(up).catch(function(){ frozen = false; }); }
+document.addEventListener('ua-ready', function(){ freezeSlugs(); });
+function pubUrl(tid, ck, view){ return new URL(BK.eventPath(T, tid, ck, view), location.href).href; }
 db.ref('matches').on('value', function(s){ M = s.val() || {}; render(); });
 db.ref('match_registry').on('value', function(s){ REG = s.val() || {}; render(); });
 db.ref('players').on('value', function(s){ PL = s.val() || {}; });

@@ -25,7 +25,7 @@
   function rr(c, x, y, w, h, r, fill, stroke) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); } }
   function cut(c, x, y, w, h, k, fill) { c.beginPath(); c.moveTo(x, y); c.lineTo(x + w - k, y); c.lineTo(x + w, y + k); c.lineTo(x + w, y + h); c.lineTo(x + k, y + h); c.lineTo(x, y + h - k); c.closePath(); c.fillStyle = fill; c.fill(); }
   function loadImg(src) { return new Promise(function (ok) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = function () { ok(null); }; i.src = src; }); }
-  function siteUrl() { var u = location.href.split('#')[0].replace(/^https?:\/\//, '').replace(/\/[^\/]*$/, ''); return /^file:/.test(location.href) ? 'devank07.github.io/snookerv2' : u; }
+  function siteUrl() { if (/^file:/.test(location.href)) return 'devank07.github.io/snookerv2'; var b = document.querySelector('base'); return (b ? b.href : location.href.split(/[?#]/)[0].replace(/[^\/]*$/, '')).replace(/^https?:\/\//, '').replace(/\/$/, ''); }
 
   function frame(c, P, logo, eventLine, sub) {
     c.fillStyle = P.bg; c.fillRect(0, 0, W, H);

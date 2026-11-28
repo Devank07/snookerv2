@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="vendor/qrcode.js"></script>
+<script src="bracket-core.js?v=20261128"></script>
 <script src="yt-live.js?v=20261028f"></script>
 <style>
 :root{--bg:#F2F3EE;--card:#FFFFFF;--line:#E3E5DD;--line2:#D3D7CC;--text:#15201A;--dim:#3E4A43;--faint:#5E6B63;--acc:#0B6B3F;--gold:#8A6100;--gold-fill:#FFC531;--gold-soft:#FFF3D6;--live:#D7263D;--ink:#15201A;}
@@ -98,7 +99,7 @@ function draw(){
   if(!sel || !T[sel]) sel = ids.filter(function(id){ return T[id].status === 'active'; })[0] || ids[0] || '';
   g('ev').innerHTML = ids.map(function(id){ return '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + esc(T[id].name) + '</option>'; }).join('');
   var t = T[sel]; if(!t){ g('poster').innerHTML = '<div class="p-in"><div class="ev">No events yet</div></div>'; return; }
-  var url = new URL('bracket.html#e/' + sel, location.href).href, yt = window.YT ? YT.channelUrl(YC) : 'https://www.youtube.com/@upbsa';
+  var url = new URL(BK.eventPath(T, sel), location.href).href, yt = window.YT ? YT.channelUrl(YC) : 'https://www.youtube.com/@upbsa';
   var handle = (yt.match(/@[\w.\-]+/) || ['@upbsa'])[0], tb = +g('tb').value || 0;
   var dates = t.startDate ? fmtD(t.startDate) + (t.endDate && t.endDate !== t.startDate ? ' – ' + fmtD(t.endDate) : '') : '';
   g('poster').innerHTML = '<div class="p-in"><div class="brand"><img src="upbsa-logo.jpg" alt=""><b>UPBSA<i>.TV</i></b></div><div class="bar"></div>' +

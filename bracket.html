@@ -4,15 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#F2F3EE">
+<script>if(/^https?:$/.test(location.protocol)){ var bs = document.createElement('base'); bs.href = location.pathname.replace(/[^\/]*$/, ''); document.head.appendChild(bs); }</script>
 <script>(function(){ var t = null; try { t = localStorage.getItem('upbsa-theme'); } catch(e){} document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light'); })();</script>
 <title>Live Draws & Results — UPBSA.TV</title>
 <meta name="description" content="Live scores, draws, brackets and results from UPBSA.TV cue sports events">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="bracket-core.js?v=20261122b"></script>
+<script src="bracket-core.js?v=20261128"></script>
 <script src="yt-live.js?v=20261028f"></script>
-<script src="share-card.js?v=20261122"></script>
+<script src="share-card.js?v=20261128"></script>
 <style>
 /* ── theme tokens: light (default) and dark ── */
 :root{--bg:#F2F3EE;--card:#FFFFFF;--card2:#FAFAF7;--sunk:#F2F3EE;--line:#E3E5DD;--line2:#D3D7CC;--text:#15201A;--dim:#3E4A43;--faint:#5E6B63;
@@ -424,12 +425,45 @@ function where(mid){   // which event + category a match belongs to
   return hit;
 }
 
-/* ── routing ── */
-function route(){ var h = location.hash.replace(/^#/, '') || 'live', p = h.split('/'), v = p[3] || 'overview', st = null;
+/* ── routing ──
+   The page runs on clean addresses (…/event/<link-name>/<category>/<view>, …/player/<name>, …/live, …/hall-of-fame).
+   GitHub Pages sends any such address to 404.html, which hands it here as ?r=…; old #e/<id>/… links still work.
+   Inside, PATH holds the route; links are written as #… and turned into clean ones after each draw. */
+var APPBASE = location.pathname.replace(/[^\/]*$/, ''), CLEAN = /^https?:$/.test(location.protocol);
+var PATH = (function(){ var q = new URLSearchParams(location.search).get('r'); if(q != null) return q.replace(/^\/+|\/+$/g, '') || 'live';
+  var h = location.hash.replace(/^#\/?/, ''); return h || 'live'; })();
+var ALIAS = { people:'players', 'hall-of-fame':'hall' }, UNALIAS = { players:'people', hall:'hall-of-fame' };
+function slugTid(sl){ var m = BK.eventSlugs(T), hit = null; Object.keys(m).some(function(id){ if(m[id] === sl){ hit = id; return true; } }); return hit || (T[sl] ? sl : null); }
+function route(){
+  var p = String(PATH || 'live').split('/').map(function(x){ try { return decodeURIComponent(x); } catch(e){ return x; } }), page = ALIAS[p[0]] || p[0];
+  if(page === 'event'){ page = 'e'; p[1] = slugTid(p[1]) || p[1]; }
+  if(page === 'player'){ var sl = p[1], P = Object.keys(T).length ? people() : null, hit = P && P.list.filter(function(x){ return BK.slug(x.name) === sl; })[0];
+    return { page:'p', name:hit ? hit.name : sl.replace(/-/g, ' '), view:'overview' }; }
+  if(page === 'p') return { page:'p', name:p.slice(1).join('/'), view:'overview' };
+  var v = p[3] || 'overview', st = null;
   if(/^\d+$/.test(v)){ st = +v; v = 'bracket'; }
   if(!VIEWS.some(function(x){ return x[0] === v; })) v = 'overview';
-  return { page:p[0], tid:p[1], ck:p[2], view:v, st:st }; }
-window.addEventListener('hashchange', function(){ window.scrollTo(0, 0); render(); });
+  return { page:page, tid:p[1], ck:p[2], view:v, st:st };
+}
+/* "#e/<id>/open/bracket" → "event/up-state-…/open/bracket" */
+function cleanOf(h){
+  h = String(h || '').replace(/^#\/?/, ''); var p = h.split('/');
+  if(p[0] === 'e' && p[1] && T[p[1]]) return BK.eventPath(T, p[1], p[2], p.slice(3).join('/'));
+  if(p[0] === 'p' && p[1]) return 'player/' + BK.slug(decodeURIComponent(p.slice(1).join('/')));
+  if(UNALIAS[p[0]]) return UNALIAS[p[0]];
+  return h || 'live';
+}
+function go(h){ PATH = CLEAN ? cleanOf(h) : String(h).replace(/^#/, ''); if(CLEAN){ history.pushState(null, '', APPBASE + PATH); window.scrollTo(0, 0); render(); try { window.dispatchEvent(new Event('upbsa-nav')); } catch(e){} } else location.hash = '#' + PATH; }
+window.addEventListener('hashchange', function(){ var h = location.hash.replace(/^#\/?/, ''); if(!h) return; PATH = h; window.scrollTo(0, 0); render(); });
+window.addEventListener('popstate', function(){ if(!CLEAN) return; var rel = location.pathname.slice(APPBASE.length); if(rel && !/\.html$/.test(rel)){ PATH = rel; render(); } });
+/* links inside the page: same-page navigation, clean addresses on hover / copy / new tab */
+function cleanLinks(root){ if(!CLEAN || !Object.keys(T).length) return;
+  root.querySelectorAll('a[href^="#"]').forEach(function(a){ var h = a.getAttribute('href'); if(h.length > 1){ a.setAttribute('href', APPBASE + cleanOf(h)); a.dataset.go = h; } }); }
+document.addEventListener('click', function(e){
+  var a = e.target.closest('a[data-go], a[href^="#"]'); if(!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button || a.target === '_blank') return;
+  var h = a.dataset.go || a.getAttribute('href'); if(!h || h === '#') return;
+  e.preventDefault(); go(h);
+});
 function nav(page){ ['live','events','players','hall','results'].forEach(function(x){ g('n-' + x).classList.toggle('on', x === page || (page === 'e' && x === 'events') || (page === 'p' && x === 'players')); }); }
 
 /* ── live ── */
@@ -913,7 +947,7 @@ document.addEventListener('click', function(e){
   var mf = e.target.closest('[data-mf]'); if(mf){ mfilt = mf.dataset.mf; draw(); return; }
   var so = e.target.closest('[data-sort]'); if(so){ statSort = so.dataset.sort; draw(); return; }
   var tr = e.target.closest('[data-trace]'); if(tr){ find = tr.dataset.trace.toLowerCase(); jumpTo = 'follow'; return; }
-  var fo = e.target.closest('[data-follow]'); if(fo){ find = ''; location.hash = plink(fo.dataset.follow); return; }
+  var fo = e.target.closest('[data-follow]'); if(fo){ find = ''; go(plink(fo.dataset.follow)); return; }
   var bp = e.target.closest('.bt-p[data-p]'); if(bp && bp.dataset.p && !e.target.closest('a')){ find = find === bp.dataset.p ? '' : bp.dataset.p; draw(); return; }
 });
 document.addEventListener('mouseover', function(e){   // hover a player: light up their whole path
@@ -971,8 +1005,9 @@ function draw(){
   nav(r.page); topButton();
   if(r.page === 'e' && r.st != null) stageSel[r.ck] = r.st;
   PEOPLE = null; CUR = null;
-  var html = r.page === 'events' ? pageEvents() : r.page === 'results' ? pageResults() : r.page === 'e' ? pageEvent(r) : r.page === 'players' ? pagePlayers() : r.page === 'p' ? pageProfile(decodeURIComponent(location.hash.replace(/^#p\//, ''))) : r.page === 'hall' ? pageHall() : pageLive();
-  g('view').innerHTML = html;
+  var html = r.page === 'events' ? pageEvents() : r.page === 'results' ? pageResults() : r.page === 'e' ? pageEvent(r) : r.page === 'players' ? pagePlayers() : r.page === 'p' ? pageProfile(r.name) : r.page === 'hall' ? pageHall() : pageLive();
+  g('view').innerHTML = html; cleanLinks(document);
+  if(CLEAN && Object.keys(T).length){ var want = APPBASE + cleanOf(PATH); if(PATH !== cleanOf(PATH) || location.pathname + location.search + location.hash !== want){ PATH = cleanOf(PATH); history.replaceState(null, '', want); } }
   if(r.page === 'e' && r.st != null && T[r.tid]) stageSel[r.ck] = +r.st;
   var f0 = g('find'); if(f0) f0.addEventListener('input', function(){ jumpTo = 'find'; });
   var f = g('find'); if(f){ f.oninput = function(){ find = f.value.trim().toLowerCase(); draw(); }; if(active){ f.focus(); try { f.setSelectionRange(pos, pos); } catch(e){} } }
@@ -998,6 +1033,6 @@ db.ref('match_history').limitToLast(400).on('value', function(s){ HIST = s.val()
 setInterval(function(){ g('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }, 1000);
 render();
 </script>
-<script src="visit-stats.js?v=20261113a"></script>
+<script src="visit-stats.js?v=20261128"></script>
 </body>
 </html>

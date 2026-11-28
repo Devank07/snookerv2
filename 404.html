@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UPBSA.TV</title>
+<script>
+/* Clean public links (…/event/<name>, …/player/<name>, …/live, …/hall-of-fame …) aren't real files,
+   so GitHub Pages shows this page for them. Hand the address to the live page, which shows it as it was. */
+(function () {
+  var p = location.pathname, m = p.match(/^(.*?\/)(event|player|people|live|events|results|hall-of-fame)(\/.*)?$/);
+  if (m) location.replace(m[1] + 'bracket.html?r=' + encodeURIComponent((m[2] + (m[3] || '')).replace(/\/+$/, '')) + location.hash);
+})();
+</script>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F2F3EE;color:#15201A;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px;}
+h1{font:700 30px/1.1 system-ui,sans-serif;letter-spacing:-.5px;margin:0 0 8px;}
+p{color:#3E4A43;margin:0 0 20px;}
+a{display:inline-block;padding:12px 20px;border-radius:12px;background:#15201A;color:#fff;font-weight:700;text-decoration:none;}
+</style>
+</head>
+<body>
+<div><h1>Page not found</h1><p>This link doesn't lead anywhere on UPBSA.TV.</p><a id="home" href="./">Go to live scores</a></div>
+<script>
+(function () { var h = location.hostname, seg = location.pathname.split('/')[1];
+  document.getElementById('home').href = (/github\.io$/.test(h) && seg ? '/' + seg + '/' : '/') + 'bracket.html'; })();
+</script>
+</body>
+</html>
